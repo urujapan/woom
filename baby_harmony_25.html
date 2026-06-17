@@ -28,6 +28,9 @@ body{font-family:'DM Sans',sans-serif;background:#fff5f8;min-height:100vh;paddin
 .sbtn.active{background:#E1F5EE;border-color:#5DCAA5;color:#0F6E56;}
 .ssub{font-size:11px;color:#aaa;margin-top:2px;}
 .upzone{border:1px dashed #F4C0D1;border-radius:8px;padding:1.25rem;text-align:center;cursor:pointer;margin-top:.5rem;}
+.rec-btn{background:none;width:100%;font-family:inherit;}
+.rec-btn.recording{border-color:#D4537E;border-style:solid;animation:recPulse 1s ease-in-out infinite;}
+@keyframes recPulse{0%,100%{background:rgba(212,83,126,.05)}50%{background:rgba(212,83,126,.15)}}
 .upzone:hover{background:#FBEAF0;}
 .upzone p{font-size:13px;color:#888;}
 .upzone strong{color:#D4537E;font-weight:400;}
@@ -246,10 +249,17 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample2_BPM175.mp3',175)"><i class="ti ti-heart-filled"></i> Sample 2<div class="ssub">Real · 175 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample2_BPM175.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
       <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample3_BPM150.mp3',150)"><i class="ti ti-heart-filled"></i> Sample 3<div class="ssub">Real · 150 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample3_BPM150.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
     </div>
-    <div id="uploadZone" class="upzone" style="display:none" onclick="document.getElementById('fi').click()">
-      <p><i class="ti ti-upload" style="font-size:22px;display:block;margin-bottom:6px;color:#D4537E;"></i>
-      <strong id="T11">Tap to select your recording</strong><br><span id="T12">MP3, WAV, M4A supported</span></p>
-      <input type="file" id="fi" accept="audio/*">
+    <div style="display:none;gap:8px;flex-direction:column;" id="uploadZoneWrap">
+      <div id="uploadZone" class="upzone" onclick="document.getElementById('fi').click()">
+        <p><i class="ti ti-upload" style="font-size:22px;display:block;margin-bottom:6px;color:#D4537E;"></i>
+        <strong id="T11">Tap to select your recording</strong><br><span id="T12">MP3, WAV, M4A supported</span></p>
+        <input type="file" id="fi" accept="audio/*">
+      </div>
+      <button class="upzone rec-btn" id="recBtn" onclick="toggleRec()" style="cursor:pointer;">
+        <i class="ti ti-microphone" id="recIco" style="font-size:22px;display:block;margin-bottom:6px;color:#D4537E;"></i>
+        <strong id="recLbl">Tap to record</strong><br>
+        <span id="recTime" style="font-size:11px;color:#aaa;">0:00</span>
+      </button>
     </div>
     <div class="upinfo" id="upinfo"><i class="ti ti-check"></i><span id="upname">—</span></div>
 
@@ -453,6 +463,8 @@ const GT={
   vi:['👶 Tên của bé','ví dụ: Bảo Ngọc, Minh Khôi','💬 Lời nhắn','ví dụ: Ba mẹ yêu con rất nhiều ♡','— Từ (tùy chọn)','ví dụ: Ba & Mẹ','📅 Ngày (tùy chọn)'],
   ru:['👶 Имя малыша','напр. Маша, Артём','💬 Сообщение','напр. Мы так тебя любим ♡','— От (необязательно)','напр. Мама и Папа','📅 Дата (необязательно)']
 };
+const REC={en:'Tap to record',ja:'タップして録音',zh:'点击录音','zh-TW':'點擊錄音',ko:'탭하여 녹음',es:'Grabar',fr:'Enregistrer',de:'Aufnehmen',pt:'Gravar',hi:'रिकॉर्ड करें',id:'Rekam',it:'Registra',th:'บันทึกเสียง',vi:'Ghi âm',ru:'Записать'};
+const RECSTOP={en:'Tap to stop',ja:'タップして停止',zh:'点击停止','zh-TW':'點擊停止',ko:'탭하여 중지',es:'Detener',fr:'Arrêter',de:'Stoppen',pt:'Parar',hi:'रोकें',id:'Berhenti',it:'Ferma',th:'หยุด',vi:'Dừng lại',ru:'Остановить'};
 const DRAG={en:'Drag to fine-tune',ja:'ドラッグで微調整',zh:'拖动以微调','zh-TW':'拖動以微調',ko:'드래그로 미세 조정',es:'Arrastra para ajustar',fr:'Glisser pour ajuster',de:'Ziehen zum Anpassen',pt:'Arraste para ajustar',hi:'ड्रैग करके समायोजित करें',id:'Seret untuk menyesuaikan',it:'Trascina per regolare',th:'ลากเพื่อปรับ',vi:'Kéo để tinh chỉnh',ru:'Перетащите для настройки'};
 const PREV={en:'Check heartbeat',ja:'心音を確認',zh:'确认心音','zh-TW':'確認心音',ko:'심음 확인',es:'Verificar latido',fr:'Vérifier le battement',de:'Herzschlag prüfen',pt:'Verificar batimento',hi:'दिल की धड़कन जांचें',id:'Periksa detak jantung',it:'Verifica battito',th:'ตรวจสอบเสียงหัวใจ',vi:'Kiểm tra nhịp tim',ru:'Проверить сердцебиение'};
 const READY={en:'Ready to play',ja:'再生する準備ができています',zh:'准备好播放','zh-TW':'準備好播放',ko:'재생 준비 완료',es:'Listo para reproducir',fr:'Prêt à jouer',de:'Bereit zum Abspielen',pt:'Pronto para reproduzir',hi:'बजाने के लिए तैयार',id:'Siap dimainkan',it:'Pronto per la riproduzione',th:'พร้อมเล่น',vi:'Sẵn sàng phát',ru:'Готово к воспроизведению'};
@@ -492,6 +504,7 @@ function L(l){
   document.getElementById('npTitle').textContent=playing?NOW[l]:READY[l];
   document.getElementById('phaseHint').textContent=DRAG[l]||DRAG.en;
   document.getElementById('wombPrevLbl').textContent=PREV[l]||PREV.en;
+  document.getElementById('recLbl').textContent=REC[l]||REC.en;
   // Gift section labels
   const gt=GT[l]||GT.en;
   const gLabels=document.querySelectorAll('.ginput-label');
@@ -541,7 +554,7 @@ function setTab(tab,btn){
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('sampleGrid').style.display=tab==='s'?'grid':'none';
-  document.getElementById('uploadZone').style.display=tab==='u'?'block':'none';
+  document.getElementById('uploadZoneWrap').style.display=tab==='u'?'flex':'none';
   // Reset waveform when switching to Upload tab
   if(tab==='u'){
     document.getElementById('waveformWrap').classList.remove('show');
@@ -679,27 +692,73 @@ function onSlider(id,outId,sfx){
 }
 
 // ── File upload & analysis ────────────────────────────────────────────────
+function loadWombBuffer(arrayBuffer, name){
+  if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
+  AC.decodeAudioData(arrayBuffer, function(buf){
+    rawBuffer=buf; cs='uploaded';
+    document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
+    document.getElementById('upinfo').style.display='flex';
+    document.getElementById('upname').textContent=name;
+    document.getElementById('waveformWrap').classList.add('show');
+    drawWaveform(buf);
+    initGridDrag();
+    runDetect();
+    updateNP(); refreshPreview();
+    if(playing){stopAll();startAll();}
+  }, function(e){toast('Decode error: '+e);});
+}
+
 document.getElementById('fi').addEventListener('change',function(){
   const file=this.files[0]; if(!file) return;
-  if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
   const reader=new FileReader();
-  reader.onload=function(e){
-    AC.decodeAudioData(e.target.result,function(buf){
-      // Heart sound: no normalization — preserve original level
-      rawBuffer=buf; cs='uploaded';
-      document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
-      document.getElementById('upinfo').style.display='flex';
-      document.getElementById('upname').textContent=file.name;
-      document.getElementById('waveformWrap').classList.add('show');
-      drawWaveform(buf);
-      initGridDrag();
-      runDetect();
-      updateNP(); refreshPreview();
-      if(playing){stopAll();startAll();}
-    },function(e){toast('Decode error: '+e);});
-  };
+  reader.onload=function(e){ loadWombBuffer(e.target.result, file.name); };
   reader.readAsArrayBuffer(file);
 });
+
+// ── Recording ────────────────────────────────────────────────────────────
+let _recMR=null, _recChunks=[], _recTimer=null, _recSec=0, _recStream=null;
+
+async function toggleRec(){
+  if(_recMR && _recMR.state==='recording'){
+    // Stop recording
+    _recMR.stop();
+    return;
+  }
+  // Start recording
+  try{
+    _recStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  }catch(e){
+    toast('Microphone access denied.');
+    return;
+  }
+  _recChunks=[]; _recSec=0;
+  _recMR = new MediaRecorder(_recStream);
+  _recMR.ondataavailable = e=>{ if(e.data.size>0) _recChunks.push(e.data); };
+  _recMR.onstop = function(){
+    clearInterval(_recTimer);
+    _recStream.getTracks().forEach(t=>t.stop());
+    const blob = new Blob(_recChunks, {type:'audio/webm'});
+    const reader = new FileReader();
+    reader.onload = e => loadWombBuffer(e.target.result, 'Recording');
+    reader.readAsArrayBuffer(blob);
+    const btn=document.getElementById('recBtn');
+    btn.classList.remove('recording');
+    document.getElementById('recIco').className='ti ti-microphone';
+    document.getElementById('recLbl').textContent=REC[cl]||REC.en;
+    document.getElementById('recTime').textContent='0:00';
+  };
+  _recMR.start(100);
+  // UI
+  const btn=document.getElementById('recBtn');
+  btn.classList.add('recording');
+  document.getElementById('recIco').className='ti ti-square-filled';
+  document.getElementById('recLbl').textContent=RECSTOP[cl]||RECSTOP.en;
+  _recTimer = setInterval(()=>{
+    _recSec++;
+    const m=Math.floor(_recSec/60), s=_recSec%60;
+    document.getElementById('recTime').textContent=m+':'+(s<10?'0':'')+s;
+  },1000);
+}
 
 // ── Music file upload ────────────────────────────────────────────────────
 let musicFileBPM = 0;
