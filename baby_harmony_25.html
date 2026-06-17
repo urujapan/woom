@@ -241,6 +241,24 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 <div class="header">
   <div class="title" id="T0"><em>A Harmony Only for Baby &amp; Mama</em></div>
   <p class="subtitle" id="T1">Blend womb sounds with music — a one-of-a-kind gift</p>
+  <button onclick="showHelp()" style="margin-top:.8rem;background:none;border:1.5px solid #F4C0D1;border-radius:20px;padding:5px 14px;font-size:12px;color:#D4537E;cursor:pointer;font-family:'DM Sans',sans-serif;">？ 使い方</button>
+</div>
+
+<!-- Help Modal -->
+<div id="helpOverlay" onclick="if(event.target===this)closeHelp()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:1rem;">
+  <div style="background:white;border-radius:20px;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:1.75rem 1.5rem;position:relative;">
+    <button onclick="closeHelp()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;">✕</button>
+    <div style="text-align:center;margin-bottom:1.5rem;">
+      <div style="font-size:1.5rem;font-family:'Cormorant Garamond',serif;color:#333;">使い方</div>
+      <div style="font-size:12px;color:#aaa;margin-top:4px;">Baby Harmony ガイド</div>
+    </div>
+    <div id="helpSteps"></div>
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:1.5rem;">
+      <button onclick="helpNav(-1)" id="helpPrev" style="background:none;border:1.5px solid #eee;border-radius:20px;padding:7px 18px;font-size:13px;color:#888;cursor:pointer;">← 前へ</button>
+      <span id="helpDots" style="display:flex;align-items:center;gap:5px;"></span>
+      <button onclick="helpNav(1)" id="helpNext" style="background:#D4537E;border:none;border-radius:20px;padding:7px 18px;font-size:13px;color:white;cursor:pointer;">次へ →</button>
+    </div>
+  </div>
 </div>
 
 <div class="sec">
@@ -837,6 +855,96 @@ async function toggleRec(){
 
 // Load history on startup
 _renderRecHistory();
+
+// ── Help modal ────────────────────────────────────────────────────────────
+var _helpStep=0;
+var _helpData=[
+  {
+    icon:'🎵',
+    title:'胎内音を選ぶ',
+    body:'「胎内音」セクションで、赤ちゃんが聴いていた音を選びます。\n\n'
+      +'<b>サンプル心音</b>：用意されたサンプルからタップして選択。\n'
+      +'<b>アップロード</b>：録音した心音ファイル（MP3・WAV・M4A）をアップロード。\n'
+      +'<b>録音</b>：マイクボタンを押してその場で録音。\n\n'
+      +'音を選ぶと、波形が表示されます。ピンクの枠がループ区間です。'
+  },
+  {
+    icon:'🎼',
+    title:'BGMを選ぶ',
+    body:'「BGM」セクションで、胎内音に重ねる音楽を選びます。\n\n'
+      +'カテゴリー（子守唄・アンビエントなど）でフィルタリングできます。\n'
+      +'曲名の ▶ ボタンで試聴してから選べます。\n\n'
+      +'お手持ちの音楽ファイルをアップロードすることも可能です。'
+  },
+  {
+    icon:'🎚️',
+    title:'音量・テンポを調整する',
+    body:'胎内音とBGMそれぞれの音量を、スライダーで調整できます。\n\n'
+      +'<b>胎内音の音量</b>：左端でゼロ、右端で最大。\n'
+      +'<b>BGMの音量</b>：左端でゼロ、右端で最大。\n'
+      +'<b>テンポ</b>：BGMの速さを変えられます。\n\n'
+      +'👂 耳で聴きながらお好みのバランスに調整してください。'
+  },
+  {
+    icon:'▶️',
+    title:'プレビューで確認する',
+    body:'「プレビュー」ボタンを押すと、胎内音とBGMをミックスした音が再生されます。\n\n'
+      +'音量やテンポを変えながら、何度でも確認できます。\n\n'
+      +'✅ 気に入ったら、次のステップへ進みましょう！'
+  },
+  {
+    icon:'🎁',
+    title:'贈り物を完成させる',
+    body:'「贈り物を完成させる」ボタンを押すと、ギフト情報の入力画面が開きます。\n\n'
+      +'<b>赤ちゃんの名前</b>：贈り先の赤ちゃんのお名前。\n'
+      +'<b>メッセージ</b>：ひとことメッセージを添えられます。\n'
+      +'<b>あなたの名前</b>：送り主のお名前。\n\n'
+      +'入力後、「Complete Gift」ボタンで音声を生成します（数秒かかります）。'
+  },
+  {
+    icon:'📤',
+    title:'リンクをシェアする',
+    body:'ギフトが完成すると、専用のリンクが発行されます。\n\n'
+      +'「リンクをコピー」してLINEやメッセージで送るだけで、\n'
+      +'相手がリンクを開くとアニメーションとともにミックス音声が流れます。\n\n'
+      +'💌 世界に一つだけの音楽プレゼントの完成です！'
+  }
+];
+
+function showHelp(){
+  _helpStep=0;
+  document.getElementById('helpOverlay').style.display='flex';
+  _renderHelp();
+}
+function closeHelp(){
+  document.getElementById('helpOverlay').style.display='none';
+}
+function helpNav(d){
+  _helpStep=Math.max(0,Math.min(_helpData.length-1,_helpStep+d));
+  _renderHelp();
+}
+function _renderHelp(){
+  var s=_helpData[_helpStep];
+  document.getElementById('helpSteps').innerHTML=
+    '<div style="text-align:center;font-size:3rem;margin-bottom:.75rem;">'+s.icon+'</div>'
+    +'<div style="font-size:1rem;font-weight:500;color:#333;text-align:center;margin-bottom:.75rem;">'+s.title+'</div>'
+    +'<div style="font-size:13px;color:#555;line-height:1.8;white-space:pre-wrap;">'+s.body+'</div>';
+  // dots
+  var dots='';
+  for(var i=0;i<_helpData.length;i++){
+    dots+='<div style="width:7px;height:7px;border-radius:50%;background:'+(i===_helpStep?'#D4537E':'#eee')+'"></div>';
+  }
+  document.getElementById('helpDots').innerHTML=dots;
+  document.getElementById('helpPrev').style.visibility=_helpStep===0?'hidden':'visible';
+  var nextBtn=document.getElementById('helpNext');
+  if(_helpStep===_helpData.length-1){
+    nextBtn.textContent='閉じる';
+    nextBtn.onclick=closeHelp;
+  } else {
+    nextBtn.textContent='次へ →';
+    nextBtn.onclick=function(){ helpNav(1); };
+  }
+}
 
 // Ensure record button works on iOS
 document.getElementById('recBtn').addEventListener('click', function(e){
