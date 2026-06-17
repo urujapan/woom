@@ -241,7 +241,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 <div class="header">
   <div class="title" id="T0"><em>A Harmony Only for Baby &amp; Mama</em></div>
   <p class="subtitle" id="T1">Blend womb sounds with music — a one-of-a-kind gift</p>
-  <button onclick="showHelp()" style="margin-top:.8rem;background:none;border:1.5px solid #F4C0D1;border-radius:20px;padding:5px 14px;font-size:12px;color:#D4537E;cursor:pointer;font-family:'DM Sans',sans-serif;">？ 使い方</button>
+  <button id="helpOpenBtn" onclick="showHelp()" style="margin-top:.8rem;background:none;border:1.5px solid #F4C0D1;border-radius:20px;padding:5px 14px;font-size:12px;color:#D4537E;cursor:pointer;font-family:'DM Sans',sans-serif;">？ 使い方</button>
 </div>
 
 <!-- Help Modal -->
@@ -525,6 +525,8 @@ function L(l){
   document.getElementById('phaseHint').textContent=DRAG[l]||DRAG.en;
   document.getElementById('wombPrevLbl').textContent=PREV[l]||PREV.en;
   document.getElementById('recLbl').textContent=REC[l]||REC.en;
+  var h=_helpI18n[l]||_helpI18n.en;
+  document.getElementById('helpOpenBtn').textContent='？ '+h.title;
   // Gift section labels
   const gt=GT[l]||GT.en;
   const gLabels=document.querySelectorAll('.ginput-label');
