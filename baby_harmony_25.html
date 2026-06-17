@@ -249,8 +249,8 @@ input[type=range]{flex:1;accent-color:#D4537E;}
   <div style="background:white;border-radius:20px;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:1.75rem 1.5rem;position:relative;">
     <button onclick="closeHelp()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;">✕</button>
     <div style="text-align:center;margin-bottom:1.5rem;">
-      <div style="font-size:1.5rem;font-family:'Cormorant Garamond',serif;color:#333;">使い方</div>
-      <div style="font-size:12px;color:#aaa;margin-top:4px;">Baby Harmony ガイド</div>
+      <div id="helpModalTitle" style="font-size:1.5rem;font-family:'Cormorant Garamond',serif;color:#333;">使い方</div>
+      <div id="helpModalSub" style="font-size:12px;color:#aaa;margin-top:4px;">Baby Harmony ガイド</div>
     </div>
     <div id="helpSteps"></div>
     <div style="display:flex;justify-content:center;gap:8px;margin-top:1.5rem;">
@@ -849,60 +849,130 @@ _renderRecHistory();
 
 // ── Help modal ────────────────────────────────────────────────────────────
 var _helpStep=0;
-var _helpData=[
-  {
-    icon:'🎵',
-    title:'胎内音を選ぶ',
-    body:'「胎内音」セクションで、赤ちゃんが聴いていた音を選びます。\n\n'
-      +'<b>アップロード</b>：産婦人科のエコー診察動画、またはスマホ等で録音した音声ファイル（MP3・WAV・M4A）をアップロード。\n\n'
-      +'<b>録音</b>：エコー診察時にマイクボタンを押してその場で録音。\n\n'
-      +'<b>サンプル心音</b>：どんな感じになるか試したい方はこちらを選択。\n\n'
-      +'音を選ぶと波形が表示されます。ピンクの枠がループ区間です。\n'
-      +'心音のループが綺麗にできていない場合は、ここで微調整ができます。'
-  },
-  {
-    icon:'🎼',
-    title:'BGMを選ぶ',
-    body:'「BGM」セクションで、胎内音に重ねる音楽を選びます。\n\n'
-      +'カテゴリー（子守唄・アンビエントなど）でフィルタリングできます。\n'
-      +'曲名の ▶ ボタンで試聴してから選べます。\n\n'
-      +'👌 マークは、その曲が心音のテンポとの相性が良いことを示しています。\n'
-      +'選ぶときの参考にしてください。'
-  },
-  {
-    icon:'🎚️',
-    title:'音量・テンポを調整する',
-    body:'胎内音とBGMそれぞれの音量を、スライダーで調整できます。\n\n'
-      +'<b>胎内音の音量</b>：左端でゼロ、右端で最大。\n'
-      +'<b>BGMの音量</b>：左端でゼロ、右端で最大。\n'
-      +'<b>テンポ</b>：BGMの速さを変えられます。\n\n'
-      +'👂 耳で聴きながらお好みのバランスに調整してください。'
-  },
-  {
-    icon:'▶️',
-    title:'プレビューで確認する',
-    body:'「プレビュー」ボタンを押すと、胎内音とBGMをミックスした音が再生されます。\n\n'
-      +'音量やテンポを変えながら、何度でも確認できます。\n\n'
-      +'✅ 気に入ったら、次のステップへ進みましょう！'
-  },
-  {
-    icon:'🎁',
-    title:'贈り物を完成させる',
-    body:'「贈り物を完成させる」ボタンを押すと、ギフト情報の入力画面が開きます。\n\n'
-      +'<b>赤ちゃんの名前</b>：贈り先の赤ちゃんのお名前。\n'
-      +'<b>メッセージ</b>：ひとことメッセージを添えられます。\n'
-      +'<b>あなたの名前</b>：送り主のお名前。\n\n'
-      +'入力後、「Complete Gift」ボタンで音声を生成します（数秒かかります）。'
-  },
-  {
-    icon:'📤',
-    title:'リンクをシェアする',
-    body:'ギフトが完成すると、専用のリンクが発行されます。\n\n'
-      +'「リンクをコピー」してLINEやメッセージで送るだけで、\n'
-      +'相手がリンクを開くとアニメーションとともにミックス音声が流れます。\n\n'
-      +'💌 世界に一つだけの音楽プレゼントの完成です！'
-  }
-];
+var _helpI18n={
+  ja:{title:'使い方',sub:'Baby Harmony ガイド',prev:'← 前へ',next:'次へ →',close:'閉じる',steps:[
+    {icon:'🎵',title:'胎内音を選ぶ',body:'「胎内音」セクションで、赤ちゃんが聴いていた音を選びます。\n\n<b>アップロード</b>：産婦人科のエコー診察動画、またはスマホ等で録音した音声ファイル（MP3・WAV・M4A）をアップロード。\n\n<b>録音</b>：エコー診察時にマイクボタンを押してその場で録音。\n\n<b>サンプル心音</b>：どんな感じになるか試したい方はこちらを選択。\n\n音を選ぶと波形が表示されます。ピンクの枠がループ区間です。\n心音のループが綺麗にできていない場合は、ここで微調整ができます。'},
+    {icon:'🎼',title:'BGMを選ぶ',body:'「BGM」セクションで、胎内音に重ねる音楽を選びます。\n\nカテゴリー（子守唄・アンビエントなど）でフィルタリングできます。\n曲名の ▶ ボタンで試聴してから選べます。\n\n👌 マークは、その曲が心音のテンポとの相性が良いことを示しています。\n選ぶときの参考にしてください。'},
+    {icon:'🎚️',title:'音量・テンポを調整する',body:'胎内音とBGMそれぞれの音量を、スライダーで調整できます。\n\n<b>胎内音の音量</b>：左端でゼロ、右端で最大。\n<b>BGMの音量</b>：左端でゼロ、右端で最大。\n<b>テンポ</b>：BGMの速さを変えられます。\n\n👂 耳で聴きながらお好みのバランスに調整してください。'},
+    {icon:'▶️',title:'プレビューで確認する',body:'「プレビュー」ボタンを押すと、胎内音とBGMをミックスした音が再生されます。\n\n音量やテンポを変えながら、何度でも確認できます。\n\n✅ 気に入ったら、次のステップへ進みましょう！'},
+    {icon:'🎁',title:'贈り物を完成させる',body:'「贈り物を完成させる」ボタンを押すと、ギフト情報の入力画面が開きます。\n\n<b>赤ちゃんの名前</b>：贈り先の赤ちゃんのお名前。\n<b>メッセージ</b>：ひとことメッセージを添えられます。\n<b>あなたの名前</b>：送り主のお名前。\n\n入力後、「Complete Gift」ボタンで音声を生成します（数秒かかります）。'},
+    {icon:'📤',title:'リンクをシェアする',body:'ギフトが完成すると、専用のリンクが発行されます。\n\n「リンクをコピー」してLINEやメッセージで送るだけで、\n相手がリンクを開くとアニメーションとともにミックス音声が流れます。\n\n💌 世界に一つだけの音楽プレゼントの完成です！'}
+  ]},
+  en:{title:'How to Use',sub:'Baby Harmony Guide',prev:'← Back',next:'Next →',close:'Close',steps:[
+    {icon:'🎵',title:'Choose Womb Sound',body:'Select the sound your baby heard in the womb.\n\n<b>Upload</b>: Upload an ultrasound video from your OB/GYN, or an audio recording made on your phone (MP3/WAV/M4A).\n\n<b>Record</b>: Tap the microphone button to record on the spot during an ultrasound visit.\n\n<b>Sample Heartbeat</b>: Just want to try it out? Choose a sample here.\n\nOnce selected, a waveform appears. The pink frame is the loop region.\nIf the loop doesn\'t sound smooth, you can fine-tune it here.'},
+    {icon:'🎼',title:'Choose Background Music',body:'Select the music to blend with the womb sound.\n\nFilter by category (Lullaby, Ambient, etc.).\nTap ▶ next to a track to preview before choosing.\n\n👌 indicates that the track\'s tempo is a good match for the heartbeat.\nUse it as a guide when selecting.'},
+    {icon:'🎚️',title:'Adjust Volume & Tempo',body:'Use the sliders to balance womb sound and music.\n\n<b>Womb sound volume</b>: Far left = silent, far right = max.\n<b>Music volume</b>: Far left = silent, far right = max.\n<b>Tempo</b>: Change the speed of the background music.\n\n👂 Listen and adjust until it feels just right.'},
+    {icon:'▶️',title:'Preview Your Mix',body:'Tap the Preview button to hear the womb sound and music blended together.\n\nYou can adjust volume and tempo as many times as you like.\n\n✅ Happy with the sound? Move on to the next step!'},
+    {icon:'🎁',title:'Complete the Gift',body:'Tap "Complete Gift" to open the gift details screen.\n\n<b>Baby\'s name</b>: The name of the baby you\'re gifting to.\n<b>Message</b>: Add a personal note.\n<b>Your name</b>: The sender\'s name.\n\nThen tap "Complete Gift" to generate the audio (takes a few seconds).'},
+    {icon:'📤',title:'Share the Link',body:'Once the gift is ready, a unique link is created.\n\nJust copy the link and send it via messages or social media.\nWhen the recipient opens the link, an animation plays followed by your custom mix.\n\n💌 A one-of-a-kind musical gift, made with love!'}
+  ]},
+  zh:{title:'使用说明',sub:'Baby Harmony 指南',prev:'← 上一步',next:'下一步 →',close:'关闭',steps:[
+    {icon:'🎵',title:'选择胎音',body:'在「胎音」区域选择宝宝在妈妈肚子里听到的声音。\n\n<b>上传</b>：上传产检超声波视频，或用手机录制的音频文件（MP3/WAV/M4A）。\n\n<b>录音</b>：在产检时点击麦克风按钮现场录音。\n\n<b>示例心跳</b>：想先体验效果？选择示例音源。\n\n选择后会显示波形图，粉色框为循环区间。\n如果循环不流畅，可以在这里微调。'},
+    {icon:'🎼',title:'选择背景音乐',body:'在「音乐」区域选择与胎音融合的背景音乐。\n\n可按分类（摇篮曲、氛围音乐等）筛选。\n点击曲目旁的 ▶ 可预览后再选择。\n\n👌 标记表示该曲目的节拍与心跳节奏相匹配。\n选择时可作参考。'},
+    {icon:'🎚️',title:'调整音量与节奏',body:'用滑块分别调整胎音和背景音乐的音量。\n\n<b>胎音音量</b>：最左 = 静音，最右 = 最大。\n<b>音乐音量</b>：最左 = 静音，最右 = 最大。\n<b>节奏</b>：调整背景音乐的速度。\n\n👂 一边聆听一边调整到满意的平衡。'},
+    {icon:'▶️',title:'预览效果',body:'点击「预览」按钮，试听胎音与音乐融合后的效果。\n\n可随时调整音量和节奏，反复确认。\n\n✅ 满意后进入下一步！'},
+    {icon:'🎁',title:'完成礼物',body:'点击「完成礼物」按钮，进入礼物信息填写界面。\n\n<b>宝宝姓名</b>：收礼宝宝的名字。\n<b>留言</b>：附上一句心意留言。\n<b>您的姓名</b>：发送者姓名。\n\n填写后点击「Complete Gift」生成音频（需要几秒钟）。'},
+    {icon:'📤',title:'分享链接',body:'礼物完成后，将生成专属链接。\n\n复制链接发送给对方，\n对方打开链接后，动画播放，专属混音随之响起。\n\n💌 独一无二的音乐礼物，传递满满爱意！'}
+  ]},
+  'zh-TW':{title:'使用說明',sub:'Baby Harmony 指南',prev:'← 上一步',next:'下一步 →',close:'關閉',steps:[
+    {icon:'🎵',title:'選擇胎音',body:'在「胎音」區域選擇寶寶在媽媽肚子裡聽到的聲音。\n\n<b>上傳</b>：上傳產檢超音波影片，或用手機錄製的音訊檔案（MP3/WAV/M4A）。\n\n<b>錄音</b>：在產檢時點擊麥克風按鈕現場錄音。\n\n<b>範例心音</b>：想先體驗效果？選擇範例音源。\n\n選擇後會顯示波形圖，粉色框為循環區間。\n如果循環不流暢，可以在這裡微調。'},
+    {icon:'🎼',title:'選擇背景音樂',body:'在「音樂」區域選擇與胎音融合的背景音樂。\n\n可按分類（搖籃曲、氛圍音樂等）篩選。\n點擊曲目旁的 ▶ 可預覽後再選擇。\n\n👌 標記表示該曲目的節拍與心跳節奏相符。\n選擇時可作參考。'},
+    {icon:'🎚️',title:'調整音量與節奏',body:'用滑桿分別調整胎音和背景音樂的音量。\n\n<b>胎音音量</b>：最左 = 靜音，最右 = 最大。\n<b>音樂音量</b>：最左 = 靜音，最右 = 最大。\n<b>節奏</b>：調整背景音樂的速度。\n\n👂 一邊聆聽一邊調整到滿意的平衡。'},
+    {icon:'▶️',title:'預覽效果',body:'點擊「預覽」按鈕，試聽胎音與音樂融合後的效果。\n\n可隨時調整音量和節奏，反覆確認。\n\n✅ 滿意後進入下一步！'},
+    {icon:'🎁',title:'完成禮物',body:'點擊「完成禮物」按鈕，進入禮物資訊填寫介面。\n\n<b>寶寶姓名</b>：收禮寶寶的名字。\n<b>留言</b>：附上一句心意留言。\n<b>您的姓名</b>：發送者姓名。\n\n填寫後點擊「Complete Gift」生成音訊（需要幾秒鐘）。'},
+    {icon:'📤',title:'分享連結',body:'禮物完成後，將生成專屬連結。\n\n複製連結傳送給對方，\n對方開啟連結後，動畫播放，專屬混音隨之響起。\n\n💌 獨一無二的音樂禮物，傳遞滿滿愛意！'}
+  ]},
+  ko:{title:'사용 방법',sub:'Baby Harmony 가이드',prev:'← 이전',next:'다음 →',close:'닫기',steps:[
+    {icon:'🎵',title:'태내음 선택',body:'「태내음」 섹션에서 아기가 들었던 소리를 선택하세요.\n\n<b>업로드</b>: 산부인과 초음파 영상이나 스마트폰으로 녹음한 음성 파일(MP3/WAV/M4A)을 업로드하세요.\n\n<b>녹음</b>: 초음파 검사 중 마이크 버튼을 눌러 현장에서 녹음하세요.\n\n<b>샘플 심장 소리</b>: 먼저 체험해 보고 싶다면 샘플을 선택하세요.\n\n선택하면 파형이 표시됩니다. 분홍색 테두리가 루프 구간입니다.\n루프가 매끄럽지 않으면 여기서 미세 조정할 수 있습니다.'},
+    {icon:'🎼',title:'배경 음악 선택',body:'「배경 음악」 섹션에서 태내음과 어울릴 음악을 선택하세요.\n\n카테고리(자장가, 앰비언트 등)로 필터링할 수 있습니다.\n▶ 버튼으로 미리 듣고 선택하세요.\n\n👌 표시는 해당 곡의 템포가 심장 소리와 잘 맞는다는 의미입니다.\n선택 시 참고하세요.'},
+    {icon:'🎚️',title:'음량 및 템포 조절',body:'슬라이더로 태내음과 배경 음악의 음량을 각각 조절하세요.\n\n<b>태내음 음량</b>: 맨 왼쪽 = 무음, 맨 오른쪽 = 최대.\n<b>음악 음량</b>: 맨 왼쪽 = 무음, 맨 오른쪽 = 최대.\n<b>템포</b>: 배경 음악의 속도를 바꿀 수 있습니다.\n\n👂 들으면서 원하는 밸런스로 조절해 보세요.'},
+    {icon:'▶️',title:'미리 듣기',body:'「미리 듣기」 버튼을 누르면 태내음과 배경 음악이 믹스된 소리가 재생됩니다.\n\n음량과 템포를 바꿔가며 몇 번이든 확인할 수 있습니다.\n\n✅ 마음에 든다면 다음 단계로 넘어가세요!'},
+    {icon:'🎁',title:'선물 완성하기',body:'「선물 완성하기」 버튼을 누르면 선물 정보 입력 화면이 열립니다.\n\n<b>아기 이름</b>: 선물 받을 아기의 이름.\n<b>메시지</b>: 한 마디 메시지를 추가할 수 있습니다.\n<b>보내는 사람</b>: 보내는 분의 이름.\n\n입력 후 「Complete Gift」 버튼으로 음원을 생성합니다(몇 초 소요).'},
+    {icon:'📤',title:'링크 공유하기',body:'선물이 완성되면 전용 링크가 생성됩니다.\n\n「링크 복사」 후 메시지나 SNS로 전송하면,\n받는 분이 링크를 열면 애니메이션과 함께 믹스 음악이 흘러나옵니다.\n\n💌 세상에 단 하나뿐인 음악 선물의 완성입니다!'}
+  ]},
+  es:{title:'Cómo usar',sub:'Guía de Baby Harmony',prev:'← Anterior',next:'Siguiente →',close:'Cerrar',steps:[
+    {icon:'🎵',title:'Elegir sonido del vientre',body:'Selecciona el sonido que escuchó tu bebé en el vientre.\n\n<b>Subir</b>: Sube un video de ultrasonido o una grabación de audio de tu teléfono (MP3/WAV/M4A).\n\n<b>Grabar</b>: Pulsa el micrófono para grabar en el momento durante la consulta.\n\n<b>Muestra de latido</b>: ¿Solo quieres probarlo? Elige una muestra.\n\nAl seleccionar, aparece la forma de onda. El marco rosa es la región de bucle.\nSi el bucle no suena fluido, puedes ajustarlo aquí.'},
+    {icon:'🎼',title:'Elegir música de fondo',body:'Selecciona la música para mezclar con el sonido del vientre.\n\nFiltra por categoría (Nana, Ambiente, etc.).\nToca ▶ junto a una pista para preescuchar antes de elegir.\n\n👌 indica que el tempo de la pista es compatible con el latido.\nÚsalo como guía al seleccionar.'},
+    {icon:'🎚️',title:'Ajustar volumen y tempo',body:'Usa los controles deslizantes para equilibrar los sonidos.\n\n<b>Volumen del vientre</b>: Extremo izquierdo = silencio, derecho = máximo.\n<b>Volumen de música</b>: Extremo izquierdo = silencio, derecho = máximo.\n<b>Tempo</b>: Cambia la velocidad de la música de fondo.\n\n👂 Escucha y ajusta hasta que te parezca perfecto.'},
+    {icon:'▶️',title:'Vista previa',body:'Pulsa el botón Vista previa para escuchar la mezcla.\n\nPuedes ajustar volumen y tempo cuantas veces quieras.\n\n✅ ¿Te gusta? ¡Avanza al siguiente paso!'},
+    {icon:'🎁',title:'Completar el regalo',body:'Pulsa "Completar regalo" para abrir la pantalla de detalles.\n\n<b>Nombre del bebé</b>: El nombre del bebé que recibirá el regalo.\n<b>Mensaje</b>: Añade una nota personal.\n<b>Tu nombre</b>: El nombre del remitente.\n\nLuego pulsa "Complete Gift" para generar el audio (unos segundos).'},
+    {icon:'📤',title:'Compartir el enlace',body:'Cuando el regalo esté listo, se creará un enlace único.\n\nCopia el enlace y envíalo por mensaje o redes sociales.\nAl abrirlo, se reproduce una animación seguida de tu mezcla.\n\n💌 ¡Un regalo musical único, hecho con amor!'}
+  ]},
+  fr:{title:'Comment utiliser',sub:'Guide Baby Harmony',prev:'← Précédent',next:'Suivant →',close:'Fermer',steps:[
+    {icon:'🎵',title:'Choisir le son utérin',body:'Sélectionnez le son qu\'entendait votre bébé dans le ventre.\n\n<b>Téléverser</b>: Importez une vidéo d\'échographie ou un fichier audio de votre téléphone (MP3/WAV/M4A).\n\n<b>Enregistrer</b>: Appuyez sur le micro pour enregistrer lors de l\'échographie.\n\n<b>Battement exemple</b>: Vous voulez juste essayer ? Choisissez un exemple.\n\nUne forme d\'onde apparaît à la sélection. Le cadre rose est la région de boucle.\nSi la boucle n\'est pas fluide, vous pouvez la régler ici.'},
+    {icon:'🎼',title:'Choisir la musique de fond',body:'Sélectionnez la musique à mélanger avec le son utérin.\n\nFiltrez par catégorie (Berceuse, Ambiant, etc.).\nAppuyez sur ▶ pour écouter avant de choisir.\n\n👌 indique que le tempo est bien assorti au battement.\nUtilisez-le comme guide.'},
+    {icon:'🎚️',title:'Régler le volume et le tempo',body:'Utilisez les curseurs pour équilibrer les sons.\n\n<b>Volume utérin</b>: Gauche = silence, droite = maximum.\n<b>Volume musique</b>: Gauche = silence, droite = maximum.\n<b>Tempo</b>: Modifiez la vitesse de la musique.\n\n👂 Écoutez et ajustez jusqu\'à ce que ce soit parfait.'},
+    {icon:'▶️',title:'Aperçu du mélange',body:'Appuyez sur Aperçu pour écouter le mélange son utérin + musique.\n\nAjustez volume et tempo autant de fois que nécessaire.\n\n✅ Satisfait(e) ? Passez à l\'étape suivante !'},
+    {icon:'🎁',title:'Finaliser le cadeau',body:'Appuyez sur « Finaliser le cadeau » pour ouvrir l\'écran de détails.\n\n<b>Prénom du bébé</b>: Le prénom du bébé destinataire.\n<b>Message</b>: Ajoutez un message personnel.\n<b>Votre prénom</b>: Le nom de l\'expéditeur.\n\nAppuyez ensuite sur « Complete Gift » pour générer l\'audio (quelques secondes).'},
+    {icon:'📤',title:'Partager le lien',body:'Une fois le cadeau prêt, un lien unique est créé.\n\nCopiez le lien et envoyez-le par message ou réseaux sociaux.\nEn ouvrant le lien, une animation se lance puis votre mix est diffusé.\n\n💌 Un cadeau musical unique, créé avec amour !'}
+  ]},
+  de:{title:'Anleitung',sub:'Baby Harmony Guide',prev:'← Zurück',next:'Weiter →',close:'Schließen',steps:[
+    {icon:'🎵',title:'Mutterleibklang wählen',body:'Wähle den Klang, den dein Baby im Mutterleib gehört hat.\n\n<b>Hochladen</b>: Lade ein Ultraschall-Video oder eine Audioaufnahme von deinem Smartphone hoch (MP3/WAV/M4A).\n\n<b>Aufnehmen</b>: Drücke den Mikrofon-Button während der Ultraschall-Untersuchung für eine Live-Aufnahme.\n\n<b>Beispiel-Herzschlag</b>: Einfach ausprobieren? Wähle ein Beispiel.\n\nNach der Auswahl erscheint die Wellenform. Der rosa Rahmen ist der Loop-Bereich.\nFalls der Loop nicht sauber klingt, kannst du ihn hier feinjustieren.'},
+    {icon:'🎼',title:'Hintergrundmusik wählen',body:'Wähle die Musik, die mit dem Mutterleibklang gemischt wird.\n\nFilter nach Kategorie (Schlaflied, Ambient usw.).\nTippe auf ▶ zum Vorhören.\n\n👌 bedeutet, dass das Tempo des Tracks gut zum Herzschlag passt.\nNutze es als Orientierung.'},
+    {icon:'🎚️',title:'Lautstärke & Tempo anpassen',body:'Nutze die Regler zum Ausbalancieren.\n\n<b>Mutterleib-Lautstärke</b>: Ganz links = stumm, ganz rechts = Maximum.\n<b>Musik-Lautstärke</b>: Ganz links = stumm, ganz rechts = Maximum.\n<b>Tempo</b>: Ändere die Geschwindigkeit der Musik.\n\n👂 Höre zu und passe an, bis es sich richtig anfühlt.'},
+    {icon:'▶️',title:'Vorschau anhören',body:'Drücke den Vorschau-Button, um den Mix zu hören.\n\nPasse Lautstärke und Tempo beliebig oft an.\n\n✅ Zufrieden? Weiter zum nächsten Schritt!'},
+    {icon:'🎁',title:'Geschenk fertigstellen',body:'Drücke „Geschenk fertigstellen" um die Detail-Eingabe zu öffnen.\n\n<b>Name des Babys</b>: Der Name des beschenkten Babys.\n<b>Nachricht</b>: Füge eine persönliche Notiz hinzu.\n<b>Dein Name</b>: Name des Absenders.\n\nDann „Complete Gift" drücken, um das Audio zu erstellen (dauert einige Sekunden).'},
+    {icon:'📤',title:'Link teilen',body:'Nach Fertigstellung wird ein einzigartiger Link erstellt.\n\nKopiere den Link und sende ihn per Nachricht oder Social Media.\nBeim Öffnen des Links spielt eine Animation und dann dein persönlicher Mix.\n\n💌 Ein einzigartiges Musikgeschenk, mit Liebe gemacht!'}
+  ]},
+  pt:{title:'Como usar',sub:'Guia Baby Harmony',prev:'← Anterior',next:'Próximo →',close:'Fechar',steps:[
+    {icon:'🎵',title:'Escolher som do útero',body:'Selecione o som que seu bebê ouvia no útero.\n\n<b>Enviar</b>: Envie um vídeo de ultrassom ou gravação de áudio do celular (MP3/WAV/M4A).\n\n<b>Gravar</b>: Toque no microfone para gravar na hora durante o exame.\n\n<b>Batimento de amostra</b>: Quer experimentar primeiro? Escolha uma amostra.\n\nApós selecionar, aparece a forma de onda. A moldura rosa é a região de loop.\nSe o loop não soar fluido, você pode ajustá-lo aqui.'},
+    {icon:'🎼',title:'Escolher música de fundo',body:'Selecione a música para misturar com o som do útero.\n\nFiltre por categoria (Canção de ninar, Ambiente, etc.).\nToque em ▶ para ouvir antes de escolher.\n\n👌 indica que o tempo da faixa é compatível com o batimento.\nUse como guia na seleção.'},
+    {icon:'🎚️',title:'Ajustar volume e tempo',body:'Use os controles para equilibrar os sons.\n\n<b>Volume do útero</b>: Extremo esquerdo = silêncio, direito = máximo.\n<b>Volume da música</b>: Extremo esquerdo = silêncio, direito = máximo.\n<b>Tempo</b>: Altere a velocidade da música.\n\n👂 Ouça e ajuste até ficar perfeito.'},
+    {icon:'▶️',title:'Pré-visualizar',body:'Toque em Pré-visualizar para ouvir a mistura.\n\nAjuste volume e tempo quantas vezes quiser.\n\n✅ Gostou? Avance para o próximo passo!'},
+    {icon:'🎁',title:'Completar o presente',body:'Toque em "Completar presente" para abrir a tela de detalhes.\n\n<b>Nome do bebê</b>: O nome do bebê que receberá o presente.\n<b>Mensagem</b>: Adicione uma nota pessoal.\n<b>Seu nome</b>: Nome do remetente.\n\nDepois toque "Complete Gift" para gerar o áudio (alguns segundos).'},
+    {icon:'📤',title:'Compartilhar o link',body:'Quando o presente estiver pronto, um link único é criado.\n\nCopie e envie por mensagem ou redes sociais.\nAo abrir o link, uma animação toca seguida da sua mixagem.\n\n💌 Um presente musical único, feito com amor!'}
+  ]},
+  it:{title:'Come usare',sub:'Guida Baby Harmony',prev:'← Indietro',next:'Avanti →',close:'Chiudi',steps:[
+    {icon:'🎵',title:'Scegliere il suono uterino',body:'Seleziona il suono che il tuo bambino sentiva nel grembo.\n\n<b>Carica</b>: Carica un video ecografico o una registrazione audio dal telefono (MP3/WAV/M4A).\n\n<b>Registra</b>: Premi il microfono per registrare durante la visita ecografica.\n\n<b>Battito di esempio</b>: Vuoi provare? Scegli un esempio.\n\nDopo la selezione appare la forma d\'onda. Il riquadro rosa è la regione di loop.\nSe il loop non è fluido, puoi regolarlo qui.'},
+    {icon:'🎼',title:'Scegliere la musica di sottofondo',body:'Seleziona la musica da mescolare con il suono uterino.\n\nFiltra per categoria (Ninnananna, Ambientale, ecc.).\nPremi ▶ per ascoltare in anteprima prima di scegliere.\n\n👌 indica che il tempo è ben abbinato al battito.\nUsalo come guida nella selezione.'},
+    {icon:'🎚️',title:'Regolare volume e tempo',body:'Usa i cursori per bilanciare i suoni.\n\n<b>Volume uterino</b>: Sinistra = silenzio, destra = massimo.\n<b>Volume musica</b>: Sinistra = silenzio, destra = massimo.\n<b>Tempo</b>: Modifica la velocità della musica.\n\n👂 Ascolta e regola fino a trovare l\'equilibrio perfetto.'},
+    {icon:'▶️',title:'Anteprima',body:'Premi Anteprima per ascoltare il mix.\n\nPuoi regolare volume e tempo tutte le volte che vuoi.\n\n✅ Ti piace? Passa al passo successivo!'},
+    {icon:'🎁',title:'Completare il regalo',body:'Premi "Completa il regalo" per aprire la schermata dei dettagli.\n\n<b>Nome del bambino</b>: Il nome del bambino destinatario.\n<b>Messaggio</b>: Aggiungi una nota personale.\n<b>Il tuo nome</b>: Nome del mittente.\n\nPoi premi "Complete Gift" per generare l\'audio (alcuni secondi).'},
+    {icon:'📤',title:'Condividere il link',body:'Quando il regalo è pronto, viene creato un link unico.\n\nCopia il link e invialo tramite messaggi o social.\nAprendo il link, un\'animazione si avvia seguita dal tuo mix.\n\n💌 Un regalo musicale unico, fatto con amore!'}
+  ]},
+  hi:{title:'उपयोग कैसे करें',sub:'Baby Harmony गाइड',prev:'← पिछला',next:'अगला →',close:'बंद करें',steps:[
+    {icon:'🎵',title:'गर्भ की आवाज़ चुनें',body:'वह आवाज़ चुनें जो आपके बच्चे ने गर्भ में सुनी थी।\n\n<b>अपलोड</b>: अल्ट्रासाउंड वीडियो या फ़ोन पर रिकॉर्ड की गई ऑडियो फ़ाइल (MP3/WAV/M4A) अपलोड करें।\n\n<b>रिकॉर्ड</b>: जांच के दौरान माइक बटन दबाकर मौके पर रिकॉर्ड करें।\n\n<b>नमूना दिल की धड़कन</b>: पहले आज़माना चाहते हैं? नमूना चुनें।\n\nचयन के बाद वेवफ़ॉर्म दिखेगा। गुलाबी फ्रेम लूप क्षेत्र है।\nअगर लूप सही न लगे, तो यहाँ बारीक समायोजन करें।'},
+    {icon:'🎼',title:'पृष्ठभूमि संगीत चुनें',body:'गर्भ की आवाज़ के साथ मिलाने के लिए संगीत चुनें।\n\nश्रेणी (लोरी, परिवेश आदि) से फ़िल्टर करें।\nसुनने के लिए ▶ दबाएं।\n\n👌 का मतलब है कि उस ट्रैक का टेम्पो दिल की धड़कन से मेल खाता है।\nचुनते समय इसे मार्गदर्शक मानें।'},
+    {icon:'🎚️',title:'वॉल्यूम और टेम्पो समायोजित करें',body:'स्लाइडर से आवाज़ों को संतुलित करें।\n\n<b>गर्भ की आवाज़ वॉल्यूम</b>: बायाँ = मौन, दायाँ = अधिकतम।\n<b>संगीत वॉल्यूम</b>: बायाँ = मौन, दायाँ = अधिकतम।\n<b>टेम्पो</b>: पृष्ठभूमि संगीत की गति बदलें।\n\n👂 सुनते हुए अपने पसंदीदा संतुलन तक समायोजित करें।'},
+    {icon:'▶️',title:'पूर्वावलोकन करें',body:'पूर्वावलोकन बटन दबाएं और मिश्रण सुनें।\n\nवॉल्यूम और टेम्पो जितनी बार चाहें बदलें।\n\n✅ पसंद आया? अगले चरण पर जाएं!'},
+    {icon:'🎁',title:'तोहफ़ा पूरा करें',body:'「उपहार पूरा करें」 दबाएं।\n\n<b>बच्चे का नाम</b>: जिस बच्चे को तोहफ़ा मिलेगा।\n<b>संदेश</b>: एक व्यक्तिगत नोट जोड़ें।\n<b>आपका नाम</b>: भेजने वाले का नाम।\n\n「Complete Gift」 दबाएं और ऑडियो बनाएं (कुछ सेकंड लगेंगे)।'},
+    {icon:'📤',title:'लिंक साझा करें',body:'तोहफ़ा तैयार होने पर एक अनोखा लिंक बनेगा।\n\nलिंक कॉपी करके मैसेज या सोशल मीडिया पर भेजें।\nलिंक खोलने पर एनिमेशन के साथ आपका मिक्स बजेगा।\n\n💌 प्यार से बना एक अनोखा संगीत उपहार!'}
+  ]},
+  id:{title:'Cara Menggunakan',sub:'Panduan Baby Harmony',prev:'← Sebelumnya',next:'Berikutnya →',close:'Tutup',steps:[
+    {icon:'🎵',title:'Pilih Suara Rahim',body:'Pilih suara yang didengar bayi Anda di dalam rahim.\n\n<b>Unggah</b>: Unggah video USG atau file audio dari ponsel (MP3/WAV/M4A).\n\n<b>Rekam</b>: Tekan tombol mikrofon untuk merekam langsung saat pemeriksaan USG.\n\n<b>Sampel Detak Jantung</b>: Ingin mencoba dulu? Pilih sampel.\n\nSetelah dipilih, bentuk gelombang akan muncul. Bingkai merah muda adalah area loop.\nJika loop tidak terdengar mulus, Anda bisa menyetelnya di sini.'},
+    {icon:'🎼',title:'Pilih Musik Latar',body:'Pilih musik untuk dipadukan dengan suara rahim.\n\nFilter berdasarkan kategori (Lagu Tidur, Ambient, dll.).\nTekan ▶ untuk mendengarkan pratinjau sebelum memilih.\n\n👌 menunjukkan bahwa tempo lagu tersebut cocok dengan detak jantung.\nGunakan sebagai panduan saat memilih.'},
+    {icon:'🎚️',title:'Atur Volume & Tempo',body:'Gunakan slider untuk menyeimbangkan suara.\n\n<b>Volume rahim</b>: Paling kiri = senyap, paling kanan = maksimum.\n<b>Volume musik</b>: Paling kiri = senyap, paling kanan = maksimum.\n<b>Tempo</b>: Ubah kecepatan musik latar.\n\n👂 Dengarkan dan sesuaikan hingga terasa pas.'},
+    {icon:'▶️',title:'Pratinjau Campuran',body:'Tekan tombol Pratinjau untuk mendengar campuran suara rahim dan musik.\n\nSesuaikan volume dan tempo sebanyak yang Anda inginkan.\n\n✅ Sudah cocok? Lanjut ke langkah berikutnya!'},
+    {icon:'🎁',title:'Selesaikan Hadiah',body:'Tekan "Selesaikan Hadiah" untuk membuka layar detail.\n\n<b>Nama bayi</b>: Nama bayi penerima hadiah.\n<b>Pesan</b>: Tambahkan catatan pribadi.\n<b>Nama Anda</b>: Nama pengirim.\n\nLalu tekan "Complete Gift" untuk membuat audio (butuh beberapa detik).'},
+    {icon:'📤',title:'Bagikan Tautan',body:'Setelah hadiah selesai, tautan unik akan dibuat.\n\nSalin tautan dan kirim melalui pesan atau media sosial.\nSaat tautan dibuka, animasi diputar diikuti musik campuran Anda.\n\n💌 Hadiah musik unik, dibuat dengan penuh cinta!'}
+  ]},
+  th:{title:'วิธีใช้งาน',sub:'คู่มือ Baby Harmony',prev:'← ก่อนหน้า',next:'ถัดไป →',close:'ปิด',steps:[
+    {icon:'🎵',title:'เลือกเสียงในครรภ์',body:'เลือกเสียงที่ลูกน้อยได้ยินในครรภ์\n\n<b>อัปโหลด</b>: อัปโหลดวิดีโออัลตราซาวด์หรือไฟล์เสียงที่บันทึกจากโทรศัพท์ (MP3/WAV/M4A)\n\n<b>บันทึก</b>: กดปุ่มไมโครโฟนเพื่อบันทึกขณะตรวจอัลตราซาวด์\n\n<b>ตัวอย่างเสียงหัวใจ</b>: ต้องการทดลองก่อน? เลือกตัวอย่าง\n\nหลังจากเลือกแล้ว คลื่นเสียงจะปรากฏขึ้น กรอบสีชมพูคือบริเวณลูป\nหากลูปไม่ราบรื่น สามารถปรับได้ที่นี่'},
+    {icon:'🎼',title:'เลือกเพลงประกอบ',body:'เลือกเพลงที่จะผสมกับเสียงในครรภ์\n\nกรองตามหมวดหมู่ (เพลงกล่อมเด็ก แอมเบียนท์ ฯลฯ)\nกด ▶ เพื่อฟังตัวอย่างก่อนเลือก\n\n👌 หมายความว่าเพลงนั้นมีจังหวะที่เข้ากันดีกับเสียงหัวใจ\nใช้เป็นแนวทางในการเลือก'},
+    {icon:'🎚️',title:'ปรับระดับเสียงและจังหวะ',body:'ใช้สไลเดอร์ปรับสมดุลเสียง\n\n<b>ระดับเสียงครรภ์</b>: ซ้ายสุด = เงียบ, ขวาสุด = สูงสุด\n<b>ระดับเสียงเพลง</b>: ซ้ายสุด = เงียบ, ขวาสุด = สูงสุด\n<b>จังหวะ</b>: เปลี่ยนความเร็วของเพลง\n\n👂 ฟังและปรับจนรู้สึกลงตัว'},
+    {icon:'▶️',title:'ฟังตัวอย่าง',body:'กดปุ่มตัวอย่างเพื่อฟังเสียงผสม\n\nปรับระดับเสียงและจังหวะได้หลายครั้งตามต้องการ\n\n✅ พอใจแล้ว? ไปขั้นตอนถัดไป!'},
+    {icon:'🎁',title:'ทำของขวัญให้สมบูรณ์',body:'กด "ทำให้ของขวัญสมบูรณ์" เพื่อเปิดหน้ารายละเอียด\n\n<b>ชื่อเด็ก</b>: ชื่อเด็กที่รับของขวัญ\n<b>ข้อความ</b>: เพิ่มข้อความส่วนตัว\n<b>ชื่อของคุณ</b>: ชื่อผู้ส่ง\n\nจากนั้นกด "Complete Gift" เพื่อสร้างเสียง (ใช้เวลาไม่กี่วินาที)'},
+    {icon:'📤',title:'แชร์ลิงก์',body:'เมื่อของขวัญพร้อม ลิงก์เฉพาะจะถูกสร้างขึ้น\n\nคัดลอกลิงก์และส่งผ่านข้อความหรือโซเชียลมีเดีย\nเมื่อเปิดลิงก์ แอนิเมชั่นจะเล่นตามด้วยเสียงผสมของคุณ\n\n💌 ของขวัญดนตรีสุดพิเศษ สร้างด้วยความรัก!'}
+  ]},
+  vi:{title:'Hướng dẫn sử dụng',sub:'Hướng dẫn Baby Harmony',prev:'← Trước',next:'Tiếp theo →',close:'Đóng',steps:[
+    {icon:'🎵',title:'Chọn âm thanh tử cung',body:'Chọn âm thanh mà bé đã nghe trong bụng mẹ.\n\n<b>Tải lên</b>: Tải video siêu âm hoặc file ghi âm từ điện thoại (MP3/WAV/M4A).\n\n<b>Ghi âm</b>: Nhấn nút micro để ghi âm trực tiếp trong buổi siêu âm.\n\n<b>Mẫu nhịp tim</b>: Muốn thử trước? Chọn mẫu.\n\nSau khi chọn, dạng sóng sẽ xuất hiện. Khung màu hồng là vùng lặp.\nNếu vòng lặp không mượt, bạn có thể tinh chỉnh tại đây.'},
+    {icon:'🎼',title:'Chọn nhạc nền',body:'Chọn nhạc để hòa trộn với âm thanh tử cung.\n\nLọc theo danh mục (Nhạc ru, Nhạc nền, v.v.).\nNhấn ▶ để nghe thử trước khi chọn.\n\n👌 có nghĩa là nhịp độ của bài phù hợp với nhịp tim.\nDùng làm tham khảo khi chọn.'},
+    {icon:'🎚️',title:'Điều chỉnh âm lượng & nhịp độ',body:'Dùng thanh trượt để cân bằng âm thanh.\n\n<b>Âm lượng tử cung</b>: Trái = im lặng, phải = tối đa.\n<b>Âm lượng nhạc</b>: Trái = im lặng, phải = tối đa.\n<b>Nhịp độ</b>: Thay đổi tốc độ nhạc nền.\n\n👂 Nghe và điều chỉnh cho đến khi cảm thấy vừa ý.'},
+    {icon:'▶️',title:'Xem trước',body:'Nhấn nút Xem trước để nghe bản phối.\n\nĐiều chỉnh âm lượng và nhịp độ bao nhiêu lần tùy thích.\n\n✅ Hài lòng rồi? Tiến tới bước tiếp theo!'},
+    {icon:'🎁',title:'Hoàn thiện quà tặng',body:'Nhấn "Hoàn thiện quà tặng" để mở màn hình chi tiết.\n\n<b>Tên em bé</b>: Tên em bé nhận quà.\n<b>Lời nhắn</b>: Thêm ghi chú cá nhân.\n<b>Tên của bạn</b>: Tên người gửi.\n\nSau đó nhấn "Complete Gift" để tạo âm thanh (mất vài giây).'},
+    {icon:'📤',title:'Chia sẻ liên kết',body:'Khi quà tặng hoàn thành, một liên kết độc đáo sẽ được tạo ra.\n\nSao chép liên kết và gửi qua tin nhắn hoặc mạng xã hội.\nKhi mở liên kết, hoạt ảnh sẽ phát rồi đến bản nhạc của bạn.\n\n💌 Món quà âm nhạc độc đáo, được tạo bằng tình yêu thương!'}
+  ]},
+  ru:{title:'Как использовать',sub:'Руководство Baby Harmony',prev:'← Назад',next:'Далее →',close:'Закрыть',steps:[
+    {icon:'🎵',title:'Выбор звука утробы',body:'Выберите звук, который слышал ваш малыш в утробе.\n\n<b>Загрузить</b>: Загрузите видео УЗИ или аудиозапись с телефона (MP3/WAV/M4A).\n\n<b>Записать</b>: Нажмите кнопку микрофона во время УЗИ для записи на месте.\n\n<b>Пример сердцебиения</b>: Хотите попробовать? Выберите пример.\n\nПосле выбора отобразится форма волны. Розовая рамка — область цикла.\nЕсли цикл звучит неровно, его можно тонко настроить здесь.'},
+    {icon:'🎼',title:'Выбор фоновой музыки',body:'Выберите музыку для смешивания со звуком утробы.\n\nФильтруйте по категории (Колыбельная, Эмбиент и т.д.).\nНажмите ▶ для предпрослушивания.\n\n👌 означает, что темп трека хорошо соответствует сердцебиению.\nИспользуйте как ориентир при выборе.'},
+    {icon:'🎚️',title:'Настройка громкости и темпа',body:'Используйте ползунки для баланса звуков.\n\n<b>Громкость утробы</b>: Крайнее левое = тишина, правое = максимум.\n<b>Громкость музыки</b>: Крайнее левое = тишина, правое = максимум.\n<b>Темп</b>: Изменяйте скорость фоновой музыки.\n\n👂 Слушайте и настраивайте до идеального баланса.'},
+    {icon:'▶️',title:'Предпросмотр',body:'Нажмите кнопку Предпросмотр для прослушивания микса.\n\nНастраивайте громкость и темп сколько угодно раз.\n\n✅ Доволен? Переходите к следующему шагу!'},
+    {icon:'🎁',title:'Завершить подарок',body:'Нажмите «Завершить подарок» для открытия экрана деталей.\n\n<b>Имя малыша</b>: Имя ребёнка, которому предназначен подарок.\n<b>Сообщение</b>: Добавьте личную заметку.\n<b>Ваше имя</b>: Имя отправителя.\n\nЗатем нажмите «Complete Gift» для создания аудио (несколько секунд).'},
+    {icon:'📤',title:'Поделиться ссылкой',body:'Когда подарок готов, создаётся уникальная ссылка.\n\nСкопируйте ссылку и отправьте через мессенджер или соцсети.\nПри открытии ссылки воспроизводится анимация, затем ваш микс.\n\n💌 Уникальный музыкальный подарок, созданный с любовью!'}
+  ]}
+};
+
+function _getHelpLang(){ return _helpI18n[cl]||_helpI18n.en; }
 
 function showHelp(){
   _helpStep=0;
@@ -913,28 +983,32 @@ function closeHelp(){
   document.getElementById('helpOverlay').style.display='none';
 }
 function helpNav(d){
-  _helpStep=Math.max(0,Math.min(_helpData.length-1,_helpStep+d));
+  var h=_getHelpLang();
+  _helpStep=Math.max(0,Math.min(h.steps.length-1,_helpStep+d));
   _renderHelp();
 }
 function _renderHelp(){
-  var s=_helpData[_helpStep];
+  var h=_getHelpLang();
+  var s=h.steps[_helpStep];
+  document.getElementById('helpModalTitle').textContent=h.title;
+  document.getElementById('helpModalSub').textContent=h.sub;
+  document.getElementById('helpPrev').textContent=h.prev;
   document.getElementById('helpSteps').innerHTML=
     '<div style="text-align:center;font-size:3rem;margin-bottom:.75rem;">'+s.icon+'</div>'
     +'<div style="font-size:1rem;font-weight:500;color:#333;text-align:center;margin-bottom:.75rem;">'+s.title+'</div>'
     +'<div style="font-size:13px;color:#555;line-height:1.8;white-space:pre-wrap;">'+s.body+'</div>';
-  // dots
   var dots='';
-  for(var i=0;i<_helpData.length;i++){
+  for(var i=0;i<h.steps.length;i++){
     dots+='<div style="width:7px;height:7px;border-radius:50%;background:'+(i===_helpStep?'#D4537E':'#eee')+'"></div>';
   }
   document.getElementById('helpDots').innerHTML=dots;
   document.getElementById('helpPrev').style.visibility=_helpStep===0?'hidden':'visible';
   var nextBtn=document.getElementById('helpNext');
-  if(_helpStep===_helpData.length-1){
-    nextBtn.textContent='閉じる';
+  if(_helpStep===h.steps.length-1){
+    nextBtn.textContent=h.close;
     nextBtn.onclick=closeHelp;
   } else {
-    nextBtn.textContent='次へ →';
+    nextBtn.textContent=h.next;
     nextBtn.onclick=function(){ helpNav(1); };
   }
 }
