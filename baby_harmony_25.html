@@ -679,7 +679,7 @@ function pickMusic(btn,type){
     if(playing){stopAll();startAll();}
   }
 }
-function volToGain(v){ return (parseInt(v)+75)/100; } // 0→0.75, +50→1.25, -50→0.25
+function volToGain(v){ return (parseInt(v)+50)/100*1.5; } // -50→0, 0→0.75, +50→1.5
 function fmtVol(v){ const n=parseInt(v); return n>0?'+'+n:String(n); }
 function onVolSlider(id,outId){
   const v=document.getElementById(id).value;
