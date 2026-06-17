@@ -265,15 +265,15 @@ input[type=range]{flex:1;accent-color:#D4537E;}
   <p class="sec-lbl" id="T2">Womb Sound</p>
   <div class="card">
     <div class="tabs">
-      <button class="tab active" id="T3" onclick="setTab('s',this)">Sample Heart Beat</button>
-      <button class="tab" id="T4" onclick="setTab('u',this)">Upload Heart Beat</button>
+      <button class="tab active" id="T4" onclick="setTab('u',this)">Upload Heart Beat</button>
+      <button class="tab" id="T3" onclick="setTab('s',this)">Sample Heart Beat</button>
     </div>
-    <div id="sampleGrid" class="sgrid">
+    <div id="sampleGrid" class="sgrid" style="display:none;">
       <button class="sbtn hb-sample-btn active" onclick="pickHeartbeatSample(this,'HeartBeat Sample1_BPM138.mp3',138)"><i class="ti ti-heart-filled"></i> Sample 1<div class="ssub">Real · 138 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample1_BPM138.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
       <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample2_BPM175.mp3',175)"><i class="ti ti-heart-filled"></i> Sample 2<div class="ssub">Real · 175 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample2_BPM175.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
       <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample3_BPM150.mp3',150)"><i class="ti ti-heart-filled"></i> Sample 3<div class="ssub">Real · 150 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample3_BPM150.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
     </div>
-    <div style="display:none;gap:8px;flex-direction:column;" id="uploadZoneWrap">
+    <div style="display:flex;gap:8px;flex-direction:column;" id="uploadZoneWrap">
       <div id="uploadZone" class="upzone" onclick="document.getElementById('fi').click()">
         <p><i class="ti ti-upload" style="font-size:22px;display:block;margin-bottom:6px;color:#D4537E;"></i>
         <strong id="T11">Tap to select your recording</strong><br><span id="T12">MP3, WAV, M4A supported</span></p>
@@ -863,18 +863,17 @@ var _helpData=[
     icon:'🎵',
     title:'胎内音を選ぶ',
     body:'「胎内音」セクションで、赤ちゃんが聴いていた音を選びます。\n\n'
-      +'<b>サンプル心音</b>：用意されたサンプルからタップして選択。\n'
-      +'<b>アップロード</b>：録音した心音ファイル（MP3・WAV・M4A）をアップロード。\n'
-      +'<b>録音</b>：マイクボタンを押してその場で録音。\n\n'
-      +'音を選ぶと、波形が表示されます。ピンクの枠がループ区間です。'
+      +'<b>アップロード</b>：産婦人科のエコー診察動画、またはスマホ等で録音した音声ファイル（MP3・WAV・M4A）をアップロード。\n\n'
+      +'<b>録音</b>：エコー診察時にマイクボタンを押してその場で録音。\n\n'
+      +'<b>サンプル心音</b>：どんな感じになるか試したい方はこちらを選択。\n\n'
+      +'音を選ぶと波形が表示されます。ピンクの枠がループ区間です。'
   },
   {
     icon:'🎼',
     title:'BGMを選ぶ',
     body:'「BGM」セクションで、胎内音に重ねる音楽を選びます。\n\n'
       +'カテゴリー（子守唄・アンビエントなど）でフィルタリングできます。\n'
-      +'曲名の ▶ ボタンで試聴してから選べます。\n\n'
-      +'お手持ちの音楽ファイルをアップロードすることも可能です。'
+      +'曲名の ▶ ボタンで試聴してから選べます。'
   },
   {
     icon:'🎚️',
