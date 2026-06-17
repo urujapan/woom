@@ -330,15 +330,6 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <button class="mbtn" onclick="pickMusic(this,'other')"><span class="micon"><i class="ti ti-dots"></i></span><span class="mn" data-k="none">その他</span></button>
     </div>
     <div class="track-panel" id="trackPanel"></div>
-    <div class="upzone" id="musicUpZone" onclick="document.getElementById('mfi').click()" style="margin:.75rem 0;">
-      <p><i class="ti ti-upload" style="font-size:20px;display:block;margin-bottom:4px;color:#5DCAA5;"></i>
-      <strong id="T_mupload">Upload your music file</strong><br>
-      <span id="T_mformats">WAV, MP3, M4A supported</span></p>
-      <input type="file" id="mfi" accept="audio/*">
-    </div>
-    <div class="upinfo" id="musicUpInfo" style="margin-bottom:.75rem;">
-      <i class="ti ti-music" style="color:#0F6E56;"></i><span id="musicUpName">—</span>
-    </div>
     <div class="divider"></div>
     <div class="srow"><span class="slbl" id="T15">Womb sound</span><input type="range" id="vW" min="-50" max="50" value="0" step="1" oninput="onVolSlider('vW','vWv')"><span class="sval" id="vWv">0</span></div>
     <div class="srow"><span class="slbl" id="T16">Music</span><input type="range" id="vM" min="-50" max="50" value="0" step="1" oninput="onVolSlider('vM','vMv')"><span class="sval" id="vMv">0</span></div>
@@ -866,14 +857,17 @@ var _helpData=[
       +'<b>アップロード</b>：産婦人科のエコー診察動画、またはスマホ等で録音した音声ファイル（MP3・WAV・M4A）をアップロード。\n\n'
       +'<b>録音</b>：エコー診察時にマイクボタンを押してその場で録音。\n\n'
       +'<b>サンプル心音</b>：どんな感じになるか試したい方はこちらを選択。\n\n'
-      +'音を選ぶと波形が表示されます。ピンクの枠がループ区間です。'
+      +'音を選ぶと波形が表示されます。ピンクの枠がループ区間です。\n'
+      +'心音のループが綺麗にできていない場合は、ここで微調整ができます。'
   },
   {
     icon:'🎼',
     title:'BGMを選ぶ',
     body:'「BGM」セクションで、胎内音に重ねる音楽を選びます。\n\n'
       +'カテゴリー（子守唄・アンビエントなど）でフィルタリングできます。\n'
-      +'曲名の ▶ ボタンで試聴してから選べます。'
+      +'曲名の ▶ ボタンで試聴してから選べます。\n\n'
+      +'👌 マークは、その曲が心音のテンポとの相性が良いことを示しています。\n'
+      +'選ぶときの参考にしてください。'
   },
   {
     icon:'🎚️',
