@@ -31,6 +31,12 @@ body{font-family:'DM Sans',sans-serif;background:#fff5f8;min-height:100vh;paddin
 .rec-btn{background:none;width:100%;font-family:inherit;}
 .rec-btn.recording{border-color:#D4537E;border-style:solid;animation:recPulse 1s ease-in-out infinite;}
 @keyframes recPulse{0%,100%{background:rgba(212,83,126,.05)}50%{background:rgba(212,83,126,.15)}}
+.rec-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #F4C0D1;border-radius:8px;margin-bottom:5px;background:#fff5f8;}
+.rec-item-info{flex:1;min-width:0;}
+.rec-item-name{font-size:12px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rec-item-dur{font-size:11px;color:#aaa;}
+.rec-item-use{font-size:11px;background:#D4537E;color:white;border:none;border-radius:20px;padding:4px 10px;cursor:pointer;white-space:nowrap;}
+.rec-item-del{font-size:13px;color:#ccc;background:none;border:none;cursor:pointer;padding:2px 4px;}
 .upzone:hover{background:#FBEAF0;}
 .upzone p{font-size:13px;color:#888;}
 .upzone strong{color:#D4537E;font-weight:400;}
@@ -255,11 +261,16 @@ input[type=range]{flex:1;accent-color:#D4537E;}
         <strong id="T11">Tap to select your recording</strong><br><span id="T12">MP3, WAV, M4A supported</span></p>
         <input type="file" id="fi" accept="audio/*">
       </div>
-      <button class="upzone rec-btn" id="recBtn" onclick="toggleRec()" style="cursor:pointer;">
+      <button class="upzone rec-btn" id="recBtn" style="cursor:pointer;">
         <i class="ti ti-microphone" id="recIco" style="font-size:22px;display:block;margin-bottom:6px;color:#D4537E;"></i>
         <strong id="recLbl">Tap to record</strong><br>
         <span id="recTime" style="font-size:11px;color:#aaa;">0:00</span>
       </button>
+    </div>
+    <!-- Recording history (outside uploadZoneWrap so always visible) -->
+    <div id="recHistory" style="display:none;margin-top:8px;">
+      <div style="font-size:11px;color:#aaa;margin-bottom:4px;padding-left:2px;">📼 録音履歴</div>
+      <div id="recHistoryList"></div>
     </div>
     <div class="upinfo" id="upinfo"><i class="ti ti-check"></i><span id="upname">—</span></div>
 
@@ -715,31 +726,96 @@ document.getElementById('fi').addEventListener('change',function(){
   reader.readAsArrayBuffer(file);
 });
 
-// ── Recording ────────────────────────────────────────────────────────────
+// ── Recording + IndexedDB history ───────────────────────────────────────
 let _recMR=null, _recChunks=[], _recTimer=null, _recSec=0, _recStream=null;
+
+// IndexedDB
+function _openRecDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('BabyHarmonyRec',1);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore('recs',{keyPath:'id',autoIncrement:true});
+    r.onsuccess=e=>res(e.target.result);
+    r.onerror=rej;
+  });
+}
+function _ab2b64(ab){
+  var bytes=new Uint8Array(ab), bin='';
+  for(var i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function _b642ab(b64){
+  var bin=atob(b64), ab=new ArrayBuffer(bin.length), bytes=new Uint8Array(ab);
+  for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return ab;
+}
+function _loadRecs(){ try{ return JSON.parse(localStorage.getItem('bhRecs')||'[]'); }catch(e){ return []; } }
+function _saveRecsLS(recs){ try{ localStorage.setItem('bhRecs',JSON.stringify(recs)); }catch(e){ toast('保存エラー（容量不足の可能性）'); } }
+
+function _saveRec(arrayBuffer, durSec){
+  try{
+    var recs=_loadRecs();
+    var now=new Date();
+    var name=now.toLocaleDateString()+' '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    var id=now.getTime();
+    var b64=_ab2b64(arrayBuffer);
+    recs.push({id:id,name:name,dur:durSec,b64:b64});
+    _saveRecsLS(recs);
+    toast('録音を保存しました');
+    _renderRecHistory();
+  }catch(e){ alert('保存エラー: '+e); }
+}
+function _deleteRec(id){
+  var recs=_loadRecs().filter(function(r){ return r.id!==id; });
+  _saveRecsLS(recs);
+  _renderRecHistory();
+}
+function _useRec(id){
+  var recs=_loadRecs();
+  var rec=recs.find(function(r){ return r.id===id; });
+  if(rec) loadWombBuffer(_b642ab(rec.b64), rec.name);
+}
+function _renderRecHistory(){
+  var recs=_loadRecs().slice().reverse();
+  var wrap=document.getElementById('recHistory');
+  var list=document.getElementById('recHistoryList');
+  if(!wrap||!list) return;
+  if(!recs.length){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  list.innerHTML=recs.map(function(r){
+    var m=Math.floor(r.dur/60),s=r.dur%60;
+    var dur=m+':'+(s<10?'0':'')+s;
+    return '<div class="rec-item"><div class="rec-item-info"><div class="rec-item-name">📼 '+r.name+'</div><div class="rec-item-dur">'+dur+'</div></div><button class="rec-item-use" onclick="_useRec('+r.id+')">使う</button><button class="rec-item-del" onclick="_deleteRec('+r.id+')">✕</button></div>';
+  }).join('');
+}
 
 async function toggleRec(){
   if(_recMR && _recMR.state==='recording'){
-    // Stop recording
     _recMR.stop();
     return;
   }
-  // Start recording
   try{
-    _recStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    _recStream=await navigator.mediaDevices.getUserMedia({audio:true});
   }catch(e){
     toast('Microphone access denied.');
     return;
   }
   _recChunks=[]; _recSec=0;
-  _recMR = new MediaRecorder(_recStream);
-  _recMR.ondataavailable = e=>{ if(e.data.size>0) _recChunks.push(e.data); };
-  _recMR.onstop = function(){
+  _recMR=new MediaRecorder(_recStream);
+  _recMR.ondataavailable=e=>{ if(e.data.size>0) _recChunks.push(e.data); };
+  _recMR.onstop=function(){
     clearInterval(_recTimer);
     _recStream.getTracks().forEach(t=>t.stop());
-    const blob = new Blob(_recChunks, {type:'audio/webm'});
-    const reader = new FileReader();
-    reader.onload = e => loadWombBuffer(e.target.result, 'Recording');
+    const blob=new Blob(_recChunks,{type:'audio/webm'});
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const ab=e.target.result;
+        const ab1=ab.slice(0);
+        const ab2=ab.slice(0);
+        loadWombBuffer(ab1,'Recording');
+        _saveRec(ab2, _recSec);
+      }catch(err){alert('reader.onload error: '+err);}
+    };
     reader.readAsArrayBuffer(blob);
     const btn=document.getElementById('recBtn');
     btn.classList.remove('recording');
@@ -748,17 +824,25 @@ async function toggleRec(){
     document.getElementById('recTime').textContent='0:00';
   };
   _recMR.start(100);
-  // UI
   const btn=document.getElementById('recBtn');
   btn.classList.add('recording');
   document.getElementById('recIco').className='ti ti-square-filled';
   document.getElementById('recLbl').textContent=RECSTOP[cl]||RECSTOP.en;
-  _recTimer = setInterval(()=>{
+  _recTimer=setInterval(()=>{
     _recSec++;
-    const m=Math.floor(_recSec/60), s=_recSec%60;
+    const m=Math.floor(_recSec/60),s=_recSec%60;
     document.getElementById('recTime').textContent=m+':'+(s<10?'0':'')+s;
   },1000);
 }
+
+// Load history on startup
+_renderRecHistory();
+
+// Ensure record button works on iOS
+document.getElementById('recBtn').addEventListener('click', function(e){
+  e.preventDefault();
+  toggleRec();
+});
 
 // ── Music file upload ────────────────────────────────────────────────────
 let musicFileBPM = 0;
