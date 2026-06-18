@@ -545,6 +545,16 @@ function L(l){
   try{ updateNP(); }catch(e){}
 }
 
+// ── Auto-detect language (run immediately after L is defined) ─────────────
+(function(){
+  try{
+    var nav=(navigator.language||navigator.userLanguage||'en').toLowerCase();
+    var supported=['ja','zh-TW','zh','ko','es','fr','de','pt','hi','id','it','th','vi','ru','en'];
+    var match=supported.find(function(l){ return nav.startsWith(l==='zh-TW'?'zh-tw':l); });
+    L(match||'en');
+  }catch(e){ try{L('en');}catch(e2){} }
+})();
+
 function sName(){return{beat:t(5),flow:t(7),breath:t(9),uploaded:document.getElementById('upname').textContent||'Uploaded'}[cs]||t(5);}
 function updateNP(){document.getElementById('npSub').textContent=sName()+' × '+musicDisplayName();}
 function giftTitle(){
