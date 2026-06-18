@@ -528,18 +528,21 @@ function L(l){
   document.getElementById('wombPrevLbl').textContent=PREV[l]||PREV.en;
   document.getElementById('recLbl').textContent=REC[l]||REC.en;
   try{ var h=_helpI18n[l]||_helpI18n.en; document.getElementById('helpOpenBtn').textContent='？ '+h.title; }catch(e){}
-  _renderRecHistory();
+  try{ _renderRecHistory(); }catch(e){}
   // Gift section labels
-  const gt=GT[l]||GT.en;
-  const gLabels=document.querySelectorAll('.ginput-label');
-  if(gLabels[0]) gLabels[0].textContent=gt[0];
-  if(gLabels[1]) gLabels[1].textContent=gt[2];
-  if(gLabels[2]) gLabels[2].textContent=gt[4];
-  if(gLabels[3]) gLabels[3].textContent=gt[6]||'📅';
-  document.getElementById('gBaby').placeholder=gt[1];
-  document.getElementById('gMsg').placeholder=gt[3];
-  document.getElementById('gFrom').placeholder=gt[5];
-  refreshPreview(); updateNP();
+  try{
+    const gt=GT[l]||GT.en;
+    const gLabels=document.querySelectorAll('.ginput-label');
+    if(gLabels[0]) gLabels[0].textContent=gt[0];
+    if(gLabels[1]) gLabels[1].textContent=gt[2];
+    if(gLabels[2]) gLabels[2].textContent=gt[4];
+    if(gLabels[3]) gLabels[3].textContent=gt[6]||'📅';
+    document.getElementById('gBaby').placeholder=gt[1];
+    document.getElementById('gMsg').placeholder=gt[3];
+    document.getElementById('gFrom').placeholder=gt[5];
+  }catch(e){}
+  try{ refreshPreview(); }catch(e){}
+  try{ updateNP(); }catch(e){}
 }
 
 function sName(){return{beat:t(5),flow:t(7),breath:t(9),uploaded:document.getElementById('upname').textContent||'Uploaded'}[cs]||t(5);}
