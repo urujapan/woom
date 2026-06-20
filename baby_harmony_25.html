@@ -3051,7 +3051,7 @@ function copyAudioLink(){
 function copyLink(){
   copyAudioLink();
 }
-let toastTimer;
+var toastTimer;
 function toast(msg){
   const el=document.getElementById('toast');
   el.textContent=msg; el.classList.add('show');
