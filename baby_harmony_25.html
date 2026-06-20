@@ -492,21 +492,21 @@ const PREV={en:'Check heartbeat',ja:'心音を確認',zh:'确认心音','zh-TW':
 const READY={en:'Ready to play',ja:'再生する準備ができています',zh:'准备好播放','zh-TW':'準備好播放',ko:'재생 준비 완료',es:'Listo para reproducir',fr:'Prêt à jouer',de:'Bereit zum Abspielen',pt:'Pronto para reproduzir',hi:'बजाने के लिए तैयार',id:'Siap dimainkan',it:'Pronto per la riproduzione',th:'พร้อมเล่น',vi:'Sẵn sàng phát',ru:'Готово к воспроизведению'};
 const NOW={en:'Now playing...',ja:'再生中...',zh:'播放中...','zh-TW':'播放中...',ko:'재생 중...',es:'Reproduciendo...',fr:'Lecture en cours...',de:'Wird abgespielt...',pt:'Reproduzindo...',hi:'अभी बज रहा है...',id:'Sedang diputar...',it:'In riproduzione...',th:'กำลังเล่น...',vi:'Đang phát...',ru:'Воспроизведение...'};
 
-let cl='en',cs='beat',cm='lullaby';
-let rawBuffer=null, loopBuffer=null;
-let AC=null, wSrc=null, mSrc=null, wGain=null, mGain=null;
-let musicFileBuffer=null;
-let musicFineBPM=0; // user fine-tune offset in BPM
-let BASE_MUSIC_OFFSET=0.25;     // calibrated zero point (displayed as ±0); auto-updated by lub detection
-let musicStartOffsetBeats=BASE_MUSIC_OFFSET;
-let musicPhaseOffset=0; // phase offset 0.0–1.0 (fraction of one beat)
-let ptimer=null, playing=false, musicStartAt=0, progMusicDur=0;
-let detectedBPM=0, loopStart=0, loopDur=0;
+var cl='en',cs='beat',cm='lullaby';
+var rawBuffer=null, loopBuffer=null;
+var AC=null, wSrc=null, mSrc=null, wGain=null, mGain=null;
+var musicFileBuffer=null;
+var musicFineBPM=0; // user fine-tune offset in BPM
+var BASE_MUSIC_OFFSET=0.25;     // calibrated zero point (displayed as ±0); auto-updated by lub detection
+var musicStartOffsetBeats=BASE_MUSIC_OFFSET;
+var musicPhaseOffset=0; // phase offset 0.0–1.0 (fraction of one beat)
+var ptimer=null, playing=false, musicStartAt=0, progMusicDur=0;
+var detectedBPM=0, loopStart=0, loopDur=0;
 const CROSSFADE_MS=80;
 const INTRO_BARS=4;  // bars of heart-only intro (1 bar = 4 beats)
 const FADEIN_BARS=2; // first 2 bars = womb-sound fade-in
-let mIntroGain=null;
-let musicIntroTimer=null;
+var mIntroGain=null;
+var musicIntroTimer=null;
 
 function getEffectiveBPM(){
   if(cs==='uploaded'&&detectedBPM>0) return detectedBPM;
@@ -617,8 +617,8 @@ function pickSample(btn,type){
 }
 
 // ── Heartbeat sample quick-preview ──────────────────────────────────────────
-let _samplePrevSrc = null;   // currently playing preview source
-let _samplePrevBtn = null;   // the ▶ button element that started it
+var _samplePrevSrc = null;   // currently playing preview source
+var _samplePrevBtn = null;   // the ▶ button element that started it
 const _sampleBufCache = {};  // decoded buffer cache for preview
 
 async function toggleSamplePreview(btn, filename){
@@ -753,7 +753,7 @@ document.getElementById('fi').addEventListener('change',function(){
 });
 
 // ── Recording + IndexedDB history ───────────────────────────────────────
-let _recMR=null, _recChunks=[], _recTimer=null, _recSec=0, _recStream=null;
+var _recMR=null, _recChunks=[], _recTimer=null, _recSec=0, _recStream=null;
 
 // IndexedDB
 function _openRecDB(){
@@ -1040,7 +1040,7 @@ document.getElementById('recBtn').addEventListener('click', function(e){
 });
 
 // ── Music file upload ────────────────────────────────────────────────────
-let musicFileBPM = 0;
+var musicFileBPM = 0;
 
 // ── Audio normalization ───────────────────────────────────────────────────
 // RMS normalize: adjust gain so the RMS level matches targetRMS.
@@ -1101,8 +1101,8 @@ const MUSIC_LIBRARY = {
   ],
 };
 const musicBufferCache = {};
-let selectedTrack = null;
-let musicPrevAC = null, musicPrevSrc = null, musicPrevTrackId = null;
+var selectedTrack = null;
+var musicPrevAC = null, musicPrevSrc = null, musicPrevTrackId = null;
 
 // ── Library track loading ────────────────────────────────────────────────
 async function loadMusicTrack(track){
@@ -1977,12 +1977,12 @@ function drawWaveform(buf){
 // This gives a visual + tactile way to align music beats to womb beats
 // without stopping playback.
 
-let gridDragActive = false;
-let gridDragStartX = 0;
-let gridDragStartPhase = 0;
-let loopDragActive = false;
-let loopDragStartX = 0;
-let loopDragStartLoopStart = 0;
+var gridDragActive = false;
+var gridDragStartX = 0;
+var gridDragStartPhase = 0;
+var loopDragActive = false;
+var loopDragStartX = 0;
+var loopDragStartLoopStart = 0;
 
 function drawMusicGrid(){
   const canvas = document.getElementById('gridCanvas');
@@ -2226,7 +2226,7 @@ function shiftLoop(beats){
 }
 
 // ── Womb sound preview (independent of main player) ──────────────────────
-let wombPrevAC=null, wombPrevSrc=null, wombPrevPlaying=false;
+var wombPrevAC=null, wombPrevSrc=null, wombPrevPlaying=false;
 
 function toggleWombPreview(){
   if(wombPrevPlaying){
@@ -2236,7 +2236,7 @@ function toggleWombPreview(){
   }
 }
 
-let wombPrevStartAC=0, wombPrevRaf=null;
+var wombPrevStartAC=0, wombPrevRaf=null;
 
 function startWombPreview(){
   if(!rawBuffer) return;
@@ -2822,8 +2822,8 @@ function bufToBase64(buffer){
 }
 
 // ── Complete Gift: generate audio then share ──────────────────────────────
-let _giftWavBlob  = null; // WAV audio — for LINE/messaging (widely supported)
-let _giftHtmlBlob = null; // HTML gift page — for AirDrop/email (animation + audio)
+var _giftWavBlob  = null; // WAV audio — for LINE/messaging (widely supported)
+var _giftHtmlBlob = null; // HTML gift page — for AirDrop/email (animation + audio)
 
 function showGiftAnim(){
   const overlay=document.getElementById('giftAnim');
@@ -2983,8 +2983,8 @@ function dlGiftPage(){
 // ── Cloudinary upload ─────────────────────────────────────────────────────
 const CLD_CLOUD  = 'dsspyytqj';
 const CLD_PRESET = 'baby_harmony_gift';
-let _audioUrl = ''; // Cloudinary audio URL
-let _cardUrl  = ''; // Cloudinary card image URL
+var _audioUrl = ''; // Cloudinary audio URL
+var _cardUrl  = ''; // Cloudinary card image URL
 
 async function uploadToCloudinary(blob, filename){
   const fd = new FormData();
