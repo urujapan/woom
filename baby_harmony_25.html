@@ -745,6 +745,25 @@ function onVolSlider(id,outId){
 function onSlider(id,outId,sfx){
   document.getElementById(outId).textContent=document.getElementById(id).value+sfx;
 }
+// Double-click / double-tap a volume fader to snap it back to 0 (center).
+function resetVolSlider(id,outId){
+  const el=document.getElementById(id); if(!el) return;
+  el.value=0;
+  onVolSlider(id,outId);
+}
+(function(){
+  [['vW','vWv'],['vM','vMv']].forEach(function(p){
+    const el=document.getElementById(p[0]); if(!el) return;
+    el.addEventListener('dblclick',function(){ resetVolSlider(p[0],p[1]); });
+    // Touch double-tap (mobile has no dblclick on range inputs)
+    let lastTap=0;
+    el.addEventListener('touchend',function(){
+      const now=Date.now();
+      if(now-lastTap<300){ resetVolSlider(p[0],p[1]); }
+      lastTap=now;
+    });
+  });
+})();
 
 // ── File upload & analysis ────────────────────────────────────────────────
 // Peak-normalise a decoded buffer in place to a consistent target level.
