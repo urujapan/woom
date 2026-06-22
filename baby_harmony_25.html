@@ -1701,6 +1701,29 @@ function runDetect(){
     }
   }
 
+  // ── Fetal heart-rate prior (octave-error guard) ──────────────────────────
+  // Womb/baby heartbeats in this app are essentially always 110–180 bpm.
+  // The dominant failure mode for short, noisy clips is OCTAVE HALVING:
+  // both the IBI histogram and NSDF lock onto the every-other-beat period
+  // (e.g. 69bpm for a true 138bpm clip) because the doubled period also
+  // correlates strongly. The earlier bpmDirect-based correction misses this
+  // when the direct histogram is itself noisy (lands at ~182 instead of 138).
+  //
+  // Fix: when bpmFinal is implausibly low AND doubling lands in the plausible
+  // fetal band, compare lub-dub fitness at both periods and DOUBLE unless the
+  // halved period is a clearly better structural fit (>20%). This is grounded
+  // in the actual heartbeat waveform shape, not a blind multiply.
+  if(bpmFinal > 0 && bpmFinal < 105 && bpmFinal*2 >= 110 && bpmFinal*2 <= 200){
+    const pLow  = Math.round(60 / bpmFinal     / frameSec);
+    const pHigh = Math.round(60 / (bpmFinal*2) / frameSec);
+    const sLow  = lubDubPatternScore(pLow);
+    const sHigh = lubDubPatternScore(pHigh);
+    if(!(sLow > sHigh * 1.20)){
+      bpmFinal = bpmFinal * 2;
+      ldScoreLow = sLow; ldScoreHigh = sHigh; // surface in debug line
+    }
+  }
+
   detectedBPM = bpmFinal;
 
   // ── Step 5: find best 4-beat loop window ─────────────────────────────
@@ -1928,13 +1951,19 @@ function buildLoopBuffer(){
     const src=rawBuffer.getChannelData(ch);
     const dst=outBuf.getChannelData(ch);
     for(let i=0;i<actualDur;i++) dst[i]=src[startSample+i];
-    // Crossfade: blend tail → head over last xfSamples
+    // Crossfade: blend tail → head over last xfSamples using an EQUAL-POWER
+    // (cosine) curve. A linear fade (t / 1-t) sums two partially-correlated
+    // signals at 0.5+0.5=1.0 gain mid-fade, which for heartbeat transients
+    // causes an audible amplitude dip / comb click. Equal-power keeps
+    // gainTail²+gainHead²=1 so perceived loudness stays flat across the seam.
     for(let i=0;i<xfSamples;i++){
       const pos=actualDur-xfSamples+i;
-      const t=i/xfSamples;                      // 0→1
-      const tailSamp=src[startSample+pos];       // tail of loop
-      const headSamp=src[startSample+i];         // head of loop
-      dst[pos]=tailSamp*(1-t)+headSamp*t;
+      const t=i/xfSamples;                       // 0→1
+      const gHead=Math.sin(t*Math.PI/2);         // 0→1
+      const gTail=Math.cos(t*Math.PI/2);         // 1→0
+      const tailSamp=src[startSample+pos];        // tail of loop
+      const headSamp=src[startSample+i];          // head of loop
+      dst[pos]=tailSamp*gTail+headSamp*gHead;
     }
   }
   loopBuffer=outBuf;
