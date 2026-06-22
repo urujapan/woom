@@ -277,7 +277,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <div id="uploadZone" class="upzone" onclick="document.getElementById('fi').click()">
         <p><i class="ti ti-upload" style="font-size:22px;display:block;margin-bottom:6px;color:#D4537E;"></i>
         <strong id="T11">Tap to select your recording</strong><br><span id="T12">MP3, WAV, M4A supported</span></p>
-        <input type="file" id="fi" accept="audio/*">
+        <input type="file" id="fi">
       </div>
       <button class="upzone rec-btn" id="recBtn" style="cursor:pointer;">
         <i class="ti ti-microphone" id="recIco" style="font-size:22px;display:block;margin-bottom:6px;color:#D4537E;"></i>
@@ -742,7 +742,7 @@ function loadWombBuffer(arrayBuffer, name){
     runDetect();
     updateNP(); refreshPreview();
     if(playing){stopAll();startAll();}
-  }, function(e){toast('Decode error: '+e);});
+  }, function(e){toast('この形式は読み込めませんでした。mp3 / wav / m4a などの音声ファイルを選んでください。');});
 }
 
 document.getElementById('fi').addEventListener('change',function(){
