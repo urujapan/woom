@@ -3,7 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Baby Harmony</title>
+<script>
+// ── Auto-update guard ──────────────────────────────────────────────────────
+// Home-screen webclips (especially iOS) cache the page aggressively, so a
+// pushed update often isn't seen. On load we fetch the live file fresh (cache
+// bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
+// cache-busting query. A sessionStorage flag prevents any reload loop.
+window.APP_VERSION = '2026-06-22.1';
+(function(){
+  try{
+    var url=location.pathname+'?_cv='+Date.now();
+    fetch(url,{cache:'no-store'}).then(function(r){return r.text();}).then(function(html){
+      var m=html.match(/APP_VERSION\s*=\s*'([^']+)'/);
+      if(!m||!m[1]) return;
+      var live=m[1];
+      if(live===window.APP_VERSION) return;            // already up to date
+      // Loop guard: if we already tried to load this exact live version this
+      // session and still ended up on an older one, give up (stubborn cache).
+      if(sessionStorage.getItem('bh_update_tried')===live) return;
+      sessionStorage.setItem('bh_update_tried', live);
+      location.replace(location.pathname+'?v='+encodeURIComponent(live));
+    }).catch(function(){});
+  }catch(e){}
+})();
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300&family=DM+Sans:wght@300;400&display=swap');
