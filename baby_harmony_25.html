@@ -63,6 +63,9 @@ input[type=file]{display:none;}
 .obtn:hover{background:#f0f0f0;}
 .obtn.active-o{background:#FBEAF0;border-color:#D4537E;color:#D4537E;}
 .re-detect-btn{padding:7px 14px;border-radius:6px;border:1px solid #5DCAA5;background:#E1F5EE;font-size:12px;color:#0F6E56;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:.75rem;display:flex;align-items:center;gap:6px;}
+.offset-row .re-detect-btn{margin-top:0;}
+.bpm-adj-btn{min-width:34px;padding:7px 9px;border-radius:6px;border:1px solid #E4A0BC;background:#FBEAF0;font-size:13px;font-weight:600;color:#C03D6B;cursor:pointer;font-family:'DM Sans',sans-serif;line-height:1;}
+.bpm-adj-btn:active{background:#F4D2DF;}
 
 /* viz */
 .viz{width:100%;height:72px;border-radius:8px;background:#FBEAF0;position:relative;overflow:hidden;margin-bottom:1rem;display:flex;align-items:center;justify-content:center;gap:3px;}
@@ -309,9 +312,16 @@ input[type=range]{flex:1;accent-color:#D4537E;}
         <summary style="font-size:11px;color:#bbb;cursor:pointer;user-select:none;">Debug info</summary>
         <div style="font-size:11px;font-family:monospace;color:#888;margin-top:4px;padding:6px 10px;background:#f5f5f5;border-radius:6px;" id="debugInfo">—</div>
       </details>
-      <div class="offset-row" style="margin-top:.75rem;">
+      <div class="offset-row" style="margin-top:.75rem;flex-wrap:wrap;align-items:center;gap:6px;">
         <span style="font-size:13px;color:#D4537E;font-weight:500;" id="bpmAdjDisplay">—</span>
-        <button class="re-detect-btn" style="margin-left:auto;" onclick="runDetect()"><i class="ti ti-refresh" style="font-size:14px;"></i> <span id="T_redetect">Re-detect</span></button>
+        <span style="font-size:11px;color:#bbb;" id="bpmAdjHint">速さが合わない時は調整 →</span>
+        <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
+          <button class="bpm-adj-btn" onclick="adjustDetectedBPM('half')" title="半分の速さ（ゆっくり）">×½</button>
+          <button class="bpm-adj-btn" onclick="adjustDetectedBPM(-1)" title="少し遅く">−</button>
+          <button class="bpm-adj-btn" onclick="adjustDetectedBPM(1)" title="少し速く">＋</button>
+          <button class="bpm-adj-btn" onclick="adjustDetectedBPM('double')" title="2倍の速さ（速く）">×2</button>
+          <button class="re-detect-btn" onclick="runDetect()"><i class="ti ti-refresh" style="font-size:14px;"></i> <span id="T_redetect">Re-detect</span></button>
+        </div>
       </div>
     </div>
 
@@ -671,6 +681,7 @@ async function pickHeartbeatSample(btn, filename, knownBpm=0){
     if(!res.ok) throw new Error('HTTP '+res.status);
     const arrayBuf = await res.arrayBuffer();
     const buf = await AC.decodeAudioData(arrayBuf);
+    _normalizeBuffer(buf);
     rawBuffer = buf; cs = 'uploaded';
     document.getElementById('upinfo').style.display = 'flex';
     document.getElementById('upname').textContent = filename.replace('.mp3','').replace('.MP3','');
@@ -729,9 +740,32 @@ function onSlider(id,outId,sfx){
 }
 
 // ── File upload & analysis ────────────────────────────────────────────────
+// Peak-normalise a decoded buffer in place to a consistent target level.
+// Real-world phone recordings vary wildly in loudness; quiet clips otherwise
+// sit near the silence floor and confuse both detection and playback level.
+// Normalising to 0.95 gives every recording a predictable dynamic range.
+function _normalizeBuffer(buf){
+  try{
+    let peak=0;
+    for(let ch=0;ch<buf.numberOfChannels;ch++){
+      const d=buf.getChannelData(ch);
+      for(let i=0;i<d.length;i++){const a=Math.abs(d[i]); if(a>peak)peak=a;}
+    }
+    if(peak>0.0001){
+      const g=0.95/peak; // boosts quiet clips, tames clipping-hot ones
+      for(let ch=0;ch<buf.numberOfChannels;ch++){
+        const d=buf.getChannelData(ch);
+        for(let i=0;i<d.length;i++) d[i]*=g;
+      }
+    }
+  }catch(e){}
+  return buf;
+}
+
 function loadWombBuffer(arrayBuffer, name){
   if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
   AC.decodeAudioData(arrayBuffer, function(buf){
+    _normalizeBuffer(buf);
     rawBuffer=buf; cs='uploaded';
     document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
     document.getElementById('upinfo').style.display='flex';
@@ -1324,7 +1358,33 @@ document.getElementById('mfi').addEventListener('change',function(){
 //  This is immune to lub-dub double-counting because autocorrelation
 //  measures the period of the whole heartbeat waveform, not individual spikes.
 
+// Public entry point: never let a detection failure break the app.
+// Any thrown error (or a degenerate result) falls back to a safe loop the
+// user can fix with the manual BPM controls.
 function runDetect(){
+  try{ _runDetectCore(); }
+  catch(err){ _safeFallbackLoop('自動解析できませんでした。下のBPMボタンで手動調整してください。'); }
+}
+
+// Safe fallback loop: assume a typical fetal heart rate (140 bpm) when nothing
+// reliable was found, and build a clean 4-beat loop from the start of audio.
+function _safeFallbackLoop(msg){
+  if(!rawBuffer) return;
+  if(!detectedBPM || detectedBPM<40 || detectedBPM>220) detectedBPM=140;
+  let dur=4*(60/detectedBPM);
+  if(dur>rawBuffer.duration) dur=rawBuffer.duration;
+  loopStart=0; loopDur=dur;
+  if(loopStart+loopDur>rawBuffer.duration) loopStart=Math.max(0,rawBuffer.duration-loopDur);
+  musicStartOffsetBeats=BASE_MUSIC_OFFSET;
+  try{ buildLoopBuffer(); updateLoopRegion(); }catch(e){}
+  document.getElementById('bpmAdjDisplay').textContent=detectedBPM+' bpm';
+  const el=document.getElementById('detectInfo'); if(el){ el.textContent='⚠ '+(msg||''); el.className='detect-info'; }
+  try{ updateMusicBpmLabel(); }catch(e){}
+  try{ if(cm) renderTrackPanel(cm); }catch(e){}
+  if(playing){ try{stopAll();startAll();}catch(e){} }
+}
+
+function _runDetectCore(){
   if(!rawBuffer) return;
   document.getElementById('detectInfo').textContent='Analyzing...';
   document.getElementById('detectInfo').className='detect-info';
@@ -1826,6 +1886,13 @@ function runDetect(){
     if(score > bestScore){ bestScore = score; bestStartFrame = f; }
   }
 
+  // No usable loop window (clip too short, too quiet, or all silence):
+  // hand off to the safe fallback rather than producing a broken loop.
+  if(bestScore === -Infinity){
+    _safeFallbackLoop('音が短い/小さいため自動解析できませんでした。BPMを手動調整してください。');
+    return;
+  }
+
   loopStart = bestStartFrame * frameSec;
   const exactBeatSec = beatPeriodSec;
   loopDur = exactBeatSec * beatsNeeded;
@@ -2127,8 +2194,10 @@ function initGridDrag(){
 
 function adjustDetectedBPM(delta){
   if(detectedBPM===0) return;
-  if(delta===0){
+  if(delta==='half' || delta===0){
     detectedBPM=Math.max(40,Math.round(detectedBPM/2));
+  } else if(delta==='double'){
+    detectedBPM=Math.min(220,Math.round(detectedBPM*2));
   } else {
     detectedBPM=Math.max(40,Math.min(220,detectedBPM+delta));
   }
