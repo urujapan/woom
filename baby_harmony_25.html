@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-28.11';
+window.APP_VERSION = '2026-06-28.12';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -43,8 +43,9 @@ body{font-family:'DM Sans',sans-serif;background:#fff5f8;min-height:100vh;paddin
 .header{text-align:center;margin-bottom:2rem;}
 .logo-mark{display:inline-block;width:96px;height:96px;color:#D4537E;}
 .logo-mark svg{display:block;width:100%;height:100%;}
-.wordmark{font-family:'Comfortaa','Quicksand',sans-serif;font-weight:700;font-size:2.7rem;color:#D4537E;letter-spacing:.02em;line-height:1;margin-top:.3rem;}
-.wm-flip{display:inline-block;transform:rotate(180deg);position:relative;top:-0.085em;}
+.wordmark{margin-top:.4rem;line-height:0;}
+.wordmark svg{height:2.5rem;width:auto;display:inline-block;}
+.wordmark text{font-family:'Comfortaa','Quicksand',sans-serif;font-weight:700;font-size:100px;fill:#D4537E;}
 .brand-sub{font-family:'Quicksand',sans-serif;font-size:11px;font-weight:500;color:#C99BB0;letter-spacing:.22em;margin-top:.45rem;text-transform:uppercase;}
 .title{font-family:'Cormorant Garamond',serif;font-size:1.25rem;font-weight:300;color:#888;line-height:1.4;margin-top:.9rem;}
 .title em{font-style:italic;color:#D4537E;}
@@ -288,7 +289,12 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       </g>
     </svg>
   </div>
-  <div class="wordmark" aria-label="WooM">Woo<span class="wm-flip" aria-hidden="true">W</span></div>
+  <div class="wordmark" role="img" aria-label="WooM">
+    <svg viewBox="-1 -1 291 81" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <text x="0" y="78.1">Woo</text>
+      <text x="0" y="78.1" transform="rotate(180 144.1 39.05)">W</text>
+    </svg>
+  </div>
   <div class="title" id="T0"><em>A Harmony Only for Baby &amp; Mama</em></div>
   <p class="subtitle" id="T1">Blend womb sounds with music — a one-of-a-kind gift</p>
   <button id="helpOpenBtn" onclick="showHelp()" style="margin-top:.8rem;background:none;border:1.5px solid #F4C0D1;border-radius:20px;padding:5px 14px;font-size:12px;color:#D4537E;cursor:pointer;font-family:'DM Sans',sans-serif;">？ 使い方</button>
