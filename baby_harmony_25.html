@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-28.8';
+window.APP_VERSION = '2026-06-28.9';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -33,7 +33,7 @@ window.APP_VERSION = '2026-06-28.8';
 </script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;1,300&family=DM+Sans:wght@300;400&family=Quicksand:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,300;1,300&family=DM+Sans:wght@300;400&family=Quicksand:wght@400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:#fff5f8;min-height:100vh;padding:2rem 1rem;}
 .app{max-width:560px;margin:0 auto;}
@@ -43,7 +43,7 @@ body{font-family:'DM Sans',sans-serif;background:#fff5f8;min-height:100vh;paddin
 .header{text-align:center;margin-bottom:2rem;}
 .logo-mark{display:inline-block;width:96px;height:96px;color:#D4537E;}
 .logo-mark svg{display:block;width:100%;height:100%;}
-.wordmark{font-family:'Quicksand',sans-serif;font-weight:700;font-size:2.6rem;color:#D4537E;letter-spacing:.04em;line-height:1;margin-top:.3rem;}
+.wordmark{font-family:'Comfortaa','Quicksand',sans-serif;font-weight:700;font-size:2.7rem;color:#D4537E;letter-spacing:.02em;line-height:1;margin-top:.3rem;}
 .brand-sub{font-family:'Quicksand',sans-serif;font-size:11px;font-weight:500;color:#C99BB0;letter-spacing:.22em;margin-top:.45rem;text-transform:uppercase;}
 .title{font-family:'Cormorant Garamond',serif;font-size:1.25rem;font-weight:300;color:#888;line-height:1.4;margin-top:.9rem;}
 .title em{font-style:italic;color:#D4537E;}
