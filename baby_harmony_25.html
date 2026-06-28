@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-28.7';
+window.APP_VERSION = '2026-06-28.8';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -56,7 +56,7 @@ body{font-family:'DM Sans',sans-serif;background:#fff5f8;min-height:100vh;paddin
 .tab.active{background:#FBEAF0;border-color:#D4537E;color:#D4537E;}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .sbtn{padding:10px 12px;border-radius:8px;border:1px solid #eee;background:#f9f9f9;font-size:13px;color:#333;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;line-height:1.4;}
-.sbtn.active{background:#E1F5EE;border-color:#5DCAA5;color:#0F6E56;}
+.sbtn.active{background:#FBEAF0;border-color:#E89BB4;color:#C03D6B;}
 .ssub{font-size:11px;color:#aaa;margin-top:2px;}
 .upzone{border:1px dashed #F4C0D1;border-radius:8px;padding:1.25rem;text-align:center;cursor:pointer;margin-top:.5rem;}
 .rec-btn{background:none;width:100%;font-family:inherit;}
@@ -72,7 +72,7 @@ body{font-family:'DM Sans',sans-serif;background:#fff5f8;min-height:100vh;paddin
 .upzone p{font-size:13px;color:#888;}
 .upzone strong{color:#D4537E;font-weight:400;}
 input[type=file]{display:none;}
-.upinfo{background:#E1F5EE;border-radius:8px;padding:10px 14px;font-size:13px;color:#0F6E56;margin-top:.75rem;display:none;align-items:center;gap:8px;}
+.upinfo{background:#FBEAF0;border-radius:8px;padding:10px 14px;font-size:13px;color:#C03D6B;margin-top:.75rem;display:none;align-items:center;gap:8px;}
 .divider{height:1px;background:#f0f0f0;margin:.75rem 0;}
 
 /* waveform editor */
@@ -83,9 +83,9 @@ input[type=file]{display:none;}
 .loop-region{position:absolute;top:0;height:100%;background:rgba(212,83,126,0.15);border-left:2px solid #D4537E;border-right:2px solid #D4537E;pointer-events:auto;cursor:grab;}
 .loop-region:active{cursor:grabbing;}
 .music-grid{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
-.phase-drag-hint{font-size:11px;color:#5DCAA5;margin-top:5px;display:none;}
+.phase-drag-hint{font-size:11px;color:#E89BB4;margin-top:5px;display:none;}
 .phase-drag-hint.show{display:block;}
-.detect-info{font-size:12px;color:#0F6E56;background:#E1F5EE;border-radius:6px;padding:8px 12px;margin-top:.75rem;}
+.detect-info{font-size:12px;color:#C03D6B;background:#FBEAF0;border-radius:6px;padding:8px 12px;margin-top:.75rem;}
 .detect-info.warn{color:#854F0B;background:#FAEEDA;}
 .offset-row{display:flex;align-items:center;gap:10px;margin-top:.75rem;}
 .offset-lbl{font-size:12px;color:#888;flex-shrink:0;}
@@ -93,7 +93,7 @@ input[type=file]{display:none;}
 .obtn{padding:6px 12px;border-radius:6px;border:1px solid #eee;background:#f9f9f9;font-size:12px;color:#333;cursor:pointer;font-family:'DM Sans',sans-serif;}
 .obtn:hover{background:#f0f0f0;}
 .obtn.active-o{background:#FBEAF0;border-color:#D4537E;color:#D4537E;}
-.re-detect-btn{padding:7px 14px;border-radius:6px;border:1px solid #5DCAA5;background:#E1F5EE;font-size:12px;color:#0F6E56;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:.75rem;display:flex;align-items:center;gap:6px;}
+.re-detect-btn{padding:7px 14px;border-radius:6px;border:1px solid #E89BB4;background:#FBEAF0;font-size:12px;color:#C03D6B;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:.75rem;display:flex;align-items:center;gap:6px;}
 .offset-row .re-detect-btn{margin-top:0;}
 .fine-tune-summary{font-size:12px;color:#C97AA0;cursor:pointer;user-select:none;list-style:none;display:inline-flex;align-items:center;gap:4px;}
 .fine-tune-summary::before{content:'⚙';font-size:12px;}
@@ -120,7 +120,7 @@ input[type=file]{display:none;}
 
 .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem;}
 .mbtn{padding:10px 6px;border-radius:8px;border:1px solid #eee;background:#f9f9f9;font-size:12px;color:#333;cursor:pointer;text-align:center;font-family:'DM Sans',sans-serif;line-height:1.4;}
-.mbtn.active{background:#E1F5EE;border-color:#5DCAA5;color:#0F6E56;}
+.mbtn.active{background:#FBEAF0;border-color:#E89BB4;color:#C03D6B;}
 .micon{font-size:18px;display:block;margin-bottom:3px;}
 .srow{display:flex;align-items:center;gap:12px;margin-bottom:1rem;}
 .slbl{font-size:12px;color:#888;width:80px;flex-shrink:0;}
@@ -166,8 +166,8 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 .gift-share-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.75rem;}
 .gift-share-btn{padding:10px 4px;border-radius:8px;border:1px solid #eee;background:white;font-size:12px;color:#333;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center;display:flex;align-items:center;justify-content:center;gap:5px;}
 .gift-share-btn:hover{background:#f0f0f0;}
-.audio-link-box{background:#f0f9f6;border:1px solid #5DCAA5;border-radius:8px;padding:.75rem;margin-bottom:.75rem;}
-.audio-link-label{font-size:11px;color:#0F6E56;margin-bottom:6px;font-weight:500;}
+.audio-link-box{background:#FFF5F8;border:1px solid #E89BB4;border-radius:8px;padding:.75rem;margin-bottom:.75rem;}
+.audio-link-label{font-size:11px;color:#C03D6B;margin-bottom:6px;font-weight:500;}
 .upload-status{font-size:12px;color:#aaa;text-align:center;padding:.75rem 0;}
 .upload-status.error{color:#e05;}
 .upload-status.done{display:none;}
@@ -184,11 +184,11 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 .track-panel.show{display:block;}
 .track-item{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;border-radius:8px;border:1px solid #eee;background:#f9f9f9;font-size:13px;color:#333;cursor:pointer;margin-bottom:6px;font-family:'DM Sans',sans-serif;text-align:left;}
 .track-item:hover{background:#f0f0f0;}
-.track-item.active{background:#E1F5EE;border-color:#5DCAA5;color:#0F6E56;}
+.track-item.active{background:#FBEAF0;border-color:#E89BB4;color:#C03D6B;}
 .track-item.loading{opacity:.6;pointer-events:none;}
 .track-item.compat-poor{opacity:.45;}
 .compat-badge{margin-left:auto;flex-shrink:0;font-size:12px;display:flex;align-items:center;gap:3px;white-space:nowrap;}
-.compat-badge.lv3{color:#0F6E56;font-weight:600;}
+.compat-badge.lv3{color:#C03D6B;font-weight:600;}
 .compat-badge.lv2{color:#F5A623;}
 .compat-badge.lv1{color:#bbb;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -381,7 +381,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
     <div class="srow" id="tempoRow" style="display:none"><span class="slbl" id="T17">Tempo</span><input type="range" id="vT" min="60" max="140" value="80" step="1" oninput="onSlider('vT','vTv',' bpm')"><span class="sval" id="vTv">80 bpm</span></div>
     <div class="srow" id="musicBpmRow">
       <span class="slbl" id="T17b">Music BPM</span>
-      <span style="flex:1;font-size:13px;color:#0F6E56;" id="musicBpmLabel">Auto — synced to womb sound</span>
+      <span style="flex:1;font-size:13px;color:#C03D6B;" id="musicBpmLabel">Auto — synced to womb sound</span>
     </div>
     <details id="fineTuneBox" style="margin-top:.5rem;">
       <summary class="fine-tune-summary" id="fineToggleLbl">速さの微調整</summary>
