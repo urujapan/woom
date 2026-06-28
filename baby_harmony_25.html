@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-22.1';
+window.APP_VERSION = '2026-06-22.2';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1358,7 +1358,7 @@ function calcPlaybackRate(){
   return Math.round(bestRate * 1000) / 1000;
 }
 
-document.getElementById('mfi').addEventListener('change',function(){
+var _mfiEl=document.getElementById('mfi'); if(_mfiEl) _mfiEl.addEventListener('change',function(){
   const file=this.files[0]; if(!file) return;
   musicFileBPM = 0; // reset before reading new file
   musicFileBPM = extractBPMFromFilename(file.name);
