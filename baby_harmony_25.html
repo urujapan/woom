@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-28.4';
+window.APP_VERSION = '2026-06-28.5';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -284,7 +284,6 @@ input[type=range]{flex:1;accent-color:#D4537E;}
     </svg>
   </div>
   <div class="wordmark">WooM</div>
-  <div class="brand-sub">Womb · 産む · Woman &amp; Man</div>
   <div class="title" id="T0"><em>A Harmony Only for Baby &amp; Mama</em></div>
   <p class="subtitle" id="T1">Blend womb sounds with music — a one-of-a-kind gift</p>
   <button id="helpOpenBtn" onclick="showHelp()" style="margin-top:.8rem;background:none;border:1.5px solid #F4C0D1;border-radius:20px;padding:5px 14px;font-size:12px;color:#D4537E;cursor:pointer;font-family:'DM Sans',sans-serif;">？ 使い方</button>
