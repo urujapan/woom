@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-28.6';
+window.APP_VERSION = '2026-06-28.7';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -278,12 +278,12 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 <div class="header">
   <div class="logo-mark" aria-hidden="true">
     <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-      <g transform="rotate(12 50 50)">
-        <circle cx="50" cy="50" r="40"/>
+      <circle cx="50" cy="50" r="40"/>
+      <g transform="translate(5,-5) rotate(12 50 50)">
         <path d="M41,30 C33,35 33,47 43,49 C35,52 33,60 39,67 C47,56 59,54 61,45 C63,36 54,27 41,30 Z"/>
         <path d="M43,49 C51,47 56,39 53,32"/>
-        <path d="M39,66 C40,71 41,74 43,77"/>
-        <ellipse cx="39" cy="78" rx="6.2" ry="4.3" transform="rotate(-18 39 78)" fill="currentColor" stroke="none"/>
+        <path d="M39,66 C40,70 41,72 42,74"/>
+        <ellipse cx="39" cy="75" rx="5" ry="3.5" transform="rotate(-18 39 75)" fill="currentColor" stroke="none"/>
       </g>
     </svg>
   </div>
