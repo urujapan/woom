@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-22.2';
+window.APP_VERSION = '2026-06-28.1';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -91,6 +91,9 @@ input[type=file]{display:none;}
 .obtn.active-o{background:#FBEAF0;border-color:#D4537E;color:#D4537E;}
 .re-detect-btn{padding:7px 14px;border-radius:6px;border:1px solid #5DCAA5;background:#E1F5EE;font-size:12px;color:#0F6E56;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:.75rem;display:flex;align-items:center;gap:6px;}
 .offset-row .re-detect-btn{margin-top:0;}
+.fine-tune-summary{font-size:12px;color:#C97AA0;cursor:pointer;user-select:none;list-style:none;display:inline-flex;align-items:center;gap:4px;}
+.fine-tune-summary::before{content:'⚙';font-size:12px;}
+.fine-tune-summary::-webkit-details-marker{display:none;}
 .bpm-adj-btn{min-width:34px;padding:7px 9px;border-radius:6px;border:1px solid #E4A0BC;background:#FBEAF0;font-size:13px;font-weight:600;color:#C03D6B;cursor:pointer;font-family:'DM Sans',sans-serif;line-height:1;}
 .bpm-adj-btn:active{background:#F4D2DF;}
 
@@ -339,17 +342,19 @@ input[type=range]{flex:1;accent-color:#D4537E;}
         <summary style="font-size:11px;color:#bbb;cursor:pointer;user-select:none;">Debug info</summary>
         <div style="font-size:11px;font-family:monospace;color:#888;margin-top:4px;padding:6px 10px;background:#f5f5f5;border-radius:6px;" id="debugInfo">—</div>
       </details>
-      <div class="offset-row" style="margin-top:.75rem;flex-wrap:wrap;align-items:center;gap:6px;">
-        <span style="font-size:13px;color:#D4537E;font-weight:500;" id="bpmAdjDisplay">—</span>
-        <span style="font-size:11px;color:#bbb;" id="bpmAdjHint">速さが合わない時は調整 →</span>
-        <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
-          <button class="bpm-adj-btn" onclick="adjustDetectedBPM('half')" title="半分の速さ（ゆっくり）">×½</button>
-          <button class="bpm-adj-btn" onclick="adjustDetectedBPM(-1)" title="少し遅く">−</button>
-          <button class="bpm-adj-btn" onclick="adjustDetectedBPM(1)" title="少し速く">＋</button>
-          <button class="bpm-adj-btn" onclick="adjustDetectedBPM('double')" title="2倍の速さ（速く）">×2</button>
-          <button class="re-detect-btn" onclick="runDetect()"><i class="ti ti-refresh" style="font-size:14px;"></i> <span id="T_redetect">Re-detect</span></button>
+      <details style="margin-top:.75rem;">
+        <summary class="fine-tune-summary" id="fineToggleLbl">速さの微調整</summary>
+        <div class="offset-row" style="margin-top:.6rem;flex-wrap:wrap;align-items:center;gap:6px;">
+          <span style="font-size:13px;color:#D4537E;font-weight:500;" id="bpmAdjDisplay">—</span>
+          <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
+            <button class="bpm-adj-btn" onclick="adjustDetectedBPM('half')" title="半分の速さ（ゆっくり）">×½</button>
+            <button class="bpm-adj-btn" onclick="adjustDetectedBPM(-1)" title="少し遅く">−</button>
+            <button class="bpm-adj-btn" onclick="adjustDetectedBPM(1)" title="少し速く">＋</button>
+            <button class="bpm-adj-btn" onclick="adjustDetectedBPM('double')" title="2倍の速さ（速く）">×2</button>
+            <button class="re-detect-btn" onclick="runDetect()"><i class="ti ti-refresh" style="font-size:14px;"></i> <span id="T_redetect">Re-detect</span></button>
+          </div>
         </div>
-      </div>
+      </details>
     </div>
 
   </div>
@@ -529,7 +534,7 @@ const PREV={en:'Check heartbeat',ja:'心音を確認',zh:'确认心音','zh-TW':
 const READY={en:'Ready to play',ja:'再生する準備ができています',zh:'准备好播放','zh-TW':'準備好播放',ko:'재생 준비 완료',es:'Listo para reproducir',fr:'Prêt à jouer',de:'Bereit zum Abspielen',pt:'Pronto para reproduzir',hi:'बजाने के लिए तैयार',id:'Siap dimainkan',it:'Pronto per la riproduzione',th:'พร้อมเล่น',vi:'Sẵn sàng phát',ru:'Готово к воспроизведению'};
 const NOW={en:'Now playing...',ja:'再生中...',zh:'播放中...','zh-TW':'播放中...',ko:'재생 중...',es:'Reproduciendo...',fr:'Lecture en cours...',de:'Wird abgespielt...',pt:'Reproduzindo...',hi:'अभी बज रहा है...',id:'Sedang diputar...',it:'In riproduzione...',th:'กำลังเล่น...',vi:'Đang phát...',ru:'Воспроизведение...'};
 // ── Robustness UI strings (BPM adjust hint, fallbacks, file-format error) ──
-const BPMHINT={en:'Tempo off? Adjust →',ja:'速さが合わない時は調整 →',zh:'速度不对？点此调整 →','zh-TW':'速度不對？點此調整 →',ko:'속도가 안 맞으면 조정 →',es:'¿Ritmo no coincide? Ajusta →',fr:'Tempo incorrect ? Ajustez →',de:'Tempo passt nicht? Anpassen →',pt:'Ritmo errado? Ajuste →',hi:'गति गलत? समायोजित करें →',id:'Tempo meleset? Sesuaikan →',it:'Tempo errato? Regola →',th:'จังหวะไม่ตรง? ปรับ →',vi:'Sai nhịp? Điều chỉnh →',ru:'Темп не совпадает? Настройте →'};
+const FINEOPT={en:'Fine-tune speed',ja:'速さの微調整',zh:'微调速度','zh-TW':'微調速度',ko:'속도 미세 조정',es:'Ajuste fino de velocidad',fr:'Réglage fin du tempo',de:'Tempo feinjustieren',pt:'Ajuste fino da velocidade',hi:'गति को बारीकी से समायोजित करें',id:'Penyetelan halus tempo',it:'Regolazione fine velocità',th:'ปรับความเร็วละเอียด',vi:'Tinh chỉnh tốc độ',ru:'Точная настройка темпа'};
 const FB_NODET={en:"Couldn't auto-detect. Adjust the BPM manually below.",ja:'自動解析できませんでした。下のBPMボタンで手動調整してください。',zh:'无法自动检测。请用下方按钮手动调整 BPM。','zh-TW':'無法自動偵測。請用下方按鈕手動調整 BPM。',ko:'자동 감지에 실패했습니다. 아래 BPM 버튼으로 수동 조정하세요.',es:'No se pudo detectar. Ajusta el BPM manualmente abajo.',fr:'Détection impossible. Ajustez le BPM manuellement ci-dessous.',de:'Erkennung fehlgeschlagen. BPM unten manuell anpassen.',pt:'Não foi possível detectar. Ajuste o BPM manualmente abaixo.',it:'Rilevamento non riuscito. Regola il BPM manualmente qui sotto.',hi:'स्वतः पहचान विफल। नीचे BPM मैन्युअल रूप से समायोजित करें।',id:'Deteksi otomatis gagal. Sesuaikan BPM secara manual di bawah.',th:'ตรวจจับอัตโนมัติไม่ได้ ปรับ BPM ด้วยตนเองด้านล่าง',vi:'Không thể tự nhận diện. Hãy chỉnh BPM thủ công bên dưới.',ru:'Не удалось определить. Настройте BPM вручную ниже.'};
 const FB_SHORT={en:'Clip too short or quiet to auto-detect. Adjust the BPM manually.',ja:'音が短い/小さいため自動解析できませんでした。BPMを手動調整してください。',zh:'音频太短或太轻，无法自动检测。请手动调整 BPM。','zh-TW':'音訊太短或太輕，無法自動偵測。請手動調整 BPM。',ko:'소리가 짧거나 작아 자동 감지에 실패했습니다. BPM을 수동 조정하세요.',es:'Audio muy corto o bajo para detectar. Ajusta el BPM manualmente.',fr:'Audio trop court ou faible. Ajustez le BPM manuellement.',de:'Audio zu kurz oder leise. BPM manuell anpassen.',pt:'Áudio curto ou baixo demais. Ajuste o BPM manualmente.',it:'Audio troppo corto o basso. Regola il BPM manualmente.',hi:'ऑडियो बहुत छोटा/धीमा है। BPM मैन्युअल रूप से समायोजित करें।',id:'Audio terlalu pendek/pelan. Sesuaikan BPM secara manual.',th:'เสียงสั้นหรือเบาเกินไป ปรับ BPM ด้วยตนเอง',vi:'Âm thanh quá ngắn/nhỏ. Hãy chỉnh BPM thủ công.',ru:'Звук слишком короткий/тихий. Настройте BPM вручную.'};
 const BADFMT={en:"Couldn't read this file. Please choose an audio file (mp3 / wav / m4a).",ja:'このファイルは読み込めませんでした。mp3 / wav / m4a などの音声ファイルを選んでください。',zh:'无法读取此文件。请选择音频文件（mp3 / wav / m4a）。','zh-TW':'無法讀取此檔案。請選擇音訊檔案（mp3 / wav / m4a）。',ko:'이 파일을 읽을 수 없습니다. 오디오 파일(mp3 / wav / m4a)을 선택하세요.',es:'No se pudo leer el archivo. Elige un archivo de audio (mp3 / wav / m4a).',fr:'Lecture du fichier impossible. Choisissez un fichier audio (mp3 / wav / m4a).',de:'Datei konnte nicht gelesen werden. Bitte Audiodatei wählen (mp3 / wav / m4a).',pt:'Não foi possível ler o arquivo. Escolha um arquivo de áudio (mp3 / wav / m4a).',it:'Impossibile leggere il file. Scegli un file audio (mp3 / wav / m4a).',hi:'यह फ़ाइल नहीं पढ़ी जा सकी। कृपया ऑडियो फ़ाइल (mp3 / wav / m4a) चुनें।',id:'Tidak dapat membaca file ini. Pilih file audio (mp3 / wav / m4a).',th:'อ่านไฟล์นี้ไม่ได้ กรุณาเลือกไฟล์เสียง (mp3 / wav / m4a)',vi:'Không đọc được tệp này. Hãy chọn tệp âm thanh (mp3 / wav / m4a).',ru:'Не удалось прочитать файл. Выберите аудиофайл (mp3 / wav / m4a).'};
@@ -568,7 +573,7 @@ function L(l){
   document.querySelectorAll('.mn').forEach(el=>el.textContent=mn(el.dataset.k));
   document.getElementById('npTitle').textContent=playing?NOW[l]:READY[l];
   document.getElementById('phaseHint').textContent=DRAG[l]||DRAG.en;
-  try{ document.getElementById('bpmAdjHint').textContent=BPMHINT[l]||BPMHINT.en; }catch(e){}
+  try{ document.getElementById('fineToggleLbl').textContent=FINEOPT[l]||FINEOPT.en; }catch(e){}
   document.getElementById('wombPrevLbl').textContent=PREV[l]||PREV.en;
   document.getElementById('recLbl').textContent=REC[l]||REC.en;
   try{ var h=_helpI18n[l]||_helpI18n.en; document.getElementById('helpOpenBtn').textContent='？ '+h.title; }catch(e){}
