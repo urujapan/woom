@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-28.19';
+window.APP_VERSION = '2026-06-28.20';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -376,7 +376,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
     <div class="mgrid">
       <button class="mbtn active" onclick="pickMusic(this,'lullaby')"><span class="micon"><i class="ti ti-moon"></i></span><span class="mn" data-k="lullaby">子守唄</span></button>
       <button class="mbtn" onclick="pickMusic(this,'ambient')"><span class="micon"><i class="ti ti-sparkles"></i></span><span class="mn" data-k="ambient">アンビエント</span></button>
-      <button class="mbtn" onclick="pickMusic(this,'classical')"><span class="micon"><i class="ti ti-music"></i></span><span class="mn" data-k="classical">クラシック</span></button>
+      <button class="mbtn" onclick="pickMusic(this,'classical')"><span class="micon"><i class="ti ti-piano"></i></span><span class="mn" data-k="classical">クラシック</span></button>
       <button class="mbtn" onclick="pickMusic(this,'world')"><span class="micon"><i class="ti ti-world"></i></span><span class="mn" data-k="world">ワールド</span></button>
       <button class="mbtn" onclick="pickMusic(this,'electro')"><span class="micon"><i class="ti ti-bolt"></i></span><span class="mn" data-k="electro">エレクトロ</span></button>
       <button class="mbtn" onclick="pickMusic(this,'other')"><span class="micon"><i class="ti ti-dots"></i></span><span class="mn" data-k="none">その他</span></button>
@@ -1184,35 +1184,35 @@ function normalizeBuffer(buffer, targetRMS, boostOnly){
 const MUSIC_LIBRARY = {
   lullaby:[
     {id:'lu1', title:'Fairy',      file:'WMSL_Fairy_BPM138 1.mp3',  bpm:138},
-    {id:'lu2', title:'Twinkle',    file:'WMSL_Twinkle_BPM152.mp3',  bpm:152},
     {id:'lu3', title:'Moms Echo',  file:'WMSL_Moms Echo_BPM175.mp3',bpm:175},
+    {id:'lu2', title:'Twinkle',    file:'WMSL_Twinkle_BPM152.mp3',  bpm:152},
   ],
   ambient:[
     {id:'am1', title:'Ambient Piano',    file:'WMSL_Ambient Piano_BPM138.mp3',    bpm:138},
-    {id:'am2', title:'Memory of Birth',  file:'WMSL_Memory of Birth_BPM150.mp3',  bpm:150},
     {id:'am3', title:'Floating in Light',file:'WMSL_Floating in Light_BPM140.mp3',bpm:140},
+    {id:'am2', title:'Memory of Birth',  file:'WMSL_Memory of Birth_BPM150.mp3',  bpm:150},
     {id:'cl1', title:'Misty Forest',     file:'WMSL_Misty Forest_BPM140.mp3',     bpm:140},
   ],
   classical:[
-    {id:'cl2', title:'Elegant Violin', file:'WMSL_Elegant Violin_BPM138.mp3', bpm:138},
     {id:'ot3', title:'Dramatic Piano', file:'WMSL_Dramatic Piano_BPM138.mp3', bpm:138},
+    {id:'cl2', title:'Elegant Violin', file:'WMSL_Elegant Violin_BPM138.mp3', bpm:138},
     {id:'ot5', title:'Maternal Love',  file:'WMSL_Maternal Love_BPM138.mp3',  bpm:138},
   ],
   world:[
+    {id:'wo4', title:'A Tiny Grasp',       file:'WMSL_A Tiny Grasp_BPM148.mp3',           bpm:148},
     {id:'wo1', title:'Auspicious Gamelan', file:'WMSL_Auspicious Gamelan_BPM150.mp3',    bpm:150},
+    {id:'wo5', title:'Bem-vindo ao mundo!',file:'WMSL_Bem-vindo ao mundo!_BPM150.9.mp3',  bpm:151},
     {id:'wo2', title:'Morning Glow',       file:'WMSL_Morning glow_BPM150.mp3',           bpm:150},
     {id:'wo3', title:'My Dear Island',     file:'WMSL_My Dear Island_BPM140.mp3',         bpm:140},
-    {id:'wo4', title:'A Tiny Grasp',       file:'WMSL_A Tiny Grasp_BPM148.mp3',           bpm:148},
-    {id:'wo5', title:'Bem-vindo ao mundo!',file:'WMSL_Bem-vindo ao mundo!_BPM150.9.mp3',  bpm:151},
   ],
   electro:[
     {id:'el1', title:'Hyper Baby!',      file:'WMSL_Hyper Baby!_BPM173.mp3',      bpm:173},
     {id:'el2', title:'Infinite Horizon', file:'WMSL_Infinite Horizon_BPM140.mp3', bpm:140},
   ],
   other:[
-    {id:'ot1', title:'New Voyage',           file:'WMSL_New Voyage_BPM149.mp3',           bpm:149},
     {id:'ot2', title:'Across the Blue',      file:'WMSL_Across the Blue_BPM148.mp3',      bpm:148},
     {id:'ot4', title:'Heart Warming Guitar', file:'WMSL_Heart Warming Guitar_BPM138.mp3', bpm:138},
+    {id:'ot1', title:'New Voyage',           file:'WMSL_New Voyage_BPM149.mp3',           bpm:149},
   ],
 };
 const musicBufferCache = {};
