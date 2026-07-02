@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-29.2';
+window.APP_VERSION = '2026-06-29.3';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -340,6 +340,11 @@ input[type=range]{flex:1;accent-color:#D4537E;}
         <strong id="recLbl">Tap to record</strong><br>
         <span id="recTime" style="font-size:11px;color:#aaa;">0:00</span>
       </button>
+      <div id="bellyRow" style="display:flex;gap:16px;justify-content:center;align-items:center;margin-top:8px;flex-wrap:wrap;">
+        <label style="font-size:12px;color:#C03D6B;display:inline-flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="bellyMode" style="accent-color:#D4537E;"><span id="bellyModeLbl">🤰 お腹録音（増幅）</span></label>
+        <label style="font-size:12px;color:#888;display:inline-flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="bellyMonitor" style="accent-color:#D4537E;"><span id="bellyMonLbl">🎧 モニター</span></label>
+      </div>
+      <div id="bellyNote" style="font-size:10px;color:#bbb;text-align:center;margin-top:4px;line-height:1.4;">医療用ではありません。静かな部屋で、スマホをお腹に直接あててお試しください（イヤホン推奨）。</div>
     </div>
     <!-- Recording history (outside uploadZoneWrap so always visible) -->
     <div id="recHistory" style="display:none;margin-top:8px;">
@@ -558,6 +563,9 @@ const REC_HIST={en:'📼 Recording History',ja:'📼 録音履歴',zh:'📼 录�
 const REC_USE={en:'Use',ja:'使う',zh:'使用','zh-TW':'使用',ko:'사용',es:'Usar',fr:'Utiliser',de:'Nutzen',pt:'Usar',hi:'उपयोग',id:'Gunakan',it:'Usa',th:'ใช้',vi:'Dùng',ru:'Использовать'};
 const REC_CLEAR={en:'Clear all',ja:'すべて削除',zh:'全部清除','zh-TW':'全部清除',ko:'전체 삭제',es:'Borrar todo',fr:'Tout effacer',de:'Alle löschen',pt:'Limpar tudo',hi:'सभी हटाएं',id:'Hapus semua',it:'Cancella tutto',th:'ล้างทั้งหมด',vi:'Xóa tất cả',ru:'Очистить всё'};
 const REC_CLEAR_CONFIRM={en:'Delete all recordings?',ja:'録音履歴をすべて削除しますか？',zh:'删除所有录音？','zh-TW':'刪除所有錄音？',ko:'모든 녹음을 삭제할까요?',es:'¿Eliminar todas las grabaciones?',fr:'Supprimer tous les enregistrements ?',de:'Alle Aufnahmen löschen?',pt:'Excluir todas as gravações?',hi:'सभी रिकॉर्डिंग हटाएं?',id:'Hapus semua rekaman?',it:'Eliminare tutte le registrazioni?',th:'ลบการบันทึกทั้งหมด?',vi:'Xóa tất cả bản ghi âm?',ru:'Удалить все записи?'};
+const BELLY_MODE={en:'🤰 Belly mode (boost)',ja:'🤰 お腹録音（増幅）',zh:'🤰 腹部录音（增幅）','zh-TW':'🤰 腹部錄音（增幅）',ko:'🤰 배 녹음(증폭)',es:'🤰 Modo vientre (amplif.)',fr:'🤰 Mode ventre (ampli.)',de:'🤰 Bauch-Modus (Boost)',pt:'🤰 Modo barriga (amplif.)',hi:'🤰 पेट मोड (बूस्ट)',id:'🤰 Mode perut (boost)',it:'🤰 Modo pancia (boost)',th:'🤰 โหมดหน้าท้อง (ขยาย)',vi:'🤰 Chế độ bụng (khuếch đại)',ru:'🤰 Режим живота (усил.)'};
+const BELLY_MON={en:'🎧 Monitor',ja:'🎧 モニター',zh:'🎧 监听','zh-TW':'🎧 監聽',ko:'🎧 모니터',es:'🎧 Monitor',fr:'🎧 Écoute',de:'🎧 Mithören',pt:'🎧 Monitor',hi:'🎧 मॉनिटर',id:'🎧 Monitor',it:'🎧 Monitor',th:'🎧 มอนิเตอร์',vi:'🎧 Nghe thử',ru:'🎧 Мониторинг'};
+const BELLY_NOTE={en:'Not a medical device. Try in a quiet room with the phone directly on your belly (headphones recommended).',ja:'医療用ではありません。静かな部屋で、スマホをお腹に直接あててお試しください（イヤホン推奨）。',zh:'非医疗设备。请在安静房间中将手机直接贴在腹部尝试（建议用耳机）。','zh-TW':'非醫療設備。請在安靜房間中將手機直接貼在腹部嘗試（建議用耳機）。',ko:'의료기기가 아닙니다. 조용한 방에서 휴대폰을 배에 직접 대고 시도하세요(이어폰 권장).',es:'No es un dispositivo médico. Prueba en una sala tranquila con el móvil directamente sobre el vientre (auriculares recomendados).',fr:'Pas un dispositif médical. Essayez dans une pièce calme avec le téléphone directement sur le ventre (écouteurs recommandés).',de:'Kein Medizinprodukt. In einem ruhigen Raum das Handy direkt auf den Bauch legen (Kopfhörer empfohlen).',pt:'Não é um dispositivo médico. Teste em um ambiente silencioso com o celular diretamente na barriga (fones recomendados).',hi:'यह चिकित्सा उपकरण नहीं है। शांत कमरे में फ़ोन को सीधे पेट पर रखकर आज़माएं (ईयरफ़ोन सुझावित)।',id:'Bukan alat medis. Coba di ruangan tenang dengan ponsel langsung di perut (disarankan earphone).',it:'Non è un dispositivo medico. Prova in una stanza silenziosa con il telefono direttamente sulla pancia (cuffie consigliate).',th:'ไม่ใช่อุปกรณ์ทางการแพทย์ ลองในห้องเงียบโดยวางมือถือแนบหน้าท้องโดยตรง (แนะนำให้ใช้หูฟัง)',vi:'Không phải thiết bị y tế. Hãy thử trong phòng yên tĩnh, đặt điện thoại trực tiếp lên bụng (nên dùng tai nghe).',ru:'Не медицинский прибор. Попробуйте в тихой комнате, прижав телефон к животу (рекомендуются наушники).'};
 const PREV={en:'Check heartbeat',ja:'心音を確認',zh:'确认心音','zh-TW':'確認心音',ko:'심음 확인',es:'Verificar latido',fr:'Vérifier le battement',de:'Herzschlag prüfen',pt:'Verificar batimento',hi:'दिल की धड़कन जांचें',id:'Periksa detak jantung',it:'Verifica battito',th:'ตรวจสอบเสียงหัวใจ',vi:'Kiểm tra nhịp tim',ru:'Проверить сердцебиение'};
 const READY={en:'Ready to play',ja:'再生する準備ができています',zh:'准备好播放','zh-TW':'準備好播放',ko:'재생 준비 완료',es:'Listo para reproducir',fr:'Prêt à jouer',de:'Bereit zum Abspielen',pt:'Pronto para reproduzir',hi:'बजाने के लिए तैयार',id:'Siap dimainkan',it:'Pronto per la riproduzione',th:'พร้อมเล่น',vi:'Sẵn sàng phát',ru:'Готово к воспроизведению'};
 const NOW={en:'Now playing...',ja:'再生中...',zh:'播放中...','zh-TW':'播放中...',ko:'재생 중...',es:'Reproduciendo...',fr:'Lecture en cours...',de:'Wird abgespielt...',pt:'Reproduzindo...',hi:'अभी बज रहा है...',id:'Sedang diputar...',it:'In riproduzione...',th:'กำลังเล่น...',vi:'Đang phát...',ru:'Воспроизведение...'};
@@ -604,6 +612,7 @@ function L(l){
   try{ document.getElementById('fineToggleLbl').textContent=FINEOPT[l]||FINEOPT.en; }catch(e){}
   document.getElementById('wombPrevLbl').textContent=PREV[l]||PREV.en;
   document.getElementById('recLbl').textContent=REC[l]||REC.en;
+  try{ document.getElementById('bellyModeLbl').textContent=BELLY_MODE[l]||BELLY_MODE.en; document.getElementById('bellyMonLbl').textContent=BELLY_MON[l]||BELLY_MON.en; document.getElementById('bellyNote').textContent=BELLY_NOTE[l]||BELLY_NOTE.en; }catch(e){}
   try{ var h=_helpI18n[l]||_helpI18n.en; document.getElementById('helpOpenBtn').textContent='？ '+h.title; }catch(e){}
   try{ _renderRecHistory(); }catch(e){}
   // Gift section labels
@@ -873,7 +882,7 @@ document.getElementById('fi').addEventListener('change',function(){
 });
 
 // ── Recording + IndexedDB history ───────────────────────────────────────
-var _recMR=null, _recChunks=[], _recTimer=null, _recSec=0, _recStream=null;
+var _recMR=null, _recChunks=[], _recTimer=null, _recSec=0, _recStream=null, _bellyDest=null;
 
 // IndexedDB
 function _openRecDB(){
@@ -949,14 +958,34 @@ async function toggleRec(){
     _recMR.stop();
     return;
   }
+  var belly = document.getElementById('bellyMode') && document.getElementById('bellyMode').checked;
   try{
-    _recStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    // Belly mode: disable auto processing so we control gain/filtering ourselves
+    _recStream=await navigator.mediaDevices.getUserMedia({audio: belly ? {echoCancellation:false,noiseSuppression:false,autoGainControl:false} : true});
   }catch(e){
     toast('Microphone access denied.');
     return;
   }
   _recChunks=[]; _recSec=0;
-  _recMR=new MediaRecorder(_recStream);
+  var recordStream=_recStream;
+  _bellyDest=null;
+  if(belly){
+    // Amplify + low-pass to emphasise the faint low-frequency heartbeat thump.
+    if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended'){ try{ AC.resume(); }catch(e){} }
+    var _src=AC.createMediaStreamSource(_recStream);
+    var _hp=AC.createBiquadFilter(); _hp.type='highpass'; _hp.frequency.value=18; // drop DC rumble
+    var _lp=AC.createBiquadFilter(); _lp.type='lowpass'; _lp.frequency.value=120;  // keep heartbeat band
+    var _lp2=AC.createBiquadFilter(); _lp2.type='lowpass'; _lp2.frequency.value=120;
+    var _comp=AC.createDynamicsCompressor(); _comp.threshold.value=-48; _comp.ratio.value=8; _comp.attack.value=0.003; _comp.release.value=0.25;
+    var _gain=AC.createGain(); _gain.gain.value=14; // heavy boost
+    _bellyDest=AC.createMediaStreamDestination();
+    _src.connect(_hp); _hp.connect(_lp); _lp.connect(_lp2); _lp2.connect(_comp); _comp.connect(_gain); _gain.connect(_bellyDest);
+    var mon=document.getElementById('bellyMonitor') && document.getElementById('bellyMonitor').checked;
+    if(mon){ _gain.connect(AC.destination); } // headphones only — avoids feedback
+    recordStream=_bellyDest.stream;
+  }
+  _recMR=new MediaRecorder(recordStream);
   _recMR.ondataavailable=e=>{ if(e.data.size>0) _recChunks.push(e.data); };
   _recMR.onstop=function(){
     clearInterval(_recTimer);
