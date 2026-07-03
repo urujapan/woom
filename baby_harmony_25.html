@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-29.7';
+window.APP_VERSION = '2026-06-29.8';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -587,6 +587,7 @@ var musicPhaseOffset=0; // phase offset 0.0–1.0 (fraction of one beat)
 var ptimer=null, playing=false, musicStartAt=0, progMusicDur=0;
 var detectedBPM=0, loopStart=0, loopDur=0;
 var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
+var _peakOffsetSec=0; // time from loop start to the heartbeat peak (for phase re-scaling)
 const CROSSFADE_MS=80;
 const INTRO_BARS=4;  // bars of heart-only intro (1 bar = 4 beats)
 const FADEIN_BARS=2; // first 2 bars = womb-sound fade-in
@@ -2083,6 +2084,7 @@ function _runDetectCore(){
       peakOffsetBeats = Math.max(0, Math.min(0.95, Math.round(peakOffsetBeats * 32) / 32));
       BASE_MUSIC_OFFSET     = peakOffsetBeats;
       musicStartOffsetBeats = peakOffsetBeats;
+      _peakOffsetSec        = peakOffsetBeats * beatPeriodSec; // fixed time — rescaled on manual BPM change
     } else {
       // Fallback: no onset found — use window scorer result unchanged
       loopStart = bestStartFrame * frameSec;
@@ -2090,6 +2092,7 @@ function _runDetectCore(){
         loopStart = Math.max(0, rawBuffer.duration - loopDur);
       }
       musicStartOffsetBeats = BASE_MUSIC_OFFSET;
+      _peakOffsetSec        = BASE_MUSIC_OFFSET * beatPeriodSec;
     }
   }
 
@@ -2342,6 +2345,13 @@ function adjustDetectedBPM(delta){
     }
     buildLoopBuffer();
     updateLoopRegion();
+  }
+  // Keep the music aligned to the heartbeat PEAK after a tempo change: the peak
+  // is at a fixed time in the audio, so re-express its offset in the new beats.
+  if(_peakOffsetSec>0){
+    const nb=60/detectedBPM;
+    musicStartOffsetBeats=Math.max(0,Math.min(0.95,Math.round((_peakOffsetSec/nb)*32)/32));
+    BASE_MUSIC_OFFSET=musicStartOffsetBeats;
   }
   document.getElementById('bpmAdjDisplay').textContent=detectedBPM+' bpm';
   document.getElementById('debugInfo').textContent=
