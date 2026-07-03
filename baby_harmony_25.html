@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-29.9';
+window.APP_VERSION = '2026-06-29.10';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2149,36 +2149,21 @@ function buildLoopBuffer(){
   // the loop boundary, causing audible stuttering on tight heartbeat loops.
   const nc=rawBuffer.numberOfChannels;
   const outBuf=AC.createBuffer(nc,actualDur,sr);
-  // Seamless loop needs buffer[0] to continue smoothly from buffer[last]. When
-  // Web Audio wraps (last sample → sample 0), that is only click-free if
-  // buffer[0] equals the audio that naturally follows buffer[last] in the
-  // source. So crossfade the loop HEAD with the material ONE period BEYOND the
-  // loop end: at i=0 the head is 100% "beyond" (= src[loopEnd], which follows
-  // src[loopEnd-1]) → the wrap is continuous. Falls back to a tail→head fade
-  // only when the loop reaches the end of the recording (no material beyond).
-  const haveBeyond = (startSample + actualDur + xfSamples) <= rawBuffer.length;
+  // Click-free loop: real heartbeats aren't perfectly periodic, so the loop END
+  // rarely lands in true silence — it can sit on a decaying heart-sound tail.
+  // Crossfading that non-silent tail into the head injected an audible blip
+  // every loop. Instead, taper BOTH ends to exact zero with a short raised-
+  // cosine fade, so the wrap is always 0→0 — guaranteed no click. The fade is
+  // short (~7 ms) so it reads as a clean seam, not a dip/stutter.
+  const fadeN=Math.max(1, Math.min(Math.floor(sr*0.007), Math.floor(actualDur/4)));
   for(let ch=0;ch<nc;ch++){
     const src=rawBuffer.getChannelData(ch);
     const dst=outBuf.getChannelData(ch);
     for(let i=0;i<actualDur;i++) dst[i]=src[startSample+i];
-    if(haveBeyond){
-      for(let i=0;i<xfSamples;i++){
-        const t=i/xfSamples;                    // 0→1
-        const gHead   = Math.sin(t*Math.PI/2);  // 0→1  (equal-power)
-        const gBeyond = Math.cos(t*Math.PI/2);  // 1→0
-        const headSamp   = src[startSample+i];
-        const beyondSamp = src[startSample+actualDur+i]; // one period later
-        dst[i] = headSamp*gHead + beyondSamp*gBeyond;
-      }
-    } else {
-      // Fallback: tail→head crossfade at the end of the buffer.
-      for(let i=0;i<xfSamples;i++){
-        const pos=actualDur-xfSamples+i;
-        const t=i/xfSamples;
-        const gHead=Math.sin(t*Math.PI/2);
-        const gTail=Math.cos(t*Math.PI/2);
-        dst[pos]=src[startSample+pos]*gTail+src[startSample+i]*gHead;
-      }
+    for(let i=0;i<fadeN;i++){
+      const g=0.5-0.5*Math.cos(Math.PI*i/fadeN); // 0→1 raised cosine
+      dst[i]             *= g; // fade in from zero
+      dst[actualDur-1-i] *= g; // fade out to zero (symmetric)
     }
   }
   loopBuffer=outBuf;
