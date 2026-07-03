@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-29.4';
+window.APP_VERSION = '2026-06-29.5';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -765,9 +765,11 @@ async function pickHeartbeatSample(btn, filename, knownBpm=0){
     drawWaveform(buf);
     initGridDrag();
     runDetect();
-    // If a known BPM was provided and auto-detection is significantly off,
-    // force the correct value and rebuild the loop buffer.
-    if(knownBpm > 0 && Math.abs(detectedBPM - knownBpm) / knownBpm > 0.10){
+    // Samples have an authoritative labelled BPM (from the file/button), so
+    // always snap to it when auto-detection differs — even slightly. A small
+    // BPM error (e.g. 146 vs 138) makes the 4-beat loop the wrong length and
+    // throws off the sync with the (tempo-matched) music.
+    if(knownBpm > 0 && Math.abs(detectedBPM - knownBpm) >= 1){
       const delta = knownBpm - detectedBPM;
       adjustDetectedBPM(delta);
     }
