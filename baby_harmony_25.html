@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-29.6';
+window.APP_VERSION = '2026-06-29.7';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2068,13 +2068,21 @@ function _runDetectCore(){
         loopStart = Math.max(0, rawBuffer.duration - loopDur);
       }
 
-      // Set music offset so downbeat aligns with the lub onset
-      const lubOffsetSec   = lubOnsetTime - loopStart;
-      const lubOffsetBeats = lubOffsetSec / beatPeriodSec;
-      // Quantise to nearest 1/8 beat; clamp [0, 0.875]
-      const lubQ = Math.max(0, Math.min(0.875, Math.round(lubOffsetBeats * 8) / 8));
-      BASE_MUSIC_OFFSET     = lubQ;
-      musicStartOffsetBeats = lubQ;
+      // Align the music downbeat to the LUB PEAK (the audible "thump"), not the
+      // onset/loop seam. The onset is where sound begins; the peak (loudest
+      // point) is what the ear locks onto, and it lands a little later — so
+      // aligning to the onset made the heartbeat feel behind the beat.
+      const peakWin = Math.min(beatPeriodFrames, Math.floor(0.22 / frameSec));
+      let lubPeakFrame = lubOnsetFrame, lubPeakVal = env[lubOnsetFrame];
+      for(let f = lubOnsetFrame; f < Math.min(activeEndFrame, lubOnsetFrame + peakWin); f++){
+        if(env[f] > lubPeakVal){ lubPeakVal = env[f]; lubPeakFrame = f; }
+      }
+      const peakTime = lubPeakFrame * frameSec;
+      let peakOffsetBeats = (peakTime - loopStart) / beatPeriodSec;
+      // keep within one beat; light 1/32-beat quantise for stability
+      peakOffsetBeats = Math.max(0, Math.min(0.95, Math.round(peakOffsetBeats * 32) / 32));
+      BASE_MUSIC_OFFSET     = peakOffsetBeats;
+      musicStartOffsetBeats = peakOffsetBeats;
     } else {
       // Fallback: no onset found — use window scorer result unchanged
       loopStart = bestStartFrame * frameSec;
