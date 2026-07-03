@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-29.5';
+window.APP_VERSION = '2026-06-29.6';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -586,6 +586,7 @@ var musicStartOffsetBeats=BASE_MUSIC_OFFSET;
 var musicPhaseOffset=0; // phase offset 0.0–1.0 (fraction of one beat)
 var ptimer=null, playing=false, musicStartAt=0, progMusicDur=0;
 var detectedBPM=0, loopStart=0, loopDur=0;
+var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
 const CROSSFADE_MS=80;
 const INTRO_BARS=4;  // bars of heart-only intro (1 bar = 4 beats)
 const FADEIN_BARS=2; // first 2 bars = womb-sound fade-in
@@ -764,15 +765,11 @@ async function pickHeartbeatSample(btn, filename, knownBpm=0){
     document.getElementById('waveformWrap').classList.add('show');
     drawWaveform(buf);
     initGridDrag();
+    // Samples have an authoritative labelled BPM: feed it to runDetect so the
+    // loop window, lub position and music phase offset are all computed at the
+    // correct tempo from the start (avoids a stale phase from snapping later).
+    _knownBPM = knownBpm || 0;
     runDetect();
-    // Samples have an authoritative labelled BPM (from the file/button), so
-    // always snap to it when auto-detection differs — even slightly. A small
-    // BPM error (e.g. 146 vs 138) makes the 4-beat loop the wrong length and
-    // throws off the sync with the (tempo-matched) music.
-    if(knownBpm > 0 && Math.abs(detectedBPM - knownBpm) >= 1){
-      const delta = knownBpm - detectedBPM;
-      adjustDetectedBPM(delta);
-    }
     document.getElementById('tempoRow').style.display = 'none';
     document.getElementById('musicBpmRow').style.display = 'flex';
     updateMusicBpmLabel();
@@ -861,6 +858,7 @@ function _normalizeBuffer(buf){
 
 function loadWombBuffer(arrayBuffer, name){
   if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
+  _knownBPM=0; // uploads/recordings have no authoritative BPM
   AC.decodeAudioData(arrayBuffer, function(buf){
     _normalizeBuffer(buf);
     rawBuffer=buf; cs='uploaded';
@@ -1909,6 +1907,8 @@ function _runDetectCore(){
   }
 
   detectedBPM = bpmFinal;
+  // Samples: trust the labelled BPM so the loop window & phase use the right tempo.
+  if(_knownBPM > 0) detectedBPM = _knownBPM;
 
   // ── Step 5: find best 4-beat loop window ─────────────────────────────
   // Approach: sliding window over the RMS envelope (frame-based, no peak list).
