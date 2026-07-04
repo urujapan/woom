@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.1';
+window.APP_VERSION = '2026-07-04.2';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2185,7 +2185,7 @@ function buildLoopBuffer(){
   // every loop. Instead, taper BOTH ends to exact zero with a short raised-
   // cosine fade, so the wrap is always 0→0 — guaranteed no click. The fade is
   // short (~7 ms) so it reads as a clean seam, not a dip/stutter.
-  const fadeN=Math.max(1, Math.min(Math.floor(sr*0.010), Math.floor(actualDur/4)));
+  const fadeN=Math.max(1, Math.min(Math.floor(sr*0.005), Math.floor(actualDur/4)));
   for(let ch=0;ch<nc;ch++){
     const src=rawBuffer.getChannelData(ch);
     const dst=outBuf.getChannelData(ch);
