@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.2';
+window.APP_VERSION = '2026-07-04.3';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -100,6 +100,12 @@ input[type=file]{display:none;}
 .fine-tune-summary{font-size:12px;color:#C97AA0;cursor:pointer;user-select:none;list-style:none;display:inline-flex;align-items:center;gap:4px;}
 .fine-tune-summary::before{content:'⚙';font-size:12px;}
 .fine-tune-summary::-webkit-details-marker{display:none;}
+.rec-method-row{display:flex;gap:8px;}
+.rec-method{flex:1;padding:9px 8px;border-radius:8px;border:1px solid #eee;background:#f9f9f9;font-size:12px;color:#888;cursor:pointer;text-align:center;font-family:'Baloo 2','DM Sans',sans-serif;line-height:1.3;}
+.rec-method.active{background:#FBEAF0;border-color:#E89BB4;color:#C03D6B;}
+.sample-summary{font-size:12px;color:#C97AA0;cursor:pointer;user-select:none;list-style:none;display:inline-flex;align-items:center;gap:4px;}
+.sample-summary::before{content:'🫀';font-size:12px;}
+.sample-summary::-webkit-details-marker{display:none;}
 .bpm-adj-btn{min-width:34px;padding:7px 9px;border-radius:6px;border:1px solid #E8A0B8;background:#FBEAF0;font-size:13px;font-weight:600;color:#C03D6B;cursor:pointer;font-family:'Baloo 2','DM Sans',sans-serif;line-height:1;}
 .bpm-adj-btn:active{background:#F4D2DF;}
 
@@ -321,31 +327,47 @@ input[type=range]{flex:1;accent-color:#D4537E;}
   <p class="sec-lbl" id="T2">Womb Sound</p>
   <div class="card">
     <div class="tabs">
-      <button class="tab active" id="T4" onclick="setTab('u',this)">Upload Heart Beat</button>
-      <button class="tab" id="T3" onclick="setTab('s',this)">Sample Heart Beat</button>
+      <button class="tab active" id="tabUpload" onclick="setTab('u',this)">心音をアップロード</button>
+      <button class="tab" id="tabRecord" onclick="setTab('r',this)">心音を録音</button>
     </div>
-    <div id="sampleGrid" class="sgrid" style="display:none;">
-      <button class="sbtn hb-sample-btn active" onclick="pickHeartbeatSample(this,'HeartBeat Sample1_BPM138.mp3',138)"><i class="ti ti-heart-filled"></i> Sample 1<div class="ssub">Real · 138 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample1_BPM138.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
-      <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample2_BPM175.mp3',175)"><i class="ti ti-heart-filled"></i> Sample 2<div class="ssub">Real · 175 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample2_BPM175.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
-      <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample3_BPM150.mp3',150)"><i class="ti ti-heart-filled"></i> Sample 3<div class="ssub">Real · 150 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample3_BPM150.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
-    </div>
+
+    <!-- Upload zone -->
     <div style="display:flex;gap:8px;flex-direction:column;" id="uploadZoneWrap">
       <div id="uploadZone" class="upzone" onclick="document.getElementById('fi').click()">
         <p><i class="ti ti-upload" style="font-size:22px;display:block;margin-bottom:6px;color:#D4537E;"></i>
         <strong id="T11">Tap to select your recording</strong><br><span id="T12">MP3, WAV, M4A supported</span></p>
         <input type="file" id="fi">
       </div>
+    </div>
+
+    <!-- Record zone -->
+    <div id="recordZoneWrap" style="display:none;flex-direction:column;gap:8px;">
+      <div class="rec-method-row">
+        <button class="rec-method active" id="recMethodEcho" onclick="setRecMethod('echo',this)">🩺 <span id="methodEchoLbl">エコー機器の音声</span></button>
+        <button class="rec-method" id="recMethodBelly" onclick="setRecMethod('belly',this)">🤰 <span id="methodBellyLbl">お腹を直接録音</span></button>
+      </div>
       <button class="upzone rec-btn" id="recBtn" style="cursor:pointer;">
         <i class="ti ti-microphone" id="recIco" style="font-size:22px;display:block;margin-bottom:6px;color:#D4537E;"></i>
         <strong id="recLbl">Tap to record</strong><br>
         <span id="recTime" style="font-size:11px;color:#aaa;">0:00</span>
       </button>
-      <div id="bellyRow" style="display:flex;gap:16px;justify-content:center;align-items:center;margin-top:8px;flex-wrap:wrap;">
-        <label style="font-size:12px;color:#C03D6B;display:inline-flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="bellyMode" style="accent-color:#D4537E;"><span id="bellyModeLbl">🤰 お腹録音（増幅）</span></label>
-        <label style="font-size:12px;color:#888;display:inline-flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="bellyMonitor" style="accent-color:#D4537E;"><span id="bellyMonLbl">🎧 モニター</span></label>
+      <div id="bellyOpts" style="display:none;">
+        <div style="display:flex;gap:16px;justify-content:center;align-items:center;">
+          <label style="font-size:12px;color:#888;display:inline-flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="bellyMonitor" style="accent-color:#D4537E;"><span id="bellyMonLbl">🎧 モニター</span></label>
+        </div>
+        <div id="bellyNote" style="font-size:10px;color:#bbb;text-align:center;margin-top:4px;line-height:1.4;">医療用ではありません。静かな部屋で、スマホをお腹に直接あててお試しください（イヤホン推奨）。</div>
       </div>
-      <div id="bellyNote" style="font-size:10px;color:#bbb;text-align:center;margin-top:4px;line-height:1.4;">医療用ではありません。静かな部屋で、スマホをお腹に直接あててお試しください（イヤホン推奨）。</div>
     </div>
+
+    <!-- Sample heartbeats (small, always available) -->
+    <details id="sampleDetails" style="margin-top:10px;">
+      <summary class="sample-summary" id="sampleUseLbl">サンプル心音を使う</summary>
+      <div id="sampleGrid" class="sgrid" style="margin-top:8px;">
+        <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample1_BPM138.mp3',138)"><i class="ti ti-heart-filled"></i> Sample 1<div class="ssub">Real · 138 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample1_BPM138.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
+        <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample2_BPM175.mp3',175)"><i class="ti ti-heart-filled"></i> Sample 2<div class="ssub">Real · 175 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample2_BPM175.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
+        <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample3_BPM150.mp3',150)"><i class="ti ti-heart-filled"></i> Sample 3<div class="ssub">Real · 150 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample3_BPM150.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
+      </div>
+    </details>
     <!-- Recording history (outside uploadZoneWrap so always visible) -->
     <div id="recHistory" style="display:none;margin-top:8px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding:0 2px;">
@@ -563,6 +585,11 @@ const REC_HIST={en:'📼 Recording History',ja:'📼 録音履歴',zh:'📼 录�
 const REC_USE={en:'Use',ja:'使う',zh:'使用','zh-TW':'使用',ko:'사용',es:'Usar',fr:'Utiliser',de:'Nutzen',pt:'Usar',hi:'उपयोग',id:'Gunakan',it:'Usa',th:'ใช้',vi:'Dùng',ru:'Использовать'};
 const REC_CLEAR={en:'Clear all',ja:'すべて削除',zh:'全部清除','zh-TW':'全部清除',ko:'전체 삭제',es:'Borrar todo',fr:'Tout effacer',de:'Alle löschen',pt:'Limpar tudo',hi:'सभी हटाएं',id:'Hapus semua',it:'Cancella tutto',th:'ล้างทั้งหมด',vi:'Xóa tất cả',ru:'Очистить всё'};
 const REC_CLEAR_CONFIRM={en:'Delete all recordings?',ja:'録音履歴をすべて削除しますか？',zh:'删除所有录音？','zh-TW':'刪除所有錄音？',ko:'모든 녹음을 삭제할까요?',es:'¿Eliminar todas las grabaciones?',fr:'Supprimer tous les enregistrements ?',de:'Alle Aufnahmen löschen?',pt:'Excluir todas as gravações?',hi:'सभी रिकॉर्डिंग हटाएं?',id:'Hapus semua rekaman?',it:'Eliminare tutte le registrazioni?',th:'ลบการบันทึกทั้งหมด?',vi:'Xóa tất cả bản ghi âm?',ru:'Удалить все записи?'};
+const TAB_UPLOAD={en:'Upload',ja:'心音をアップロード',zh:'上传心音','zh-TW':'上傳心音',ko:'심음 업로드',es:'Subir',fr:'Importer',de:'Hochladen',pt:'Enviar',hi:'अपलोड',id:'Unggah',it:'Carica',th:'อัปโหลด',vi:'Tải lên',ru:'Загрузить'};
+const TAB_RECORD={en:'Record',ja:'心音を録音',zh:'录制心音','zh-TW':'錄製心音',ko:'심음 녹음',es:'Grabar',fr:'Enregistrer',de:'Aufnehmen',pt:'Gravar',hi:'रिकॉर्ड करें',id:'Rekam',it:'Registra',th:'บันทึก',vi:'Ghi âm',ru:'Записать'};
+const METHOD_ECHO={en:'Ultrasound audio',ja:'エコー機器の音声',zh:'超声设备声音','zh-TW':'超音波設備聲音',ko:'초음파 기기 소리',es:'Audio de ecografía',fr:'Audio échographie',de:'Ultraschall-Audio',pt:'Áudio de ultrassom',hi:'अल्ट्रासाउंड ऑडियो',id:'Audio USG',it:'Audio ecografia',th:'เสียงเครื่องอัลตราซาวด์',vi:'Âm thanh máy siêu âm',ru:'Звук УЗИ'};
+const METHOD_BELLY={en:'Record on belly',ja:'お腹を直接録音',zh:'直接贴腹部录音','zh-TW':'直接貼腹部錄音',ko:'배에 직접 녹음',es:'Grabar en el vientre',fr:'Sur le ventre',de:'Am Bauch',pt:'Na barriga',hi:'पेट पर',id:'Di perut',it:'Sulla pancia',th:'ที่หน้าท้อง',vi:'Trên bụng',ru:'На животе'};
+const SAMPLE_USE={en:'Use a sample heartbeat',ja:'サンプル心音を使う',zh:'使用示例心音','zh-TW':'使用範例心音',ko:'샘플 심음 사용',es:'Usar un latido de muestra',fr:'Utiliser un exemple',de:'Beispiel verwenden',pt:'Usar amostra',hi:'नमूना उपयोग करें',id:'Gunakan sampel',it:'Usa un esempio',th:'ใช้ตัวอย่าง',vi:'Dùng mẫu',ru:'Использовать образец'};
 const BELLY_MODE={en:'🤰 Belly mode (boost)',ja:'🤰 お腹録音（増幅）',zh:'🤰 腹部录音（增幅）','zh-TW':'🤰 腹部錄音（增幅）',ko:'🤰 배 녹음(증폭)',es:'🤰 Modo vientre (amplif.)',fr:'🤰 Mode ventre (ampli.)',de:'🤰 Bauch-Modus (Boost)',pt:'🤰 Modo barriga (amplif.)',hi:'🤰 पेट मोड (बूस्ट)',id:'🤰 Mode perut (boost)',it:'🤰 Modo pancia (boost)',th:'🤰 โหมดหน้าท้อง (ขยาย)',vi:'🤰 Chế độ bụng (khuếch đại)',ru:'🤰 Режим живота (усил.)'};
 const BELLY_MON={en:'🎧 Monitor',ja:'🎧 モニター',zh:'🎧 监听','zh-TW':'🎧 監聽',ko:'🎧 모니터',es:'🎧 Monitor',fr:'🎧 Écoute',de:'🎧 Mithören',pt:'🎧 Monitor',hi:'🎧 मॉनिटर',id:'🎧 Monitor',it:'🎧 Monitor',th:'🎧 มอนิเตอร์',vi:'🎧 Nghe thử',ru:'🎧 Мониторинг'};
 const BELLY_NOTE={en:'Not a medical device. Try in a quiet room with the phone directly on your belly (headphones recommended).',ja:'医療用ではありません。静かな部屋で、スマホをお腹に直接あててお試しください（イヤホン推奨）。',zh:'非医疗设备。请在安静房间中将手机直接贴在腹部尝试（建议用耳机）。','zh-TW':'非醫療設備。請在安靜房間中將手機直接貼在腹部嘗試（建議用耳機）。',ko:'의료기기가 아닙니다. 조용한 방에서 휴대폰을 배에 직접 대고 시도하세요(이어폰 권장).',es:'No es un dispositivo médico. Prueba en una sala tranquila con el móvil directamente sobre el vientre (auriculares recomendados).',fr:'Pas un dispositif médical. Essayez dans une pièce calme avec le téléphone directement sur le ventre (écouteurs recommandés).',de:'Kein Medizinprodukt. In einem ruhigen Raum das Handy direkt auf den Bauch legen (Kopfhörer empfohlen).',pt:'Não é um dispositivo médico. Teste em um ambiente silencioso com o celular diretamente na barriga (fones recomendados).',hi:'यह चिकित्सा उपकरण नहीं है। शांत कमरे में फ़ोन को सीधे पेट पर रखकर आज़माएं (ईयरफ़ोन सुझावित)।',id:'Bukan alat medis. Coba di ruangan tenang dengan ponsel langsung di perut (disarankan earphone).',it:'Non è un dispositivo medico. Prova in una stanza silenziosa con il telefono direttamente sulla pancia (cuffie consigliate).',th:'ไม่ใช่อุปกรณ์ทางการแพทย์ ลองในห้องเงียบโดยวางมือถือแนบหน้าท้องโดยตรง (แนะนำให้ใช้หูฟัง)',vi:'Không phải thiết bị y tế. Hãy thử trong phòng yên tĩnh, đặt điện thoại trực tiếp lên bụng (nên dùng tai nghe).',ru:'Не медицинский прибор. Попробуйте в тихой комнате, прижав телефон к животу (рекомендуются наушники).'};
@@ -614,7 +641,15 @@ function L(l){
   try{ document.getElementById('fineToggleLbl').textContent=FINEOPT[l]||FINEOPT.en; }catch(e){}
   document.getElementById('wombPrevLbl').textContent=PREV[l]||PREV.en;
   document.getElementById('recLbl').textContent=REC[l]||REC.en;
-  try{ document.getElementById('bellyModeLbl').textContent=BELLY_MODE[l]||BELLY_MODE.en; document.getElementById('bellyMonLbl').textContent=BELLY_MON[l]||BELLY_MON.en; document.getElementById('bellyNote').textContent=BELLY_NOTE[l]||BELLY_NOTE.en; }catch(e){}
+  try{
+    document.getElementById('tabUpload').textContent=TAB_UPLOAD[l]||TAB_UPLOAD.en;
+    document.getElementById('tabRecord').textContent=TAB_RECORD[l]||TAB_RECORD.en;
+    document.getElementById('methodEchoLbl').textContent=METHOD_ECHO[l]||METHOD_ECHO.en;
+    document.getElementById('methodBellyLbl').textContent=METHOD_BELLY[l]||METHOD_BELLY.en;
+    document.getElementById('bellyMonLbl').textContent=BELLY_MON[l]||BELLY_MON.en;
+    document.getElementById('bellyNote').textContent=BELLY_NOTE[l]||BELLY_NOTE.en;
+    document.getElementById('sampleUseLbl').textContent=SAMPLE_USE[l]||SAMPLE_USE.en;
+  }catch(e){}
   try{ var h=_helpI18n[l]||_helpI18n.en; document.getElementById('helpOpenBtn').textContent='？ '+h.title; }catch(e){}
   try{ _renderRecHistory(); }catch(e){}
   // Gift section labels
@@ -675,23 +710,19 @@ function refreshPreview(){
   fd.style.display=fdText?'block':'none';
 }
 
+var recMethod='echo'; // 'echo' = ultrasound-device audio, 'belly' = amplified belly recording
 function setTab(tab,btn){
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('sampleGrid').style.display=tab==='s'?'grid':'none';
   document.getElementById('uploadZoneWrap').style.display=tab==='u'?'flex':'none';
-  // Reset waveform when switching to Upload tab
-  if(tab==='u'){
-    document.getElementById('waveformWrap').classList.remove('show');
-    document.getElementById('upinfo').style.display='none';
-    document.getElementById('upname').textContent='—';
-    document.getElementById('detectInfo').textContent='Analyzing...';
-    document.getElementById('detectInfo').className='detect-info';
-    document.getElementById('debugInfo').textContent='—';
-    rawBuffer=null; cs='beat';
-    document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
-    if(playing){stopAll();}
-  }
+  document.getElementById('recordZoneWrap').style.display=tab==='r'?'flex':'none';
+}
+function setRecMethod(m,btn){
+  recMethod=m;
+  document.querySelectorAll('.rec-method').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  // Belly options (monitor + safety note) only apply to belly recording
+  document.getElementById('bellyOpts').style.display=(m==='belly')?'block':'none';
 }
 function pickSample(btn,type){
   document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
@@ -959,7 +990,7 @@ async function toggleRec(){
     _recMR.stop();
     return;
   }
-  var belly = document.getElementById('bellyMode') && document.getElementById('bellyMode').checked;
+  var belly = (recMethod === 'belly');
   try{
     // Belly mode: disable auto processing so we control gain/filtering ourselves
     _recStream=await navigator.mediaDevices.getUserMedia({audio: belly ? {echoCancellation:false,noiseSuppression:false,autoGainControl:false} : true});
