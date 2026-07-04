@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-06-29.10';
+window.APP_VERSION = '2026-07-04.1';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2069,22 +2069,52 @@ function _runDetectCore(){
         loopStart = Math.max(0, rawBuffer.duration - loopDur);
       }
 
+      // ── Snap the loop END into the inter-beat SILENCE (same phase as start) ──
+      // Real heartbeats aren't perfectly periodic, so a fixed 4-beat length
+      // usually ends mid heart-sound tail. Cutting that tail sounds like a
+      // click even when the waveform is continuous (0→0). Find the quietest
+      // frame ~4 beats after the start and end there, then derive the tempo
+      // from the real loop length so the music stays locked to it.
+      {
+        const lsFrame = Math.round(loopStart / frameSec);
+        const targetEndFrame = lsFrame + Math.round(loopDur / frameSec);
+        const half = Math.floor(beatPeriodFrames * 0.40);
+        const lo = Math.max(lsFrame + Math.floor(beatPeriodFrames*1.5), targetEndFrame - half);
+        const hi = Math.min(activeEndFrame - 1, targetEndFrame + half);
+        // Measure RAW rms at candidate ends and pick the quietest.
+        const rmsFrame = (f)=>{ let s=0; const off=f*frameLen; for(let j=0;j<frameLen;j++){ const v=rawData[off+j]||0; s+=v*v; } return Math.sqrt(s/frameLen); };
+        let bestF = targetEndFrame, bestR = Infinity;
+        for(let f = lo; f <= hi; f++){ const r=rmsFrame(f); if(r < bestR){ bestR = r; bestF = f; } }
+        const newDur = bestF * frameSec - loopStart;
+        const beats  = Math.max(1, Math.round(newDur / beatPeriodSec));
+        const newBPM = Math.round(60 * beats / newDur);
+        // Only snap when the end is GENUINELY quiet (not every heartbeat has a
+        // clear inter-beat gap) and the derived tempo stays sane (~4 beats,
+        // within ±15% of the current estimate). Otherwise keep the 4-beat loop.
+        if(bestR < 0.045 && beats===4 &&
+           newBPM >= detectedBPM*0.85 && newBPM <= detectedBPM*1.15 &&
+           loopStart + newDur <= rawBuffer.duration){
+          loopDur = newDur;
+          detectedBPM = Math.max(40, Math.min(220, newBPM));
+        }
+      }
+      const beatSecNow = 60 / detectedBPM;
+
       // Align the music downbeat to the LUB PEAK (the audible "thump"), not the
       // onset/loop seam. The onset is where sound begins; the peak (loudest
-      // point) is what the ear locks onto, and it lands a little later — so
-      // aligning to the onset made the heartbeat feel behind the beat.
-      const peakWin = Math.min(beatPeriodFrames, Math.floor(0.22 / frameSec));
+      // point) is what the ear locks onto, and it lands a little later.
+      const peakWin = Math.min(Math.round(beatSecNow/frameSec), Math.floor(0.22 / frameSec));
       let lubPeakFrame = lubOnsetFrame, lubPeakVal = env[lubOnsetFrame];
       for(let f = lubOnsetFrame; f < Math.min(activeEndFrame, lubOnsetFrame + peakWin); f++){
         if(env[f] > lubPeakVal){ lubPeakVal = env[f]; lubPeakFrame = f; }
       }
       const peakTime = lubPeakFrame * frameSec;
-      let peakOffsetBeats = (peakTime - loopStart) / beatPeriodSec;
+      let peakOffsetBeats = (peakTime - loopStart) / beatSecNow;
       // keep within one beat; light 1/32-beat quantise for stability
       peakOffsetBeats = Math.max(0, Math.min(0.95, Math.round(peakOffsetBeats * 32) / 32));
       BASE_MUSIC_OFFSET     = peakOffsetBeats;
       musicStartOffsetBeats = peakOffsetBeats;
-      _peakOffsetSec        = peakOffsetBeats * beatPeriodSec; // fixed time — rescaled on manual BPM change
+      _peakOffsetSec        = peakOffsetBeats * beatSecNow; // fixed time — rescaled on manual BPM change
     } else {
       // Fallback: no onset found — use window scorer result unchanged
       loopStart = bestStartFrame * frameSec;
@@ -2155,7 +2185,7 @@ function buildLoopBuffer(){
   // every loop. Instead, taper BOTH ends to exact zero with a short raised-
   // cosine fade, so the wrap is always 0→0 — guaranteed no click. The fade is
   // short (~7 ms) so it reads as a clean seam, not a dip/stutter.
-  const fadeN=Math.max(1, Math.min(Math.floor(sr*0.007), Math.floor(actualDur/4)));
+  const fadeN=Math.max(1, Math.min(Math.floor(sr*0.010), Math.floor(actualDur/4)));
   for(let ch=0;ch<nc;ch++){
     const src=rawBuffer.getChannelData(ch);
     const dst=outBuf.getChannelData(ch);
