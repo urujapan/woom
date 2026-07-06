@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.7';
+window.APP_VERSION = '2026-07-04.8';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -199,7 +199,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 .track-item:hover{background:#f0f0f0;}
 .track-item.active{background:#FBEAF0;border-color:#E89BB4;color:#C03D6B;}
 .track-item.loading{opacity:.6;pointer-events:none;}
-.track-item.compat-poor{opacity:.45;}
+.track-item.compat-poor{opacity:1;}
 .compat-badge{margin-left:auto;flex-shrink:0;font-size:12px;display:flex;align-items:center;gap:3px;white-space:nowrap;}
 .compat-badge.lv3{color:#C03D6B;font-weight:600;}
 .compat-badge.lv2{color:#F5A623;}
