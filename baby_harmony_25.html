@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.4';
+window.APP_VERSION = '2026-07-04.5';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1952,8 +1952,19 @@ function _runDetectCore(){
   }
 
   detectedBPM = bpmFinal;
-  // Samples: trust the labelled BPM so the loop window & phase use the right tempo.
-  if(_knownBPM > 0) detectedBPM = _knownBPM;
+  // Samples: the labelled BPM is imprecise, but the measured periodicity
+  // (NSDF / autocorrelation = bpmB) is accurate. Use bpmB for the actual tempo
+  // and only use the label to pick the correct OCTAVE (×2 / ÷2). This fixes
+  // cases where the label is a few % off (e.g. labelled 175 but really ~182),
+  // which otherwise made the tempo-matched music drift against the heartbeat.
+  if(_knownBPM > 0){
+    let cand = (bpmB > 0) ? bpmB : _knownBPM;
+    while(Math.abs(cand*2 - _knownBPM) < Math.abs(cand - _knownBPM)) cand *= 2;
+    while(cand > 2 && Math.abs(cand/2 - _knownBPM) < Math.abs(cand - _knownBPM)) cand /= 2;
+    // Guard: only trust bpmB if it lands within 20% of the label after octave
+    // correction; otherwise fall back to the label.
+    detectedBPM = (Math.abs(cand - _knownBPM) <= _knownBPM*0.20) ? Math.round(cand) : _knownBPM;
+  }
 
   // ── Step 5: find best 4-beat loop window ─────────────────────────────
   // Approach: sliding window over the RMS envelope (frame-based, no peak list).
