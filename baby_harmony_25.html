@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.6';
+window.APP_VERSION = '2026-07-04.7';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2161,21 +2161,21 @@ function _runDetectCore(){
       }
       const beatSecNow = 60 / detectedBPM;
 
-      // Align the music downbeat to the LUB PEAK (the audible "thump"), not the
-      // onset/loop seam. The onset is where sound begins; the peak (loudest
-      // point) is what the ear locks onto, and it lands a little later.
-      const peakWin = Math.min(Math.round(beatSecNow/frameSec), Math.floor(0.22 / frameSec));
-      let lubPeakFrame = lubOnsetFrame, lubPeakVal = env[lubOnsetFrame];
-      for(let f = lubOnsetFrame; f < Math.min(activeEndFrame, lubOnsetFrame + peakWin); f++){
-        if(env[f] > lubPeakVal){ lubPeakVal = env[f]; lubPeakFrame = f; }
-      }
-      const peakTime = lubPeakFrame * frameSec;
-      let peakOffsetBeats = (peakTime - loopStart) / beatSecNow;
-      // keep within one beat; light 1/32-beat quantise for stability
-      peakOffsetBeats = Math.max(0, Math.min(0.95, Math.round(peakOffsetBeats * 32) / 32));
+      // Align a music beat to the LOUDEST heartbeat in the whole loop — the
+      // main "dokun" the ear locks onto — not just the first beat. On irregular
+      // recordings the first lub can be a weaker sound while a later beat is the
+      // prominent one; aligning to that prominent beat is what makes it feel in
+      // time. We use the fractional beat phase so whichever music beat is
+      // closest lands exactly on the loudest heartbeat.
+      const loStartF = Math.max(0, Math.round(loopStart/frameSec));
+      const loEndF   = Math.min(activeEndFrame, Math.round((loopStart+loopDur)/frameSec));
+      let loudF = loStartF, loudV = -Infinity;
+      for(let f=loStartF; f<loEndF; f++){ if(env[f] > loudV){ loudV = env[f]; loudF = f; } }
+      _peakOffsetSec = loudF*frameSec - loopStart;              // loudest-peak time in loop
+      let peakOffsetBeats = ((( _peakOffsetSec/beatSecNow) % 1) + 1) % 1; // fractional phase
+      peakOffsetBeats = Math.round(peakOffsetBeats * 32) / 32;
       BASE_MUSIC_OFFSET     = peakOffsetBeats;
       musicStartOffsetBeats = peakOffsetBeats;
-      _peakOffsetSec        = peakOffsetBeats * beatSecNow; // fixed time — rescaled on manual BPM change
     } else {
       // Fallback: no onset found — use window scorer result unchanged
       loopStart = bestStartFrame * frameSec;
@@ -2439,7 +2439,8 @@ function adjustDetectedBPM(delta){
   // is at a fixed time in the audio, so re-express its offset in the new beats.
   if(_peakOffsetSec>0){
     const nb=60/detectedBPM;
-    musicStartOffsetBeats=Math.max(0,Math.min(0.95,Math.round((_peakOffsetSec/nb)*32)/32));
+    let ph=(((_peakOffsetSec/nb)%1)+1)%1; // fractional beat phase of the loudest peak
+    musicStartOffsetBeats=Math.round(ph*32)/32;
     BASE_MUSIC_OFFSET=musicStartOffsetBeats;
   }
   document.getElementById('bpmAdjDisplay').textContent=detectedBPM+' bpm';
