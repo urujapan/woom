@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.5';
+window.APP_VERSION = '2026-07-04.6';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1326,27 +1326,33 @@ async function selectTrack(trackId){
   }
   if(!track) return;
 
+  // ── Instant UI feedback: select immediately, no innerHTML rebuild ──────────
+  // (The old code awaited the file load before marking the track selected and
+  //  rebuilt the whole panel each time — taps during loading were lost, so it
+  //  felt like it needed 2–3 taps.)
+  selectedTrack = track;
+  musicFileBPM = track.bpm||0;
+  musicFineBPM=0; musicPhaseOffset=0;
+  document.getElementById('musicFine').value=0;
+  document.getElementById('musicFineVal').textContent='±0 bpm';
+  document.getElementById('musicFineRow').style.display='flex';
+  // highlight the chosen track by toggling classes (fast, keeps tap targets)
+  document.querySelectorAll('.track-item').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('ti_'+trackId);
-  if(btn){ btn.classList.add('loading'); btn.innerHTML='<i class="ti ti-loader spin" style="font-size:14px;"></i> '+track.title; }
+  if(btn){ btn.classList.add('active','loading'); }
+  updateNP(); updateMusicBpmLabel();
+  if(cs==='uploaded') document.getElementById('phaseHint').classList.add('show');
 
   try{
-    musicFileBuffer = await loadMusicTrack(track);
-    selectedTrack = track;
-    musicFileBPM = track.bpm||0;
-    musicFineBPM=0; musicPhaseOffset=0;
-    document.getElementById('musicFine').value=0;
-    document.getElementById('musicFineVal').textContent='±0 bpm';
-    document.getElementById('musicFineRow').style.display='flex';
-    updateNP(); refreshPreview(); updateMusicBpmLabel(); drawMusicGrid();
-    if(cs==='uploaded') document.getElementById('phaseHint').classList.add('show');
+    const buf = await loadMusicTrack(track);
+    if(selectedTrack !== track) return; // superseded by a newer tap — ignore
+    musicFileBuffer = buf;
+    refreshPreview(); drawMusicGrid();
     if(playing){stopAll();startAll();}
-    toast(track.title+' loaded!');
   }catch(e){
-    toast('Load error: '+e.message);
-    selectedTrack=null; musicFileBuffer=null;
+    if(selectedTrack===track){ toast('Load error: '+e.message); }
   }finally{
-    // Rebuild panel to restore button state
-    renderTrackPanel(cm);
+    if(btn) btn.classList.remove('loading');
   }
 }
 
