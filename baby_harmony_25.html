@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.10';
+window.APP_VERSION = '2026-07-04.11';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1298,7 +1298,12 @@ const MUSIC_LIBRARY = {
   other:[
     {id:'ot2', title:'Across the Blue',      file:'WMSL_Across the Blue_BPM148.mp3',      bpm:148},
     {id:'ot4', title:'Heart Warming Guitar', file:'WMSL_Heart Warming Guitar_BPM138.mp3', bpm:138},
-    {id:'ot1', title:'New Voyage',           file:'WMSL_New Voyage_BPM149.mp3',           bpm:149},
+    {id:'ot1', title:'New Voyage',           file:'WMSL_New Voyage_BPM149.mp3',           bpm:149,
+      variants:[
+        {bpm:129, file:'WMSL_New Voyage_bpm129.mp3'},
+        {bpm:149, file:'WMSL_New Voyage_BPM149.mp3'},
+        {bpm:169, file:'WMSL_New Voyage_bpm169.mp3'}
+      ]},
   ],
 };
 const musicBufferCache = {};
@@ -1306,18 +1311,44 @@ var selectedTrack = null;
 var musicPrevAC = null, musicPrevSrc = null, musicPrevTrackId = null;
 
 // ── Library track loading ────────────────────────────────────────────────
-async function loadMusicTrack(track){
-  if(musicBufferCache[track.id]) return musicBufferCache[track.id];
+async function loadMusicFile(file, key){
+  if(musicBufferCache[key]) return musicBufferCache[key];
   // Encode each path segment to handle spaces and special chars in filenames
-  const encodedFile = track.file.split('/').map(s=>encodeURIComponent(s)).join('/');
+  const encodedFile = file.split('/').map(s=>encodeURIComponent(s)).join('/');
   const res = await fetch(encodedFile);
-  if(!res.ok) throw new Error('HTTP '+res.status+': '+track.file);
+  if(!res.ok) throw new Error('HTTP '+res.status+': '+file);
   const arrayBuf = await res.arrayBuffer();
   if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
   const decoded = await AC.decodeAudioData(arrayBuf);
-  musicBufferCache[track.id] = decoded;
+  musicBufferCache[key] = decoded;
   return decoded;
 }
+async function loadMusicTrack(track){ return loadMusicFile(track.file, track.id); }
+
+// Pick the pre-produced BPM version closest to the heartbeat, so playback needs
+// minimal (or no) time-stretch → most natural sound. Falls back to the single
+// file for tracks that have no variants.
+function pickVariant(track){
+  const list = (track.variants && track.variants.length)
+    ? track.variants : [{bpm:track.bpm, file:track.file}];
+  const heartBPM = (cs==='uploaded' && detectedBPM>0) ? detectedBPM : 0;
+  if(!heartBPM){
+    // no heartbeat yet — prefer the nominal (track.bpm) version
+    return list.find(v=>v.bpm===track.bpm) || list[0];
+  }
+  let best=list[0], bestDiff=Infinity;
+  for(const v of list){
+    for(let mult=1; mult<=4; mult++){
+      const rate = heartBPM*mult/v.bpm;
+      if(rate<0.4 || rate>2.5) continue;
+      const diff = Math.abs(rate-1.0)*(rate>1.0?1.15:1.0); // prefer slowing over speeding
+      if(diff<bestDiff){ bestDiff=diff; best=v; }
+    }
+  }
+  return best;
+}
+// Effective BPM of a track for the current heartbeat (the version that would be used)
+function trackEffectiveBpm(track){ return pickVariant(track).bpm; }
 
 async function selectTrack(trackId){
   let track=null;
@@ -1331,7 +1362,8 @@ async function selectTrack(trackId){
   //  rebuilt the whole panel each time — taps during loading were lost, so it
   //  felt like it needed 2–3 taps.)
   selectedTrack = track;
-  musicFileBPM = track.bpm||0;
+  const variant = pickVariant(track);       // closest pre-produced BPM version
+  musicFileBPM = variant.bpm||track.bpm||0;
   musicFineBPM=0; musicPhaseOffset=0; musicRateMult=1;
   document.getElementById('musicFine').value=0;
   document.getElementById('musicFineVal').textContent='±0 bpm';
@@ -1344,7 +1376,7 @@ async function selectTrack(trackId){
   if(cs==='uploaded') document.getElementById('phaseHint').classList.add('show');
 
   try{
-    const buf = await loadMusicTrack(track);
+    const buf = await loadMusicFile(variant.file, variant.file);
     if(selectedTrack !== track) return; // superseded by a newer tap — ignore
     musicFileBuffer = buf;
     refreshPreview(); drawMusicGrid(); updateMusicBpmLabel();
@@ -1384,7 +1416,7 @@ function renderTrackPanel(type){
   const tracks=MUSIC_LIBRARY[type];
   if(!tracks||tracks.length===0){panel.style.display='none';return;}
   panel.innerHTML=tracks.map(t=>{
-    const level = trackCompatLevel(t.bpm);
+    const level = trackCompatLevel(trackEffectiveBpm(t));
     const lvClass = level==='best'?'lv3':level==='good'?'lv2':'lv1';
     const badgeContent = level==='best' ? '👌 Best Match!!!' : level==='good' ? '👍' : '🤔';
     const badge = (cs==='uploaded'&&detectedBPM>0)
@@ -2223,6 +2255,11 @@ function _runDetectCore(){
     `A:${bpmA}(conf=${confA.toFixed(2)}) B:${bpmB}(r=${bestR.toFixed(2)}) D:${bpmDirect} LD:${ldScoreLow.toFixed(3)}vs${ldScoreHigh.toFixed(3)} →${detectedBPM}bpm | active=${(silenceEndFrame*frameSec).toFixed(2)}s–${(activeEndFrame*frameSec).toFixed(2)}s | votes=${totalVotes} | loopStart=${loopStart.toFixed(2)}s score=${bestScore.toFixed(4)}`;
   updateMusicBpmLabel();
   if(cm) renderTrackPanel(cm); // refresh compatibility badges after BPM detection
+  // If a multi-version track is selected, re-pick the version closest to the
+  // (possibly changed) heartbeat BPM.
+  if(selectedTrack && selectedTrack.variants && pickVariant(selectedTrack).bpm!==musicFileBPM){
+    selectTrack(selectedTrack.id);
+  }
   toast(ts('loaded'));
 }
 
