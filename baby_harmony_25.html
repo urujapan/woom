@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.9';
+window.APP_VERSION = '2026-07-04.10';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -113,6 +113,7 @@ input[type=file]{display:none;}
 .sample-summary::-webkit-details-marker{display:none;}
 .bpm-adj-btn{min-width:34px;padding:7px 9px;border-radius:6px;border:1px solid #E8A0B8;background:#FBEAF0;font-size:13px;font-weight:600;color:#C03D6B;cursor:pointer;font-family:'Baloo 2','DM Sans',sans-serif;line-height:1;}
 .bpm-adj-btn:active{background:#F4D2DF;}
+.bpm-adj-btn.active{background:#D4537E;border-color:#D4537E;color:#fff;box-shadow:0 2px 8px rgba(212,83,126,.3);}
 
 /* viz */
 .viz{width:100%;height:72px;border-radius:8px;background:#FBEAF0;position:relative;overflow:hidden;margin-bottom:1rem;display:flex;align-items:center;justify-content:center;gap:3px;}
@@ -436,8 +437,8 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <div class="offset-row" style="margin-top:.6rem;flex-wrap:wrap;align-items:center;gap:6px;">
         <span style="font-size:13px;color:#D4537E;font-weight:500;" id="bpmAdjDisplay">—</span>
         <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
-          <button class="bpm-adj-btn" onclick="setMusicHalfDouble('half')" title="音楽を半分の速さに">×½</button>
-          <button class="bpm-adj-btn" onclick="setMusicHalfDouble('double')" title="音楽を2倍の速さに">×2</button>
+          <button class="bpm-adj-btn" id="btnHalf" onclick="setMusicHalfDouble('half')" title="音楽を半分の速さに（もう一度で解除）">×½</button>
+          <button class="bpm-adj-btn" id="btnDouble" onclick="setMusicHalfDouble('double')" title="音楽を2倍の速さに（もう一度で解除）">×2</button>
           <button class="re-detect-btn" onclick="runDetect()"><i class="ti ti-refresh" style="font-size:14px;"></i> <span id="T_redetect">Re-detect</span></button>
         </div>
       </div>
@@ -1485,9 +1486,16 @@ function _updateSpeedDisplay(){
     el.textContent=detectedBPM+' bpm';
   } else { el.textContent='—'; }
 }
+function _updateHalfDoubleButtons(){
+  var h=document.getElementById('btnHalf'), d=document.getElementById('btnDouble');
+  if(h) h.classList.toggle('active', musicRateMult===0.5);
+  if(d) d.classList.toggle('active', musicRateMult===2);
+}
 function setMusicHalfDouble(dir){
-  if(dir==='half')   musicRateMult=Math.max(0.25, musicRateMult*0.5);
-  else if(dir==='double') musicRateMult=Math.min(4, musicRateMult*2);
+  // Toggle: press again returns to normal (1×). Only 0.5 / 1 / 2 — never 1/4.
+  if(dir==='half')        musicRateMult = (musicRateMult===0.5) ? 1 : 0.5;
+  else if(dir==='double') musicRateMult = (musicRateMult===2)   ? 1 : 2;
+  _updateHalfDoubleButtons();
   updateMusicBpmLabel(); _updateSpeedDisplay();
   if(playing){ stopAll(); startAll(); }
 }
@@ -2715,7 +2723,7 @@ function getBestMult(){
 }
 
 function updateMusicBpmLabel(){
-  _updateSpeedDisplay();
+  _updateSpeedDisplay(); _updateHalfDoubleButtons();
   if(musicFileBuffer&&musicFileBPM>0){
     const rate=calcPlaybackRate();
     const actualBPM=Math.round(musicFileBPM*rate);
