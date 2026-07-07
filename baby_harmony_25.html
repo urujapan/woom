@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.8';
+window.APP_VERSION = '2026-07-04.9';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -436,10 +436,8 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <div class="offset-row" style="margin-top:.6rem;flex-wrap:wrap;align-items:center;gap:6px;">
         <span style="font-size:13px;color:#D4537E;font-weight:500;" id="bpmAdjDisplay">—</span>
         <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
-          <button class="bpm-adj-btn" onclick="adjustDetectedBPM('half')" title="半分の速さ（ゆっくり）">×½</button>
-          <button class="bpm-adj-btn" onclick="adjustDetectedBPM(-1)" title="少し遅く">−</button>
-          <button class="bpm-adj-btn" onclick="adjustDetectedBPM(1)" title="少し速く">＋</button>
-          <button class="bpm-adj-btn" onclick="adjustDetectedBPM('double')" title="2倍の速さ（速く）">×2</button>
+          <button class="bpm-adj-btn" onclick="setMusicHalfDouble('half')" title="音楽を半分の速さに">×½</button>
+          <button class="bpm-adj-btn" onclick="setMusicHalfDouble('double')" title="音楽を2倍の速さに">×2</button>
           <button class="re-detect-btn" onclick="runDetect()"><i class="ti ti-refresh" style="font-size:14px;"></i> <span id="T_redetect">Re-detect</span></button>
         </div>
       </div>
@@ -619,6 +617,7 @@ var rawBuffer=null, loopBuffer=null;
 var AC=null, wSrc=null, mSrc=null, wGain=null, mGain=null;
 var musicFileBuffer=null;
 var musicFineBPM=0; // user fine-tune offset in BPM
+var musicRateMult=1; // manual music-only speed: 0.5 = half, 1 = normal, 2 = double
 var BASE_MUSIC_OFFSET=0.25;     // calibrated zero point (displayed as ±0); auto-updated by lub detection
 var musicStartOffsetBeats=BASE_MUSIC_OFFSET;
 var musicPhaseOffset=0; // phase offset 0.0–1.0 (fraction of one beat)
@@ -1332,7 +1331,7 @@ async function selectTrack(trackId){
   //  felt like it needed 2–3 taps.)
   selectedTrack = track;
   musicFileBPM = track.bpm||0;
-  musicFineBPM=0; musicPhaseOffset=0;
+  musicFineBPM=0; musicPhaseOffset=0; musicRateMult=1;
   document.getElementById('musicFine').value=0;
   document.getElementById('musicFineVal').textContent='±0 bpm';
   document.getElementById('musicFineRow').style.display='flex';
@@ -1347,7 +1346,7 @@ async function selectTrack(trackId){
     const buf = await loadMusicTrack(track);
     if(selectedTrack !== track) return; // superseded by a newer tap — ignore
     musicFileBuffer = buf;
-    refreshPreview(); drawMusicGrid();
+    refreshPreview(); drawMusicGrid(); updateMusicBpmLabel();
     if(playing){stopAll();startAll();}
   }catch(e){
     if(selectedTrack===track){ toast('Load error: '+e.message); }
@@ -1475,7 +1474,22 @@ function calcPlaybackRate(){
     if(diff < bestDiff){ bestDiff = diff; bestRate = rate; }
   }
 
-  return Math.round(bestRate * 1000) / 1000;
+  // musicRateMult applies the manual ×½ / ×2 (music-only halftime/doubletime)
+  return Math.round(bestRate * musicRateMult * 1000) / 1000;
+}
+function _updateSpeedDisplay(){
+  var el=document.getElementById('bpmAdjDisplay'); if(!el) return;
+  if(musicFileBuffer && musicFileBPM>0){
+    el.textContent='🎵 '+Math.round(musicFileBPM*calcPlaybackRate())+' bpm';
+  } else if(detectedBPM>0){
+    el.textContent=detectedBPM+' bpm';
+  } else { el.textContent='—'; }
+}
+function setMusicHalfDouble(dir){
+  if(dir==='half')   musicRateMult=Math.max(0.25, musicRateMult*0.5);
+  else if(dir==='double') musicRateMult=Math.min(4, musicRateMult*2);
+  updateMusicBpmLabel(); _updateSpeedDisplay();
+  if(playing){ stopAll(); startAll(); }
 }
 
 var _mfiEl=document.getElementById('mfi'); if(_mfiEl) _mfiEl.addEventListener('change',function(){
@@ -2701,11 +2715,11 @@ function getBestMult(){
 }
 
 function updateMusicBpmLabel(){
+  _updateSpeedDisplay();
   if(musicFileBuffer&&musicFileBPM>0){
     const rate=calcPlaybackRate();
     const actualBPM=Math.round(musicFileBPM*rate);
-    const mult=getBestMult();
-    const multStr=mult>1?' (heart ×'+mult+')':'';
+    const multStr=musicRateMult!==1?(musicRateMult<1?' (×½ slow)':' (×2 fast)'):'';
     const fineStr=musicFineBPM!==0?' fine:'+(musicFineBPM>0?'+':'')+musicFineBPM:'';
     document.getElementById('musicBpmLabel').textContent=
       actualBPM+' bpm'+multStr+fineStr;
