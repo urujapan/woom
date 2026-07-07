@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.12';
+window.APP_VERSION = '2026-07-04.13';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1288,9 +1288,9 @@ const MUSIC_LIBRARY = {
     {id:'wo4', title:'A Tiny Grasp',       file:'WMSL_A Tiny Grasp_BPM148.mp3',           bpm:148,
       variants:[{bpm:128,file:'WMSL_A Tiny Grasp_bpm128.mp3'},{bpm:148,file:'WMSL_A Tiny Grasp_BPM148.mp3'},{bpm:168,file:'WMSL_A Tiny Grasp_bpm168.mp3'}]},
     {id:'wo1', title:'Auspicious Gamelan', file:'WMSL_Auspicious Gamelan_BPM150.mp3',    bpm:150,
-      variants:[{bpm:130,file:'WMMS_Auspicious Gamelan_bpm130.mp3'},{bpm:150,file:'WMSL_Auspicious Gamelan_BPM150.mp3'},{bpm:170,file:'WMMS_Auspicious Gamelan_bpm170.mp3'}]},
+      variants:[{bpm:130,file:'WMSL_Auspicious Gamelan_bpm130.mp3'},{bpm:150,file:'WMSL_Auspicious Gamelan_BPM150.mp3'},{bpm:170,file:'WMSL_Auspicious Gamelan_bpm170.mp3'}]},
     {id:'wo5', title:'Bem-vindo ao mundo!',file:'WMSL_Bem-vindo ao mundo!_BPM150.9.mp3',  bpm:151,
-      variants:[{bpm:131,file:'WMMS_Bem-vindo ao mundo!_bpm130.9.mp3'},{bpm:151,file:'WMSL_Bem-vindo ao mundo!_BPM150.9.mp3'},{bpm:171,file:'WMMS_Bem-vindo ao mundo!_bpm170.9.mp3'}]},
+      variants:[{bpm:131,file:'WMSL_Bem-vindo ao mundo!_bpm130.9.mp3'},{bpm:151,file:'WMSL_Bem-vindo ao mundo!_BPM150.9.mp3'},{bpm:171,file:'WMSL_Bem-vindo ao mundo!_bpm170.9.mp3'}]},
     {id:'wo2', title:'Morning Glow',       file:'WMSL_Morning glow_BPM150.mp3',           bpm:150},
     {id:'wo3', title:'My Dear Island',     file:'WMSL_My Dear Island_BPM140.mp3',         bpm:140},
   ],
@@ -1301,7 +1301,7 @@ const MUSIC_LIBRARY = {
   ],
   other:[
     {id:'ot2', title:'Across the Blue',      file:'WMSL_Across the Blue_BPM148.mp3',      bpm:148,
-      variants:[{bpm:128,file:'WMMS_Across the Blue_bpm128.mp3'},{bpm:148,file:'WMSL_Across the Blue_BPM148.mp3'},{bpm:168,file:'WMMS_Across the Blue_bpm168.mp3'}]},
+      variants:[{bpm:128,file:'WMSL_Across the Blue_bpm128.mp3'},{bpm:148,file:'WMSL_Across the Blue_BPM148.mp3'},{bpm:168,file:'WMSL_Across the Blue_bpm168.mp3'}]},
     {id:'ot4', title:'Heart Warming Guitar', file:'WMSL_Heart Warming Guitar_BPM138.mp3', bpm:138},
     {id:'ot1', title:'New Voyage',           file:'WMSL_New Voyage_BPM149.mp3',           bpm:149,
       variants:[
