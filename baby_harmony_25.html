@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.13';
+window.APP_VERSION = '2026-07-04.14';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1421,7 +1421,9 @@ function renderTrackPanel(type){
   const tracks=MUSIC_LIBRARY[type];
   if(!tracks||tracks.length===0){panel.style.display='none';return;}
   panel.innerHTML=tracks.map(t=>{
-    const level = trackCompatLevel(trackEffectiveBpm(t));
+    // Best Match reflects the ORIGINAL bpm (the version that sounds best),
+    // not the auto-picked variant — guides users to natively-matching tracks.
+    const level = trackCompatLevel(t.bpm);
     const lvClass = level==='best'?'lv3':level==='good'?'lv2':'lv1';
     const badgeContent = level==='best' ? '👌 Best Match!!!' : level==='good' ? '👍' : '🤔';
     const badge = (cs==='uploaded'&&detectedBPM>0)
