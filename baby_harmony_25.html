@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.5';
+window.APP_VERSION = '2026-07-08.6';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2040,6 +2040,13 @@ function _runDetectCore(){
     // Guard: only trust bpmB if it lands within 20% of the label after octave
     // correction; otherwise fall back to the label.
     detectedBPM = (Math.abs(cand - _knownBPM) <= _knownBPM*0.20) ? Math.round(cand) : _knownBPM;
+  } else if(bpmB > 0 && Math.abs(bpmB - bpmFinal) <= bpmFinal*0.12){
+    // Uploads: bpmFinal resolved the correct OCTAVE, but the NSDF/autocorrelation
+    // periodicity (bpmB) is the most precise tempo estimate. When bpmB agrees on
+    // the octave (within 12%), trust its finer value so the music stays locked to
+    // the real heartbeat period. Fixes e.g. New Voyage/Memory of Birth reading
+    // ~146 when the true period is 149–150 (bpmB nailed it).
+    detectedBPM = bpmB;
   }
 
   // ── Step 5: find best 4-beat loop window ─────────────────────────────
@@ -2200,39 +2207,15 @@ function _runDetectCore(){
         loopStart = Math.max(0, rawBuffer.duration - loopDur);
       }
 
-      // ── Snap the loop END into the inter-beat SILENCE (same phase as start) ──
-      // Real heartbeats aren't perfectly periodic, so a fixed 4-beat length
-      // usually ends mid heart-sound tail. Cutting that tail sounds like a
-      // click even when the waveform is continuous (0→0). Find the quietest
-      // frame ~4 beats after the start and end there, then derive the tempo
-      // from the real loop length so the music stays locked to it.
-      // NOTE: sample clips have an authoritative known BPM, so their beat grid is
-      // exact by construction — snapping to a later "quiet" frame only adds an
-      // irregular gap that makes the seam feel stretched (間延び). Skip the snap
-      // for known-BPM samples and keep the mathematically exact integer-beat loop.
-      if(_knownBPM <= 0){
-        const lsFrame = Math.round(loopStart / frameSec);
-        const targetEndFrame = lsFrame + Math.round(loopDur / frameSec);
-        const half = Math.floor(beatPeriodFrames * 0.40);
-        const lo = Math.max(lsFrame + Math.floor(beatPeriodFrames*1.5), targetEndFrame - half);
-        const hi = Math.min(activeEndFrame - 1, targetEndFrame + half);
-        // Measure RAW rms at candidate ends and pick the quietest.
-        const rmsFrame = (f)=>{ let s=0; const off=f*frameLen; for(let j=0;j<frameLen;j++){ const v=rawData[off+j]||0; s+=v*v; } return Math.sqrt(s/frameLen); };
-        let bestF = targetEndFrame, bestR = Infinity;
-        for(let f = lo; f <= hi; f++){ const r=rmsFrame(f); if(r < bestR){ bestR = r; bestF = f; } }
-        const newDur = bestF * frameSec - loopStart;
-        const beats  = Math.max(1, Math.round(newDur / beatPeriodSec));
-        const newBPM = Math.round(60 * beats / newDur);
-        // Only snap when the end is GENUINELY quiet (not every heartbeat has a
-        // clear inter-beat gap) and the derived tempo stays sane (~4 beats,
-        // within ±15% of the current estimate). Otherwise keep the 4-beat loop.
-        if(bestR < 0.045 && beats===4 &&
-           newBPM >= detectedBPM*0.85 && newBPM <= detectedBPM*1.15 &&
-           loopStart + newDur <= rawBuffer.duration){
-          loopDur = newDur;
-          detectedBPM = Math.max(40, Math.min(220, newBPM));
-        }
-      }
+      // Loop length is kept at an EXACT integer number of beats at the detected
+      // tempo (loopDur = exactBeatSec * beatsNeeded, set above). We deliberately
+      // do NOT "snap" the loop end to the nearest quiet frame anymore: on real,
+      // slightly-irregular heartbeats that search would land ±0.4 beat off the
+      // 4-beat point and then re-derive the tempo AS IF it were exactly 4 beats,
+      // corrupting the BPM by up to ~10% (e.g. New Voyage 150→161) and making the
+      // loop feel irregular. Click-free seams are already guaranteed by the
+      // raised-cosine fade-to-zero in buildLoopBuffer, so the snap is redundant.
+      // An exact-beat loop keeps the music locked and the repeat perfectly steady.
       const beatSecNow = 60 / detectedBPM;
 
       // Align a music beat to the LOUDEST heartbeat in the whole loop — the
