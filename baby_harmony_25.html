@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.3';
+window.APP_VERSION = '2026-07-08.4';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1348,7 +1348,7 @@ function pickVariant(track){
     for(let mult=1; mult<=4; mult++){
       const rate = heartBPM*mult/v.bpm;
       if(rate<0.4 || rate>2.5) continue;
-      const diff = Math.abs(rate-1.0)*(rate>1.0?1.15:1.0); // prefer slowing over speeding
+      const diff = Math.abs(rate-1.0)*(rate<1.0?1.15:1.0); // for equal distance prefer speeding the slower version up (better audio than slowing down)
       if(diff<bestDiff){ bestDiff=diff; best=v; }
     }
   }
@@ -1403,7 +1403,7 @@ function calcRateForTrackBpm(trackBpm){
   for(let mult = 1; mult <= 4; mult++){
     const rate = (heartBPM * mult) / trackBpm;
     if(rate < 0.4 || rate > 2.5) continue;
-    const diff = Math.abs(rate - 1.0) * (rate > 1.0 ? 1.15 : 1.0);
+    const diff = Math.abs(rate - 1.0) * (rate < 1.0 ? 1.15 : 1.0);
     if(diff < bestDiff){ bestDiff = diff; bestRate = rate; }
   }
   return bestRate;
@@ -1511,8 +1511,9 @@ function calcPlaybackRate(){
     const targetBPM = heartBPM * mult + musicFineBPM;
     const rate = targetBPM / musicFileBPM;
     if(rate < 0.4 || rate > 2.5) continue;
-    // Penalize rate>1.0 by 15%: prefer slowing music down over speeding up
-    const diff = Math.abs(rate - 1.0) * (rate > 1.0 ? 1.15 : 1.0);
+    // Penalize rate<1.0 by 15%: for equal tempo distance, prefer speeding the
+    // slower variant up rather than slowing a faster one down — cleaner audio.
+    const diff = Math.abs(rate - 1.0) * (rate < 1.0 ? 1.15 : 1.0);
     if(diff < bestDiff){ bestDiff = diff; bestRate = rate; }
   }
 
@@ -2242,7 +2243,13 @@ function _runDetectCore(){
       let loudF = loStartF, loudV = -Infinity;
       for(let f=loStartF; f<loEndF; f++){ if(env[f] > loudV){ loudV = env[f]; loudF = f; } }
       _peakOffsetSec = loudF*frameSec - loopStart;              // loudest-peak time in loop
-      let peakOffsetBeats = ((( _peakOffsetSec/beatSecNow) % 1) + 1) % 1; // fractional phase
+      // Use the FULL offset (not just the fractional beat phase) so the music's
+      // first downbeat ENTERS exactly on the loudest heartbeat. Using only the
+      // fractional phase kept the beat grid aligned but let the music start on an
+      // off-beat grid point ~0.1s before the first prominent "dokun" — the
+      // entrance felt slightly early/off. The grid is identical either way (they
+      // differ by a whole number of beats); this only moves the entrance itself.
+      let peakOffsetBeats = _peakOffsetSec / beatSecNow;         // full offset in beats
       peakOffsetBeats = Math.round(peakOffsetBeats * 32) / 32;
       BASE_MUSIC_OFFSET     = peakOffsetBeats;
       musicStartOffsetBeats = peakOffsetBeats;
@@ -2514,7 +2521,7 @@ function adjustDetectedBPM(delta){
   // is at a fixed time in the audio, so re-express its offset in the new beats.
   if(_peakOffsetSec>0){
     const nb=60/detectedBPM;
-    let ph=(((_peakOffsetSec/nb)%1)+1)%1; // fractional beat phase of the loudest peak
+    let ph=_peakOffsetSec/nb; // FULL offset so the entrance lands on the loudest peak
     musicStartOffsetBeats=Math.round(ph*32)/32;
     BASE_MUSIC_OFFSET=musicStartOffsetBeats;
   }
