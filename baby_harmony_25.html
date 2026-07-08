@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-04.14';
+window.APP_VERSION = '2026-07-08.1';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1292,12 +1292,14 @@ const MUSIC_LIBRARY = {
     {id:'wo5', title:'Bem-vindo ao mundo!',file:'WMSL_Bem-vindo ao mundo!_BPM150.9.mp3',  bpm:151,
       variants:[{bpm:131,file:'WMSL_Bem-vindo ao mundo!_bpm130.9.mp3'},{bpm:151,file:'WMSL_Bem-vindo ao mundo!_BPM150.9.mp3'},{bpm:171,file:'WMSL_Bem-vindo ao mundo!_bpm170.9.mp3'}]},
     {id:'wo2', title:'Morning Glow',       file:'WMSL_Morning glow_BPM150.mp3',           bpm:150},
-    {id:'wo3', title:'My Dear Island',     file:'WMSL_My Dear Island_BPM140.mp3',         bpm:140},
+    {id:'wo3', title:'My Dear Island',     file:'WMSL_My Dear Island_BPM140.mp3',         bpm:140,
+      variants:[{bpm:120,file:'WMSL_My Dear Island_bpm120.mp3'},{bpm:140,file:'WMSL_My Dear Island_BPM140.mp3'},{bpm:160,file:'WMSL_My Dear Island_bpm160.mp3'}]},
   ],
   electro:[
     {id:'el1', title:'Hyper Baby!',      file:'WMSL_Hyper Baby!_BPM173.mp3',      bpm:173,
       variants:[{bpm:133,file:'WMSL_Hyper Baby!_bpm133.mp3'},{bpm:153,file:'WMSL_Hyper Baby!_bpm153.mp3'},{bpm:173,file:'WMSL_Hyper Baby!_BPM173.mp3'}]},
-    {id:'el2', title:'Infinite Horizon', file:'WMSL_Infinite Horizon_BPM140.mp3', bpm:140},
+    {id:'el2', title:'Infinite Horizon', file:'WMSL_Infinite Horizon_BPM140.mp3', bpm:140,
+      variants:[{bpm:120,file:'WMSL_Infinite Horizon_bpm120.mp3'},{bpm:140,file:'WMSL_Infinite Horizon_BPM140.mp3'},{bpm:160,file:'WMSL_Infinite Horizon_bpm160.mp3'}]},
   ],
   other:[
     {id:'ot2', title:'Across the Blue',      file:'WMSL_Across the Blue_BPM148.mp3',      bpm:148,
