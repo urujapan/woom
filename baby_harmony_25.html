@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.7';
+window.APP_VERSION = '2026-07-08.8';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1277,19 +1277,23 @@ function normalizeBuffer(buffer, targetRMS, boostOnly){
 // bpm: 0 = unknown (auto-sync mode)
 const MUSIC_LIBRARY = {
   lullaby:[
-    {id:'lu1', title:'Fairy',      file:'WMSL_Fairy_BPM138 1.mp3',  bpm:138},
+    {id:'lu1', title:'Fairy',      file:'WMSL_Fairy_BPM138 1.mp3',  bpm:138,
+      variants:[{bpm:118,file:'WMSL_Fairy_bpm118.mp3'},{bpm:138,file:'WMSL_Fairy_BPM138 1.mp3'},{bpm:158,file:'WMSL_Fairy_bpm158.mp3'}]},
     {id:'lu3', title:'Moms Echo',  file:'WMSL_Moms Echo_BPM175.mp3',bpm:175},
     {id:'lu2', title:'Twinkle',    file:'WMSL_Twinkle_BPM152.mp3',  bpm:152},
   ],
   ambient:[
-    {id:'am1', title:'Ambient Piano',    file:'WMSL_Ambient Piano_BPM138.mp3',    bpm:138},
-    {id:'am3', title:'Floating in Light',file:'WMSL_Floating in Light_BPM140.mp3',bpm:140},
+    {id:'am1', title:'Ambient Piano',    file:'WMSL_Ambient Piano_BPM138.mp3',    bpm:138,
+      variants:[{bpm:118,file:'WMSL_Ambient Piano_bpm118.mp3'},{bpm:138,file:'WMSL_Ambient Piano_BPM138.mp3'},{bpm:158,file:'WMSL_Ambient Piano_bpm158.mp3'}]},
+    {id:'am3', title:'Floating in Light',file:'WMSL_Floating in Light_BPM140.mp3',bpm:140,
+      variants:[{bpm:120,file:'WMSL_Florting light_bpm120.mp3'},{bpm:140,file:'WMSL_Floating in Light_BPM140.mp3'},{bpm:160,file:'WMSL_Florting light_bpm160.mp3'}]},
     {id:'am2', title:'Memory of Birth',  file:'WMSL_Memory of Birth_BPM150.mp3',  bpm:150},
     {id:'cl1', title:'Misty Forest',     file:'WMSL_Misty Forest_BPM140.mp3',     bpm:140},
   ],
   classical:[
     {id:'ot3', title:'Dramatic Piano', file:'WMSL_Dramatic Piano_BPM138.mp3', bpm:138},
-    {id:'cl2', title:'Elegant Violin', file:'WMSL_Elegant Violin_BPM138.mp3', bpm:138},
+    {id:'cl2', title:'Elegant Violin', file:'WMSL_Elegant Violin_BPM138.mp3', bpm:138,
+      variants:[{bpm:118,file:'WMSL_Elegant Violin_bpm118.mp3'},{bpm:138,file:'WMSL_Elegant Violin_BPM138.mp3'},{bpm:158,file:'WMSL_Elegant Violin_bpm158.mp3'}]},
     {id:'ot5', title:'Maternal Love',  file:'WMSL_Maternal Love_BPM138.mp3',  bpm:138},
   ],
   world:[
