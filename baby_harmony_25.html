@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.6';
+window.APP_VERSION = '2026-07-08.7';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -114,6 +114,8 @@ input[type=file]{display:none;}
 .bpm-adj-btn{min-width:34px;padding:7px 9px;border-radius:6px;border:1px solid #E8A0B8;background:#FBEAF0;font-size:13px;font-weight:600;color:#C03D6B;cursor:pointer;font-family:'Baloo 2','DM Sans',sans-serif;line-height:1;}
 .bpm-adj-btn:active{background:#F4D2DF;}
 .bpm-adj-btn.active{background:#D4537E;border-color:#D4537E;color:#fff;box-shadow:0 2px 8px rgba(212,83,126,.3);}
+.zoom-btn{width:38px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid #E8A0B8;background:#FBEAF0;color:#C03D6B;font-size:17px;cursor:pointer;}
+.zoom-btn:active{background:#F4D2DF;}
 
 /* viz */
 .viz{width:100%;height:72px;border-radius:8px;background:#FBEAF0;position:relative;overflow:hidden;margin-bottom:1rem;display:flex;align-items:center;justify-content:center;gap:3px;}
@@ -397,6 +399,11 @@ input[type=range]{flex:1;accent-color:#D4537E;}
         <div class="loop-region" id="loopRegion"></div>
         <canvas id="gridCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
         <div id="wombPlayhead" style="position:absolute;top:0;width:2px;height:100%;background:#D4537E;opacity:0.85;display:none;pointer-events:none;border-radius:1px;"></div>
+      </div>
+      <div class="zoom-row" id="zoomRow" style="display:none;justify-content:center;align-items:center;gap:8px;margin-top:8px;">
+        <button class="zoom-btn" onclick="zoomView(1.6)" title="縮小"><i class="ti ti-zoom-out"></i></button>
+        <button class="zoom-btn" onclick="fitViewToLoop(true)" title="全体表示"><i class="ti ti-arrows-maximize"></i></button>
+        <button class="zoom-btn" onclick="zoomView(0.625)" title="拡大"><i class="ti ti-zoom-in"></i></button>
       </div>
       <p class="phase-drag-hint" id="phaseHint">Drag to fine-tune</p>
       <div class="detect-info" id="detectInfo">Analyzing...</div>
@@ -2254,7 +2261,11 @@ function _runDetectCore(){
   const peaks = rawPeaks; // already computed above
 
   buildLoopBuffer();
-  updateLoopRegion();
+  // Auto-zoom the view so the loop is easy to grab. If the loop is a small slice
+  // of a long recording, frame it; otherwise show the whole clip.
+  const zr=document.getElementById('zoomRow'); if(zr) zr.style.display='flex';
+  if(loopDur > 0 && loopDur < rawBuffer.duration*0.6){ fitViewToLoop(false); }
+  else { fitViewToLoop(true); }
 
   const info = `Detected: ${detectedBPM} bpm · Loop: ${loopStart.toFixed(2)}s – ${(loopStart+loopDur).toFixed(2)}s (${loopDur.toFixed(2)}s)`;
   document.getElementById('detectInfo').textContent = '✓ ' + info;
@@ -2332,6 +2343,39 @@ function buildLoopBuffer(){
 }
 
 // ── Waveform drawing ──────────────────────────────────────────────────────
+// ── Waveform zoom view ─────────────────────────────────────────────────────
+// The waveform can be zoomed so a short heartbeat (or a tiny loop region inside
+// a long file) fills the canvas and its handles are easy to drag. All time↔x
+// mapping goes through getView(): x = (t - view.start) / view.span * W.
+var viewStart=0, viewSpan=0; // viewSpan<=0 means "show the whole buffer"
+function getView(){
+  const total = rawBuffer ? rawBuffer.duration : 1;
+  const span  = (viewSpan>0) ? Math.min(viewSpan, total) : total;
+  const start = Math.max(0, Math.min(total-span, viewStart));
+  return {start, span, total};
+}
+function redrawWave(){ if(rawBuffer){ drawWaveform(rawBuffer); updateLoopRegion(); } }
+function fitViewToLoop(full){
+  if(!rawBuffer) return;
+  const zr=document.getElementById('zoomRow'); if(zr) zr.style.display='flex';
+  if(full){ viewSpan=0; viewStart=0; }
+  else {
+    // Frame the loop at ~45% of the width so there's room to drag on both sides.
+    const span=Math.min(rawBuffer.duration, Math.max(loopDur*2.2, 1.2));
+    viewSpan=span; viewStart=loopStart-(span-loopDur)/2;
+  }
+  redrawWave();
+}
+function zoomView(factor){
+  if(!rawBuffer) return;
+  const v=getView();
+  const center=loopStart+loopDur/2; // keep the loop centred while zooming
+  const span=Math.max(Math.min(loopDur*1.05,rawBuffer.duration), Math.min(rawBuffer.duration, v.span*factor));
+  viewSpan=span; viewStart=center-span/2;
+  const zr=document.getElementById('zoomRow'); if(zr) zr.style.display='flex';
+  redrawWave();
+}
+
 function drawWaveform(buf){
   const canvas=document.getElementById('waveformCanvas');
   const wrap=document.getElementById('waveformCanvasWrap');
@@ -2339,7 +2383,11 @@ function drawWaveform(buf){
   canvas.height=80;
   const ctx=canvas.getContext('2d');
   const data=buf.getChannelData(0);
-  const step=Math.ceil(data.length/canvas.width);
+  const sr=buf.sampleRate;
+  const v=getView();
+  const startSample=Math.floor(v.start*sr);
+  const spanSamples=Math.max(1,Math.floor(v.span*sr));
+  const step=Math.max(1,Math.ceil(spanSamples/canvas.width));
   ctx.fillStyle='#FBEAF0';
   ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.strokeStyle='#D4537E';
@@ -2347,9 +2395,10 @@ function drawWaveform(buf){
   ctx.beginPath();
   for(let x=0;x<canvas.width;x++){
     let min=1,max=-1;
+    const base=startSample+x*step;
     for(let j=0;j<step;j++){
-      const v=data[x*step+j]||0;
-      if(v<min)min=v; if(v>max)max=v;
+      const v2=data[base+j]||0;
+      if(v2<min)min=v2; if(v2>max)max=v2;
     }
     const yMin=(1-((min+1)/2))*canvas.height;
     const yMax=(1-((max+1)/2))*canvas.height;
@@ -2388,7 +2437,7 @@ function drawMusicGrid(){
   const rate          = calcPlaybackRate();
   // In real time, music beat = heartBeatSec (because playbackRate syncs them)
   const musicBeatSec  = heartBeatSec; // after rate adjustment they are aligned
-  const totalDur      = rawBuffer.duration;
+  const view          = getView();
   const W             = canvas.width;
 
   // Phase offset in real-time seconds
@@ -2403,12 +2452,14 @@ function drawMusicGrid(){
   let t = phaseRealSec % musicBeatSec;
   if(t < 0) t += musicBeatSec;
 
-  while(t < totalDur){
-    const x = (t / totalDur) * W;
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, canvas.height);
-    ctx.stroke();
+  while(t < view.start + view.span){
+    if(t >= view.start){
+      const x = ((t - view.start) / view.span) * W;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvas.height);
+      ctx.stroke();
+    }
     t += musicBeatSec;
   }
 
@@ -2449,7 +2500,7 @@ function initGridDrag(){
     if(loopDragActive){
       const dx = getClientX(e) - loopDragStartX;
       const W  = wrap.clientWidth || 400;
-      const dtSec = (dx / W) * rawBuffer.duration;
+      const dtSec = (dx / W) * getView().span;
       loopStart = Math.max(0, Math.min(rawBuffer.duration - loopDur, loopDragStartLoopStart + dtSec));
       buildLoopBuffer();
       updateLoopRegion();
@@ -2460,8 +2511,8 @@ function initGridDrag(){
     if(!gridDragActive) return;
     const dx   = getClientX(e) - gridDragStartX;
     const W    = wrap.clientWidth || 400;
-    // dx in pixels → fraction of total waveform duration
-    const dtSec = (dx / W) * rawBuffer.duration;
+    // dx in pixels → seconds, scaled by the current zoom view span
+    const dtSec = (dx / W) * getView().span;
     // Convert to fraction of one beat period
     const heartBeatSec = 60 / detectedBPM;
     let newPhase = gridDragStartPhase + dtSec / heartBeatSec;
@@ -2625,9 +2676,9 @@ function updateLoopRegion(){
   if(!rawBuffer) return;
   const wrap=document.getElementById('waveformCanvasWrap');
   const region=document.getElementById('loopRegion');
-  const totalDur=rawBuffer.duration;
-  const left=(loopStart/totalDur)*100;
-  const width=(loopDur/totalDur)*100;
+  const v=getView();
+  const left=((loopStart-v.start)/v.span)*100;
+  const width=(loopDur/v.span)*100;
   region.style.left=left+'%';
   region.style.width=width+'%';
   drawMusicGrid();
@@ -2686,18 +2737,18 @@ function animateWombPlayhead(){
   if(!wombPrevPlaying||!wombPrevAC||!rawBuffer) return;
   const elapsed=wombPrevAC.currentTime-wombPrevStartAC;
   const ph=document.getElementById('wombPlayhead');
+  const v=getView();
   if(loopBuffer){
     // Cycle the playhead across the loop region [loopStart .. loopStart+loopDur],
     // read live so dragging the region while previewing moves the sweep too.
-    const total=rawBuffer.duration;
     const phase=(elapsed % loopBuffer.duration)/loopBuffer.duration;
-    const left=((loopStart + phase*loopDur)/total)*100;
+    const left=(((loopStart + phase*loopDur)-v.start)/v.span)*100;
     if(ph) ph.style.left=left+'%';
     wombPrevRaf=requestAnimationFrame(animateWombPlayhead);
   } else {
-    const progress=Math.min(elapsed/rawBuffer.duration,1);
-    if(ph) ph.style.left=(progress*100)+'%';
-    if(progress<1){ wombPrevRaf=requestAnimationFrame(animateWombPlayhead); }
+    const t=Math.min(elapsed,rawBuffer.duration);
+    if(ph) ph.style.left=(((t-v.start)/v.span)*100)+'%';
+    if(t<rawBuffer.duration){ wombPrevRaf=requestAnimationFrame(animateWombPlayhead); }
   }
 }
 
