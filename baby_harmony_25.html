@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.4';
+window.APP_VERSION = '2026-07-08.5';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -617,6 +617,7 @@ var cl='en',cs='beat',cm='lullaby';
 var rawBuffer=null, loopBuffer=null;
 var AC=null, wSrc=null, mSrc=null, wGain=null, mGain=null;
 var musicFileBuffer=null;
+var musicLeadInSec=0; // leading silence/fade-in in the music file, skipped on play & loop
 var musicFineBPM=0; // user fine-tune offset in BPM
 var musicRateMult=1; // manual music-only speed: 0.5 = half, 1 = normal, 2 = double
 var BASE_MUSIC_OFFSET=0.25;     // calibrated zero point (displayed as ±0); auto-updated by lub detection
@@ -1386,6 +1387,7 @@ async function selectTrack(trackId){
     const buf = await loadMusicFile(variant.file, variant.file);
     if(selectedTrack !== track) return; // superseded by a newer tap — ignore
     musicFileBuffer = buf;
+    musicLeadInSec = detectMusicLeadIn(buf);
     refreshPreview(); drawMusicGrid(); updateMusicBpmLabel();
     if(playing){stopAll();startAll();}
   }catch(e){
@@ -1554,6 +1556,7 @@ var _mfiEl=document.getElementById('mfi'); if(_mfiEl) _mfiEl.addEventListener('c
   reader.onload=function(e){
     AC.decodeAudioData(e.target.result,function(buf){
       musicFileBuffer=buf;
+      musicLeadInSec=detectMusicLeadIn(buf);
       document.getElementById('musicUpInfo').style.display='flex';
       const rate = calcPlaybackRate();
       const mult = getBestMult();
@@ -2564,13 +2567,33 @@ function onMusicFine(val){
 // Phase is now controlled by dragging the music grid overlay on the waveform.
 // musicPhaseOffset (0.0–1.0) is updated by the drag handler below.
 
+// Some music files begin with a fade-in or a beat or two of near-silence.
+// If we play from sample 0 the "entrance" we so carefully align to the heart
+// peak is actually silence, and the real music enters a beat or more late —
+// which reads as "the music doesn't match the heartbeat". Detect that lead-in
+// once per buffer so playback (and every loop) can start on the first real note.
+function detectMusicLeadIn(buf){
+  if(!buf) return 0;
+  const sr=buf.sampleRate, d=buf.getChannelData(0);
+  const scan=Math.min(d.length, Math.floor(sr*20));
+  let peak=0; for(let i=0;i<scan;i++){ const a=Math.abs(d[i]); if(a>peak) peak=a; }
+  if(peak<=0) return 0;
+  const thr=peak*0.15;              // 15% of the loudest sample = clearly audible
+  let onset=-1;
+  for(let i=0;i<d.length;i++){ if(Math.abs(d[i])>thr){ onset=i/sr; break; } }
+  if(onset<=0.05) return 0;         // no meaningful lead-in
+  // Back off ~15ms so the note's very attack isn't clipped.
+  return Math.max(0, onset-0.015);
+}
+
 function calcPhaseOffsetSec(){
   // Intro = INTRO_BARS * beatSec = exact integer multiple of beatSec,
   // so music always starts on beat 1 — no sync correction needed.
+  // Start past any leading silence so the first audible note lands on the beat.
   const beatSec = detectedBPM > 0 ? 60 / detectedBPM : 0;
   const rate = calcPlaybackRate();
-  if(rate <= 0 || beatSec <= 0) return 0;
-  return (musicPhaseOffset * beatSec) / rate;
+  if(rate <= 0 || beatSec <= 0) return musicLeadInSec;
+  return musicLeadInSec + (musicPhaseOffset * beatSec) / rate;
 }
 
 function applyPhaseRestart(){
@@ -2601,6 +2624,7 @@ function applyPhaseRestart(){
   const s = ctx.createBufferSource();
   s.buffer = musicFileBuffer;
   s.loop = true;
+  if(musicLeadInSec>0){ s.loopStart=musicLeadInSec; s.loopEnd=musicFileBuffer.duration; }
   s.playbackRate.value = calcPlaybackRate();
   const offsetSec = calcPhaseOffsetSec();
   s.connect(newGain);
@@ -2822,6 +2846,8 @@ function buildMusicSrc(ctx, startAt){
     const out=ctx.createGain();
     const s=ctx.createBufferSource();
     s.buffer=musicFileBuffer; s.loop=true;
+    // Loop past the leading silence so it never replays as a gap mid-gift.
+    if(musicLeadInSec>0){ s.loopStart=musicLeadInSec; s.loopEnd=musicFileBuffer.duration; }
     s.playbackRate.value=calcPlaybackRate();
     s.connect(out);
     s.start(when, calcPhaseOffsetSec());
@@ -2946,6 +2972,7 @@ function seekMusic(e){
   const out=AC.createGain();
   const s=AC.createBufferSource();
   s.buffer=musicFileBuffer; s.loop=true; s.playbackRate.value=rate;
+  if(musicLeadInSec>0){ s.loopStart=musicLeadInSec; s.loopEnd=musicFileBuffer.duration; }
   s.connect(out); s.start(0,fileOffset);
   out._src=s; out._x=()=>{try{s.stop();}catch(er){}};
   out.connect(mGain); mSrc=out;
@@ -2994,6 +3021,7 @@ function dlAudio(){
 
   if(musicFileBuffer){
     const ms=off.createBufferSource(); ms.buffer=musicFileBuffer; ms.loop=true;
+    if(musicLeadInSec>0){ ms.loopStart=musicLeadInSec; ms.loopEnd=musicFileBuffer.duration; }
     ms.playbackRate.value=calcPlaybackRate();
     ms.connect(mg);
     ms.start(introSec, calcPhaseOffsetSec());
