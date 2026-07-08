@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.1';
+window.APP_VERSION = '2026-07-08.2';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2199,7 +2199,11 @@ function _runDetectCore(){
       // click even when the waveform is continuous (0→0). Find the quietest
       // frame ~4 beats after the start and end there, then derive the tempo
       // from the real loop length so the music stays locked to it.
-      {
+      // NOTE: sample clips have an authoritative known BPM, so their beat grid is
+      // exact by construction — snapping to a later "quiet" frame only adds an
+      // irregular gap that makes the seam feel stretched (間延び). Skip the snap
+      // for known-BPM samples and keep the mathematically exact integer-beat loop.
+      if(_knownBPM <= 0){
         const lsFrame = Math.round(loopStart / frameSec);
         const targetEndFrame = lsFrame + Math.round(loopDur / frameSec);
         const half = Math.floor(beatPeriodFrames * 0.40);
@@ -2642,11 +2646,16 @@ function startWombPreview(){
   if(!wombPrevAC) wombPrevAC=new(window.AudioContext||window.webkitAudioContext)();
   if(wombPrevAC.state==='suspended') wombPrevAC.resume();
   const s=wombPrevAC.createBufferSource();
-  s.buffer=rawBuffer;
+  // Preview the SELECTED loop region on repeat (not the whole clip once) so the
+  // user hears the actual seam and can drag-fine-tune the pink region while it
+  // plays. Fall back to the raw buffer if the loop hasn't been built yet.
+  const buf=loopBuffer||rawBuffer;
+  s.buffer=buf;
+  s.loop = !!loopBuffer; // loop only the built region; raw buffer plays once
   s.connect(wombPrevAC.destination);
   wombPrevStartAC=wombPrevAC.currentTime;
   s.start(0);
-  s.onended=()=>stopWombPreview();
+  s.onended=()=>stopWombPreview(); // only fires for the non-looping fallback
   wombPrevSrc=s;
   wombPrevPlaying=true;
   document.getElementById('wombPrevBtn').classList.add('playing');
@@ -2659,11 +2668,19 @@ function startWombPreview(){
 function animateWombPlayhead(){
   if(!wombPrevPlaying||!wombPrevAC||!rawBuffer) return;
   const elapsed=wombPrevAC.currentTime-wombPrevStartAC;
-  const progress=Math.min(elapsed/rawBuffer.duration,1);
   const ph=document.getElementById('wombPlayhead');
-  if(ph) ph.style.left=(progress*100)+'%';
-  if(progress<1){
+  if(loopBuffer){
+    // Cycle the playhead across the loop region [loopStart .. loopStart+loopDur],
+    // read live so dragging the region while previewing moves the sweep too.
+    const total=rawBuffer.duration;
+    const phase=(elapsed % loopBuffer.duration)/loopBuffer.duration;
+    const left=((loopStart + phase*loopDur)/total)*100;
+    if(ph) ph.style.left=left+'%';
     wombPrevRaf=requestAnimationFrame(animateWombPlayhead);
+  } else {
+    const progress=Math.min(elapsed/rawBuffer.duration,1);
+    if(ph) ph.style.left=(progress*100)+'%';
+    if(progress<1){ wombPrevRaf=requestAnimationFrame(animateWombPlayhead); }
   }
 }
 
