@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.17';
+window.APP_VERSION = '2026-07-08.18';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1681,6 +1681,21 @@ function runDetect(){
   try{ wizUpdateNextState(); }catch(e){} // a womb sound is now captured → enable Next
 }
 
+// Spectral-flux autocorrelation tempo estimate. Robust for faint / low-SNR
+// phone recordings where peak-based estimators fail: it integrates periodicity
+// across the whole clip, so it finds the beat even buried in noise.
+function _fluxAutocorrBPM(env, N, frameSec, bpmLo, bpmHi){
+  var flux=new Float64Array(N);
+  for(var i=1;i<N;i++){ var df=env[i]-env[i-1]; flux[i]=df>0?df:0; }
+  var fps=1/frameSec, best=-1, bb=0;
+  for(var bpm=bpmLo; bpm<=bpmHi; bpm+=0.25){
+    var lag=fps*60/bpm, s=0;
+    for(var j=Math.ceil(lag); j<N; j++){ var l=j-lag, li=Math.floor(l), fr=l-li; s+=flux[j]*(flux[li]*(1-fr)+flux[li+1]*fr); }
+    if(s>best){ best=s; bb=bpm; }
+  }
+  return Math.round(bb);
+}
+
 // Safe fallback loop: assume a typical fetal heart rate (140 bpm) when nothing
 // reliable was found, and build a clean 4-beat loop from the start of audio.
 function _safeFallbackLoop(msg){
@@ -2097,6 +2112,17 @@ function _runDetectCore(){
       bpmFinal = bpmFinal * 2;
       ldScoreLow = sLow; ldScoreHigh = sHigh; // surface in debug line
     }
+  }
+
+  // ── Robust fallback for faint / low-SNR recordings ───────────────────────
+  // When every primary estimator is unconfident (very quiet or noisy phone
+  // recordings) they can return garbage — e.g. 172 bpm for a ~136 heart, whose
+  // loop then feels like 3 beats and won't match the music. A spectral-flux
+  // autocorrelation over the fetal band recovers the true periodicity here.
+  // Gated on near-zero confidence so it never touches the cases that work.
+  if(_knownBPM <= 0 && totalVotes < 4 && confA < 0.08 && bestR < 0.15){
+    var _fb = _fluxAutocorrBPM(env, nFrames, frameSec, 100, 185);
+    if(_fb >= 100 && _fb <= 185){ bpmFinal = _fb; }
   }
 
   detectedBPM = bpmFinal;
