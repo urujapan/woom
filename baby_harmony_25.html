@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.16';
+window.APP_VERSION = '2026-07-08.17';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1013,6 +1013,40 @@ function _useRec(id){
   var rec=recs.find(function(r){ return r.id===id; });
   if(rec) loadWombBuffer(_b642ab(rec.b64), rec.name);
 }
+// Sniff the real container (iOS records mp4/m4a, others webm) so the shared
+// file has the correct type/extension regardless of how it was labelled.
+function _sniffAudio(ab){
+  var b=new Uint8Array(ab);
+  if(b[0]===0x1A&&b[1]===0x45&&b[2]===0xDF&&b[3]===0xA3) return {mime:'audio/webm',ext:'webm'};
+  if(b[4]===0x66&&b[5]===0x74&&b[6]===0x79&&b[7]===0x70) return {mime:'audio/mp4',ext:'m4a'};
+  if(b[0]===0x52&&b[1]===0x49&&b[2]===0x46&&b[3]===0x46) return {mime:'audio/wav',ext:'wav'};
+  return {mime:'audio/webm',ext:'webm'};
+}
+// Share/export a recorded heartbeat so it can be sent (e.g. AirDrop, Messages).
+// Uses the native share sheet on iPhone when available, else downloads the file.
+async function _shareRec(id){
+  var recs=_loadRecs();
+  var rec=recs.find(function(r){ return r.id===id; });
+  if(!rec) return;
+  var ab=_b642ab(rec.b64);
+  var info=_sniffAudio(ab);
+  var fname='WooM-heartbeat-'+String(rec.name).replace(/[\/:\s]+/g,'-')+'.'+info.ext;
+  var blob=new Blob([ab],{type:info.mime});
+  try{
+    if(navigator.canShare){
+      var file=new File([blob],fname,{type:info.mime});
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:fname});
+        return;
+      }
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  // Fallback: trigger a download (iOS Safari saves to Files, desktop downloads).
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download=fname;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+}
 function _renderRecHistory(){
   var recs=_loadRecs().slice().reverse();
   var wrap=document.getElementById('recHistory');
@@ -1028,7 +1062,7 @@ function _renderRecHistory(){
   list.innerHTML=recs.map(function(r){
     var m=Math.floor(r.dur/60),s=r.dur%60;
     var dur=m+':'+(s<10?'0':'')+s;
-    return '<div class="rec-item"><div class="rec-item-info"><div class="rec-item-name">📼 '+r.name+'</div><div class="rec-item-dur">'+dur+'</div></div><button class="rec-item-use" onclick="_useRec('+r.id+')">'+useLbl+'</button><button class="rec-item-del" onclick="_deleteRec('+r.id+')">✕</button></div>';
+    return '<div class="rec-item"><div class="rec-item-info"><div class="rec-item-name">📼 '+r.name+'</div><div class="rec-item-dur">'+dur+'</div></div><button class="rec-item-use" onclick="_useRec('+r.id+')">'+useLbl+'</button><button class="rec-item-use" onclick="_shareRec('+r.id+')" title="share" style="background:#FBEAF0;color:#C03D6B;">📤</button><button class="rec-item-del" onclick="_deleteRec('+r.id+')">✕</button></div>';
   }).join('');
 }
 
