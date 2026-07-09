@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.18';
+window.APP_VERSION = '2026-07-08.19';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -446,7 +446,21 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <button class="mbtn" onclick="pickMusic(this,'other')"><span class="micon"><i class="ti ti-dots"></i></span><span class="mn" data-k="none">その他</span></button>
     </div>
     <div class="track-panel" id="trackPanel"></div>
-    <div class="divider"></div>
+  </div>
+</div>
+
+<div class="sec wiz-step" id="wizStep2">
+  <p class="sec-lbl" id="T18">Womb Sound × Music Mix Preview</p>
+  <div class="player">
+    <button class="pbtn" onclick="togglePlay()"><i class="ti ti-player-play" id="pico"></i></button>
+    <div class="np" id="npTitle">Ready to play</div>
+    <div class="npsub" id="npSub">Heartbeat × Lullaby</div>
+    <div class="pbar" id="pbarWrap" onclick="seekMusic(event)" style="cursor:pointer;"><div class="pfill" id="pfill"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-top:3px;">
+      <span id="timeNow">0:00</span><span id="timeTotal">—</span>
+    </div>
+  </div>
+  <div class="card" style="margin-top:.75rem;">
     <div class="srow"><span class="slbl" id="T15">Womb sound</span><input type="range" id="vW" min="-50" max="50" value="0" step="1" oninput="onVolSlider('vW','vWv')"><span class="sval" id="vWv">0</span></div>
     <div class="srow"><span class="slbl" id="T16">Music</span><input type="range" id="vM" min="-50" max="50" value="0" step="1" oninput="onVolSlider('vM','vMv')"><span class="sval" id="vMv">0</span></div>
     <div class="srow" id="tempoRow" style="display:none"><span class="slbl" id="T17">Tempo</span><input type="range" id="vT" min="60" max="140" value="80" step="1" oninput="onSlider('vT','vTv',' bpm')"><span class="sval" id="vTv">80 bpm</span></div>
@@ -469,20 +483,6 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <span class="slbl">Fine-tune</span>
       <input type="range" id="musicFine" min="-20" max="20" value="0" step="1" oninput="onMusicFine(this.value)">
       <span class="sval" id="musicFineVal">±0 bpm</span>
-    </div>
-
-  </div>
-</div>
-
-<div class="sec wiz-step" id="wizStep2">
-  <p class="sec-lbl" id="T18">Womb Sound × Music Mix Preview</p>
-  <div class="player">
-    <button class="pbtn" onclick="togglePlay()"><i class="ti ti-player-play" id="pico"></i></button>
-    <div class="np" id="npTitle">Ready to play</div>
-    <div class="npsub" id="npSub">Heartbeat × Lullaby</div>
-    <div class="pbar" id="pbarWrap" onclick="seekMusic(event)" style="cursor:pointer;"><div class="pfill" id="pfill"></div></div>
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-top:3px;">
-      <span id="timeNow">0:00</span><span id="timeTotal">—</span>
     </div>
   </div>
   <div class="viz" id="vizBox" style="margin-top:.75rem;margin-bottom:0;">
