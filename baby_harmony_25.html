@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.14';
+window.APP_VERSION = '2026-07-08.15';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -51,6 +51,20 @@ body{font-family:'Baloo 2','DM Sans',sans-serif;background:#fff5f8;min-height:10
 .title em{font-style:italic;color:#D4537E;}
 .subtitle{font-size:13px;color:#888;margin-top:.4rem;}
 .sec{margin-bottom:1.5rem;}
+/* ── Step wizard (one part per screen) ── */
+body.wiz-on{padding-bottom:96px;}
+.wiz-step{display:none;}
+.wiz-step.active{display:block;animation:wizIn .32s ease;}
+@keyframes wizIn{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:translateX(0);}}
+.wiz-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;}
+.wiz-nav-inner{max-width:560px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:rgba(255,245,248,.96);border-top:1px solid #F4D2DF;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+.wiz-btn{border:none;border-radius:24px;padding:12px 24px;font-size:15px;font-weight:600;font-family:'Baloo 2','DM Sans',sans-serif;cursor:pointer;min-width:92px;}
+.wiz-btn.next{background:#D4537E;color:#fff;box-shadow:0 3px 10px rgba(212,83,126,.3);}
+.wiz-btn.back{background:#FBEAF0;color:#C03D6B;}
+.wiz-dots{display:flex;gap:8px;align-items:center;}
+.wiz-dot{width:9px;height:9px;border-radius:50%;background:#F4C0D1;transition:all .25s;cursor:pointer;}
+.wiz-dot.on{background:#D4537E;transform:scale(1.3);}
+.wiz-dot.done{background:#E89EBB;}
 .sec-lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#aaa;margin-bottom:.6rem;}
 .card{background:white;border:1px solid #eee;border-radius:12px;padding:1.25rem;}
 .tabs{display:flex;gap:8px;margin-bottom:1rem;}
@@ -331,7 +345,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
   </div>
 </div>
 
-<div class="sec">
+<div class="sec wiz-step" id="wizStep0">
   <p class="sec-lbl" id="T2">Womb Sound</p>
   <div class="card">
     <div class="wombtype-row">
@@ -419,7 +433,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
   </div>
 </div>
 
-<div class="sec">
+<div class="sec wiz-step" id="wizStep1">
   <p class="sec-lbl" id="T14">Choose Background Music</p>
   <div class="card">
     <div class="mgrid">
@@ -459,7 +473,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
   </div>
 </div>
 
-<div class="sec">
+<div class="sec wiz-step" id="wizStep2">
   <p class="sec-lbl" id="T18">Womb Sound × Music Mix Preview</p>
   <div class="player">
     <button class="pbtn" onclick="togglePlay()"><i class="ti ti-player-play" id="pico"></i></button>
@@ -479,7 +493,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
   </div>
 </div>
 
-<div class="sec">
+<div class="sec wiz-step" id="wizStep3">
   <p class="sec-lbl" id="T19">Create a Gift</p>
   <div class="card">
     <div class="ginput-group">
@@ -546,6 +560,16 @@ input[type=range]{flex:1;accent-color:#D4537E;}
   </div>
 </div>
 </div>
+
+<!-- Step wizard bottom navigation -->
+<nav class="wiz-nav" id="wizNav" style="display:none;">
+  <div class="wiz-nav-inner">
+    <button class="wiz-btn back" id="wizBack" onclick="wizGo(-1)">← Back</button>
+    <div class="wiz-dots" id="wizDots"></div>
+    <button class="wiz-btn next" id="wizNext" onclick="wizGo(1)">Next →</button>
+  </div>
+</nav>
+
 <div class="toast" id="toast"></div>
 
 <!-- Gift animation overlay -->
@@ -670,6 +694,7 @@ function L(l){
     document.getElementById('sampleUseLbl').textContent=SAMPLE_USE[l]||SAMPLE_USE.en;
   }catch(e){}
   try{ var h=_helpI18n[l]||_helpI18n.en; document.getElementById('helpOpenBtn').textContent='？ '+h.title; }catch(e){}
+  try{ var hn=_helpI18n[l]||_helpI18n.en; document.getElementById('wizBack').textContent=hn.prev; document.getElementById('wizNext').textContent=hn.next; }catch(e){}
   try{ _renderRecHistory(); }catch(e){}
   // Gift section labels
   try{
@@ -3577,6 +3602,36 @@ function toast(msg){
   document.addEventListener('mousedown',  unlockAudio, {passive:true});
 })();
 
+// ── Step wizard: show one part per screen ──────────────────────────────────
+var wizStep=0, _wizSteps=[];
+var WIZ_NEED={ja:'まず胎内音を採取してください',en:'Please capture a womb sound first',zh:'请先采集胎音','zh-TW':'請先採集胎音',ko:'먼저 태내음을 채취하세요',es:'Primero capta un sonido del vientre',fr:'Captez d\'abord un son utérin',de:'Nimm zuerst einen Mutterleibklang auf',pt:'Primeiro capte um som do útero',hi:'पहले गर्भ की आवाज़ लें',id:'Rekam dulu suara rahim',it:'Prima cattura un suono uterino',th:'กรุณาเก็บเสียงในครรภ์ก่อน',vi:'Hãy thu âm thanh tử cung trước',ru:'Сначала запишите звук утробы'};
+function wizInit(){
+  _wizSteps=Array.prototype.slice.call(document.querySelectorAll('.wiz-step'));
+  if(!_wizSteps.length) return;
+  var dots=document.getElementById('wizDots'); dots.innerHTML='';
+  _wizSteps.forEach(function(_,i){ var d=document.createElement('div'); d.className='wiz-dot'; d.onclick=function(){ wizGoTo(i); }; dots.appendChild(d); });
+  document.body.classList.add('wiz-on');
+  document.getElementById('wizNav').style.display='block';
+  wizGoTo(0);
+}
+function wizGo(dir){ wizGoTo(wizStep+dir); }
+function wizGoTo(n){
+  if(n<0||n>=_wizSteps.length) return;
+  // Soft guard: a womb sound must be captured before leaving the first step.
+  if(n>wizStep && wizStep===0 && !rawBuffer){ try{toast(WIZ_NEED[cl]||WIZ_NEED.en);}catch(e){} return; }
+  wizStep=n;
+  _wizSteps.forEach(function(s,i){ s.classList.toggle('active', i===n); });
+  var dd=document.getElementById('wizDots').children;
+  for(var i=0;i<dd.length;i++){ dd[i].className='wiz-dot'+(i===n?' on':(i<n?' done':'')); }
+  var back=document.getElementById('wizBack'), next=document.getElementById('wizNext');
+  back.style.visibility=(n===0)?'hidden':'visible';
+  next.style.visibility=(n===_wizSteps.length-1)?'hidden':'visible';
+  // Canvases can't size themselves while display:none — redraw now that they're shown.
+  try{ if(n===0 && rawBuffer){ redrawWave(); } }catch(e){}
+  try{ if(rawBuffer && musicFileBuffer){ drawMusicGrid(); } }catch(e){}
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
 // ── Auto-detect language on load ─────────────────────────────────────────
 (function(){
   const nav=(navigator.language||navigator.userLanguage||'en').toLowerCase();
@@ -3584,6 +3639,7 @@ function toast(msg){
   const match=supported.find(l=>nav.startsWith(l==='zh-TW'?'zh-tw':l));
   L(match||'en');
 })();
+try{ wizInit(); }catch(e){}
 </script>
 </body>
 </html>
