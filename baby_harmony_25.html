@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.9';
+window.APP_VERSION = '2026-07-08.10';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -602,8 +602,8 @@ const REC_HIST={en:'📼 Recording History',ja:'📼 録音履歴',zh:'📼 录�
 const REC_USE={en:'Use',ja:'使う',zh:'使用','zh-TW':'使用',ko:'사용',es:'Usar',fr:'Utiliser',de:'Nutzen',pt:'Usar',hi:'उपयोग',id:'Gunakan',it:'Usa',th:'ใช้',vi:'Dùng',ru:'Использовать'};
 const REC_CLEAR={en:'Clear all',ja:'すべて削除',zh:'全部清除','zh-TW':'全部清除',ko:'전체 삭제',es:'Borrar todo',fr:'Tout effacer',de:'Alle löschen',pt:'Limpar tudo',hi:'सभी हटाएं',id:'Hapus semua',it:'Cancella tutto',th:'ล้างทั้งหมด',vi:'Xóa tất cả',ru:'Очистить всё'};
 const REC_CLEAR_CONFIRM={en:'Delete all recordings?',ja:'録音履歴をすべて削除しますか？',zh:'删除所有录音？','zh-TW':'刪除所有錄音？',ko:'모든 녹음을 삭제할까요?',es:'¿Eliminar todas las grabaciones?',fr:'Supprimer tous les enregistrements ?',de:'Alle Aufnahmen löschen?',pt:'Excluir todas as gravações?',hi:'सभी रिकॉर्डिंग हटाएं?',id:'Hapus semua rekaman?',it:'Eliminare tutte le registrazioni?',th:'ลบการบันทึกทั้งหมด?',vi:'Xóa tất cả bản ghi âm?',ru:'Удалить все записи?'};
-const TAB_UPLOAD={en:'Upload',ja:'心音をアップロード',zh:'上传心音','zh-TW':'上傳心音',ko:'심음 업로드',es:'Subir',fr:'Importer',de:'Hochladen',pt:'Enviar',hi:'अपलोड',id:'Unggah',it:'Carica',th:'อัปโหลด',vi:'Tải lên',ru:'Загрузить'};
-const TAB_RECORD={en:'Record',ja:'心音を録音',zh:'录制心音','zh-TW':'錄製心音',ko:'심음 녹음',es:'Grabar',fr:'Enregistrer',de:'Aufnehmen',pt:'Gravar',hi:'रिकॉर्ड करें',id:'Rekam',it:'Registra',th:'บันทึก',vi:'Ghi âm',ru:'Записать'};
+const TAB_UPLOAD={en:'Upload Heartbeat',ja:'心音をアップロード',zh:'上传心音','zh-TW':'上傳心音',ko:'심음 업로드',es:'Subir latido',fr:'Importer le battement',de:'Herzschlag hochladen',pt:'Enviar batimento',hi:'धड़कन अपलोड करें',id:'Unggah detak jantung',it:'Carica battito',th:'อัปโหลดเสียงหัวใจ',vi:'Tải lên nhịp tim',ru:'Загрузить сердцебиение'};
+const TAB_RECORD={en:'Record Heartbeat',ja:'心音を録音',zh:'录制心音','zh-TW':'錄製心音',ko:'심음 녹음',es:'Grabar latido',fr:'Enregistrer le battement',de:'Herzschlag aufnehmen',pt:'Gravar batimento',hi:'धड़कन रिकॉर्ड करें',id:'Rekam detak jantung',it:'Registra battito',th:'บันทึกเสียงหัวใจ',vi:'Ghi âm nhịp tim',ru:'Записать сердцебиение'};
 const METHOD_ECHO={en:'Ultrasound audio',ja:'エコー機器の音声',zh:'超声设备声音','zh-TW':'超音波設備聲音',ko:'초음파 기기 소리',es:'Audio de ecografía',fr:'Audio échographie',de:'Ultraschall-Audio',pt:'Áudio de ultrassom',hi:'अल्ट्रासाउंड ऑडियो',id:'Audio USG',it:'Audio ecografia',th:'เสียงเครื่องอัลตราซาวด์',vi:'Âm thanh máy siêu âm',ru:'Звук УЗИ'};
 const METHOD_BELLY={en:'Record on belly',ja:'お腹を直接録音',zh:'直接贴腹部录音','zh-TW':'直接貼腹部錄音',ko:'배에 직접 녹음',es:'Grabar en el vientre',fr:'Sur le ventre',de:'Am Bauch',pt:'Na barriga',hi:'पेट पर',id:'Di perut',it:'Sulla pancia',th:'ที่หน้าท้อง',vi:'Trên bụng',ru:'На животе'};
 const SAMPLE_USE={en:'Use a sample heartbeat',ja:'サンプル心音を使う',zh:'使用示例心音','zh-TW':'使用範例心音',ko:'샘플 심음 사용',es:'Usar un latido de muestra',fr:'Utiliser un exemple',de:'Beispiel verwenden',pt:'Usar amostra',hi:'नमूना उपयोग करें',id:'Gunakan sampel',it:'Usa un esempio',th:'ใช้ตัวอย่าง',vi:'Dùng mẫu',ru:'Использовать образец'};
