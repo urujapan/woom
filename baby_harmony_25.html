@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-08.15';
+window.APP_VERSION = '2026-07-08.16';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -61,6 +61,7 @@ body.wiz-on{padding-bottom:96px;}
 .wiz-btn{border:none;border-radius:24px;padding:12px 24px;font-size:15px;font-weight:600;font-family:'Baloo 2','DM Sans',sans-serif;cursor:pointer;min-width:92px;}
 .wiz-btn.next{background:#D4537E;color:#fff;box-shadow:0 3px 10px rgba(212,83,126,.3);}
 .wiz-btn.back{background:#FBEAF0;color:#C03D6B;}
+.wiz-btn.next.disabled{opacity:.4;box-shadow:none;} /* still tappable → shows a hint toast */
 .wiz-dots{display:flex;gap:8px;align-items:center;}
 .wiz-dot{width:9px;height:9px;border-radius:50%;background:#F4C0D1;transition:all .25s;cursor:pointer;}
 .wiz-dot.on{background:#D4537E;transform:scale(1.3);}
@@ -1643,6 +1644,7 @@ var _mfiEl=document.getElementById('mfi'); if(_mfiEl) _mfiEl.addEventListener('c
 function runDetect(){
   try{ _runDetectCore(); }
   catch(err){ _safeFallbackLoop(_tr(FB_NODET)); }
+  try{ wizUpdateNextState(); }catch(e){} // a womb sound is now captured → enable Next
 }
 
 // Safe fallback loop: assume a typical fetal heart rate (140 bpm) when nothing
@@ -3615,9 +3617,15 @@ function wizInit(){
   wizGoTo(0);
 }
 function wizGo(dir){ wizGoTo(wizStep+dir); }
+// Grey the Next button on step 1 until a womb sound is captured, so it's clear
+// why it won't advance yet (rather than looking frozen).
+function wizUpdateNextState(){
+  var next=document.getElementById('wizNext'); if(!next) return;
+  next.classList.toggle('disabled', (wizStep===0 && !rawBuffer));
+}
 function wizGoTo(n){
   if(n<0||n>=_wizSteps.length) return;
-  // Soft guard: a womb sound must be captured before leaving the first step.
+  // Guard: a womb sound must be captured before leaving the first step.
   if(n>wizStep && wizStep===0 && !rawBuffer){ try{toast(WIZ_NEED[cl]||WIZ_NEED.en);}catch(e){} return; }
   wizStep=n;
   _wizSteps.forEach(function(s,i){ s.classList.toggle('active', i===n); });
@@ -3626,6 +3634,7 @@ function wizGoTo(n){
   var back=document.getElementById('wizBack'), next=document.getElementById('wizNext');
   back.style.visibility=(n===0)?'hidden':'visible';
   next.style.visibility=(n===_wizSteps.length-1)?'hidden':'visible';
+  wizUpdateNextState();
   // Canvases can't size themselves while display:none — redraw now that they're shown.
   try{ if(n===0 && rawBuffer){ redrawWave(); } }catch(e){}
   try{ if(rawBuffer && musicFileBuffer){ drawMusicGrid(); } }catch(e){}
