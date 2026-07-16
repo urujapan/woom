@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.7';
+window.APP_VERSION = '2026-07-10.8';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -670,7 +670,7 @@ var detectedBPM=0, loopStart=0, loopDur=0;
 var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
 var _peakOffsetSec=0; // time from loop start to the heartbeat peak (for phase re-scaling)
 const CROSSFADE_MS=80;
-const INTRO_BARS=4;  // bars of heart-only intro (1 bar = 4 beats)
+const INTRO_BARS=2;  // bars of heart-only intro (1 bar = 4 beats); music enters as the womb fade-in completes
 const FADEIN_BARS=2; // first 2 bars = womb-sound fade-in
 var mIntroGain=null;
 var musicIntroTimer=null;
@@ -2747,13 +2747,15 @@ function detectMusicLeadIn(buf){
 // Manual beat alignment. Auto-sync can't lock when the womb recording has no
 // clear pulse (heavy echo/noise) or the track has no strong beat accent, so let
 // the user nudge the music's beat against the heartbeat by ear, live.
-var _beatNudgeSteps=0; // in 1/8 beats, -4..+4
+// 1/16-beat steps (~25ms at 150bpm): the residual mismatch on real recordings is
+// a few tens of ms — 1/8 steps were too coarse to dial that out.
+var _beatNudgeSteps=0; // in 1/16 beats, -8..+8 (±half a beat)
 function nudgeBeat(dir){
   if(dir===0) _beatNudgeSteps=0;
-  else _beatNudgeSteps=Math.max(-4,Math.min(4,_beatNudgeSteps+dir));
-  musicPhaseOffset=((_beatNudgeSteps/8)%1+1)%1;
+  else _beatNudgeSteps=Math.max(-8,Math.min(8,_beatNudgeSteps+dir));
+  musicPhaseOffset=((_beatNudgeSteps/16)%1+1)%1;
   var el=document.getElementById('beatAlignVal');
-  if(el) el.textContent=(_beatNudgeSteps>0?'+':'')+(_beatNudgeSteps===0?'±0':(_beatNudgeSteps+'/8'));
+  if(el) el.textContent=(_beatNudgeSteps>0?'+':'')+(_beatNudgeSteps===0?'±0':(_beatNudgeSteps+'/16'));
   try{ drawMusicGrid(); }catch(e){}
   // apply immediately so it can be judged while listening
   if(playing && cm==='file' && musicFileBuffer){ try{ applyPhaseRestart(); }catch(e){} }
