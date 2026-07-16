@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.9';
+window.APP_VERSION = '2026-07-10.10';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2121,14 +2121,38 @@ function _runDetectCore(){
   // fetal band, compare lub-dub fitness at both periods and DOUBLE unless the
   // halved period is a clearly better structural fit (>20%). This is grounded
   // in the actual heartbeat waveform shape, not a blind multiply.
-  if(bpmFinal > 0 && bpmFinal < 105 && bpmFinal*2 >= 110 && bpmFinal*2 <= 200){
-    const pLow  = Math.round(60 / bpmFinal     / frameSec);
-    const pHigh = Math.round(60 / (bpmFinal*2) / frameSec);
-    const sLow  = lubDubPatternScore(pLow);
-    const sHigh = lubDubPatternScore(pHigh);
-    if(!(sLow > sHigh * 1.20)){
-      bpmFinal = bpmFinal * 2;
-      ldScoreLow = sLow; ldScoreHigh = sHigh; // surface in debug line
+  // Try x2, x3 and x4 — not just x2. A x3 sub-harmonic is a real failure mode:
+  // HBO_Morning glow estimated 50 bpm (x2 = 100, still below the fetal band, so a
+  // doubling-only guard never fired) when the true rate is ~150 = 50 x 3. The loop
+  // then spanned 4 "beats" of 1.2s = 12 actual heartbeats.
+  if(bpmFinal > 0 && bpmFinal < 105){
+    // Strongest evidence first: the direct IBI histogram. If it sits in the fetal
+    // band AND is a near-integer multiple of the low estimate, two independent
+    // measures agree the low value is a sub-harmonic — take the histogram.
+    // (Don't arbitrate this with lubDubPatternScore: on HBO_Morning glow it rated
+    // the bogus 50bpm period 3x "better" than the true ~150, which is what kept
+    // the wrong value and made the loop span 12 heartbeats instead of 4.)
+    const multD = bpmDirect > 0 ? bpmDirect / bpmFinal : 0;
+    const nD    = Math.round(multD);
+    if(bpmDirect >= 110 && bpmDirect <= 200 && nD >= 2 && nD <= 4 && Math.abs(multD - nD) < 0.15){
+      ldScoreLow = lubDubPatternScore(Math.round(60 / bpmFinal / frameSec));
+      bpmFinal = bpmDirect;
+      ldScoreHigh = lubDubPatternScore(Math.round(60 / bpmFinal / frameSec));
+    } else {
+      // No histogram corroboration — fall back to lub-dub structure over x2..x4.
+      const pLow = Math.round(60 / bpmFinal / frameSec);
+      const sLow = lubDubPatternScore(pLow);
+      let bestM = 0, sBest = -1;
+      for(let m = 2; m <= 4; m++){
+        const cand = bpmFinal * m;
+        if(cand < 110 || cand > 200) continue;
+        const sc = lubDubPatternScore(Math.round(60 / cand / frameSec));
+        if(sc > sBest){ sBest = sc; bestM = m; }
+      }
+      if(bestM && !(sLow > sBest * 1.20)){
+        bpmFinal = bpmFinal * bestM;
+        ldScoreLow = sLow; ldScoreHigh = sBest; // surface in debug line
+      }
     }
   }
 
