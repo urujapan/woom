@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.5';
+window.APP_VERSION = '2026-07-10.6';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1352,8 +1352,9 @@ const MUSIC_LIBRARY = {
       variants:[{bpm:118,file:'WMSL_Fairy_bpm118.mp3'},{bpm:138,file:'WMSL_Fairy_BPM138 1.mp3'},{bpm:158,file:'WMSL_Fairy_bpm158.mp3'}]},
     {id:'lu3', title:'Moms Echo',  file:'WMSL_Moms Echo_BPM175.mp3',bpm:175,
       variants:[{bpm:135,file:'WMSL_Moms Echo_bpm135.mp3'},{bpm:155,file:'WMSL_Moms Echo_bpm155.mp3'},{bpm:175,file:'WMSL_Moms Echo_BPM175.mp3'}]},
-    {id:'lu2', title:'Twinkle',    file:'WMSL_Twinkle_BPM152.mp3',  bpm:152,
-      variants:[{bpm:132,file:'WMSL_Twinkle_bpm132.mp3'},{bpm:152,file:'WMSL_Twinkle_BPM152.mp3'},{bpm:172,file:'WMSL_Twinkle_bpm172.mp3'}]},
+    // 2-bar lead-in versions (new convention: 8 beats of silence before beat 1)
+    {id:'lu2', title:'Twinkle',    file:'WMSL_Twinkle_Org_bpm152.mp3',  bpm:152,
+      variants:[{bpm:132,file:'WMSL_Twinkle_bpm132#.mp3'},{bpm:152,file:'WMSL_Twinkle_Org_bpm152.mp3'},{bpm:172,file:'WMSL_Twinkle_bpm172#.mp3'}]},
   ],
   ambient:[
     {id:'am1', title:'Ambient Piano',    file:'WMSL_Ambient Piano_BPM138.mp3',    bpm:138,
@@ -1475,7 +1476,7 @@ async function selectTrack(trackId){
     const buf = await loadMusicFile(variant.file, variant.file);
     if(selectedTrack !== track) return; // superseded by a newer tap — ignore
     musicFileBuffer = buf;
-    musicLeadInSec = detectMusicLeadIn(buf);
+    musicLeadInSec = musicStartOffsetFor(buf, musicFileBPM);
     refreshPreview(); drawMusicGrid(); updateMusicBpmLabel();
     if(playing){stopAll();startAll();}
   }catch(e){
@@ -1644,7 +1645,7 @@ var _mfiEl=document.getElementById('mfi'); if(_mfiEl) _mfiEl.addEventListener('c
   reader.onload=function(e){
     AC.decodeAudioData(e.target.result,function(buf){
       musicFileBuffer=buf;
-      musicLeadInSec=detectMusicLeadIn(buf);
+      musicLeadInSec=musicStartOffsetFor(buf, musicFileBPM);
       document.getElementById('musicUpInfo').style.display='flex';
       const rate = calcPlaybackRate();
       const mult = getBestMult();
@@ -2714,6 +2715,21 @@ function onMusicFine(val){
 // peak is actually silence, and the real music enters a beat or more late —
 // which reads as "the music doesn't match the heartbeat". Detect that lead-in
 // once per buffer so playback (and every loop) can start on the first real note.
+// Tracks are authored with exactly 2 bars (8 beats) of silence before the first
+// downbeat, so the file start is a known musical position. When a buffer matches
+// that convention, start playback at the mathematically exact 2-bar point rather
+// than at a detected attack — this guarantees the music enters on beat 1 (some
+// tracks begin with a pickup, which is why trusting "first audible sound" put the
+// music on an offbeat). Files not yet converted fall back to attack detection.
+function musicStartOffsetFor(buf, bpm){
+  var detected = detectMusicLeadIn(buf);
+  if(bpm > 0){
+    var twoBars = 8 * 60 / bpm;
+    if(Math.abs(detected - twoBars) < 0.08) return twoBars;
+  }
+  return detected;
+}
+
 function detectMusicLeadIn(buf){
   if(!buf) return 0;
   const sr=buf.sampleRate, d=buf.getChannelData(0);
