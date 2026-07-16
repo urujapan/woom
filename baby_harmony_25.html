@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.3';
+window.APP_VERSION = '2026-07-10.4';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -484,6 +484,15 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <input type="range" id="musicFine" min="-20" max="20" value="0" step="1" oninput="onMusicFine(this.value)">
       <span class="sval" id="musicFineVal">±0 bpm</span>
     </div>
+    <div class="srow" id="beatAlignRow">
+      <span class="slbl" id="beatAlignLbl">拍を合わせる</span>
+      <div style="flex:1;display:flex;gap:5px;align-items:center;">
+        <button class="bpm-adj-btn" onclick="nudgeBeat(-1)" title="音楽の拍を少し前へ">◀</button>
+        <button class="bpm-adj-btn" onclick="nudgeBeat(1)" title="音楽の拍を少し後ろへ">▶</button>
+        <button class="bpm-adj-btn" onclick="nudgeBeat(0)" title="リセット" style="font-size:11px;">⟲</button>
+      </div>
+      <span class="sval" id="beatAlignVal">±0</span>
+    </div>
   </div>
   <div class="viz" id="vizBox" style="margin-top:.75rem;margin-bottom:0;">
     <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
@@ -655,6 +664,7 @@ var musicRateMult=1; // manual music-only speed: 0.5 = half, 1 = normal, 2 = dou
 var BASE_MUSIC_OFFSET=0.25;     // calibrated zero point (displayed as ±0); auto-updated by lub detection
 var musicStartOffsetBeats=BASE_MUSIC_OFFSET;
 var musicPhaseOffset=0; // phase offset 0.0–1.0 (fraction of one beat)
+const BEAT_ALIGN={en:'Beat align',ja:'拍を合わせる',zh:'对齐节拍','zh-TW':'對齊節拍',ko:'박자 맞추기',es:'Alinear el pulso',fr:'Caler le rythme',de:'Beat ausrichten',pt:'Alinhar a batida',hi:'बीट मिलाएं',id:'Selaraskan ketukan',it:'Allinea il battito',th:'จัดจังหวะ',vi:'Căn nhịp',ru:'Выровнять бит'};
 var ptimer=null, playing=false, musicStartAt=0, progMusicDur=0;
 var detectedBPM=0, loopStart=0, loopDur=0;
 var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
@@ -696,6 +706,7 @@ function L(l){
   }catch(e){}
   try{ var h=_helpI18n[l]||_helpI18n.en; document.getElementById('helpOpenBtn').textContent='？ '+h.title; }catch(e){}
   try{ var hn=_helpI18n[l]||_helpI18n.en; document.getElementById('wizBack').textContent=hn.prev; document.getElementById('wizNext').textContent=hn.next; }catch(e){}
+  try{ document.getElementById('beatAlignLbl').textContent=BEAT_ALIGN[l]||BEAT_ALIGN.en; }catch(e){}
   try{ _renderRecHistory(); }catch(e){}
   // Gift section labels
   try{
@@ -1453,6 +1464,7 @@ async function selectTrack(trackId){
   const variant = pickVariant(track);       // closest pre-produced BPM version
   musicFileBPM = variant.bpm||track.bpm||0;
   musicFineBPM=0; musicPhaseOffset=0; musicRateMult=1;
+  _beatNudgeSteps=0; try{ document.getElementById('beatAlignVal').textContent='±0'; }catch(e){}
   document.getElementById('musicFine').value=0;
   document.getElementById('musicFineVal').textContent='±0 bpm';
   document.getElementById('musicFineRow').style.display='flex';
@@ -2718,6 +2730,21 @@ function detectMusicLeadIn(buf){
   if(onset<=0.05) return 0;         // no meaningful lead-in
   // Back off ~15ms so the note's very attack isn't clipped.
   return Math.max(0, onset-0.015);
+}
+
+// Manual beat alignment. Auto-sync can't lock when the womb recording has no
+// clear pulse (heavy echo/noise) or the track has no strong beat accent, so let
+// the user nudge the music's beat against the heartbeat by ear, live.
+var _beatNudgeSteps=0; // in 1/8 beats, -4..+4
+function nudgeBeat(dir){
+  if(dir===0) _beatNudgeSteps=0;
+  else _beatNudgeSteps=Math.max(-4,Math.min(4,_beatNudgeSteps+dir));
+  musicPhaseOffset=((_beatNudgeSteps/8)%1+1)%1;
+  var el=document.getElementById('beatAlignVal');
+  if(el) el.textContent=(_beatNudgeSteps>0?'+':'')+(_beatNudgeSteps===0?'±0':(_beatNudgeSteps+'/8'));
+  try{ drawMusicGrid(); }catch(e){}
+  // apply immediately so it can be judged while listening
+  if(playing && cm==='file' && musicFileBuffer){ try{ applyPhaseRestart(); }catch(e){} }
 }
 
 function calcPhaseOffsetSec(){
