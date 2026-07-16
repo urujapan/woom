@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.6';
+window.APP_VERSION = '2026-07-10.7';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1354,7 +1354,7 @@ const MUSIC_LIBRARY = {
       variants:[{bpm:135,file:'WMSL_Moms Echo_bpm135.mp3'},{bpm:155,file:'WMSL_Moms Echo_bpm155.mp3'},{bpm:175,file:'WMSL_Moms Echo_BPM175.mp3'}]},
     // 2-bar lead-in versions (new convention: 8 beats of silence before beat 1)
     {id:'lu2', title:'Twinkle',    file:'WMSL_Twinkle_Org_bpm152.mp3',  bpm:152,
-      variants:[{bpm:132,file:'WMSL_Twinkle_bpm132#.mp3'},{bpm:152,file:'WMSL_Twinkle_Org_bpm152.mp3'},{bpm:172,file:'WMSL_Twinkle_bpm172#.mp3'}]},
+      variants:[{bpm:133,file:'WMSL_Twinkle_bpm133#.mp3'},{bpm:152,file:'WMSL_Twinkle_Org_bpm152.mp3'},{bpm:172,file:'WMSL_Twinkle_bpm172#.mp3'}]},
   ],
   ambient:[
     {id:'am1', title:'Ambient Piano',    file:'WMSL_Ambient Piano_BPM138.mp3',    bpm:138,
