@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.10';
+window.APP_VERSION = '2026-07-10.11';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -670,7 +670,7 @@ var detectedBPM=0, loopStart=0, loopDur=0;
 var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
 var _peakOffsetSec=0; // time from loop start to the heartbeat peak (for phase re-scaling)
 const CROSSFADE_MS=80;
-const INTRO_BARS=2;  // bars of heart-only intro (1 bar = 4 beats); music enters as the womb fade-in completes
+const INTRO_BARS=4;  // bars of heart-only intro (1 bar = 4 beats)
 const FADEIN_BARS=2; // first 2 bars = womb-sound fade-in
 var mIntroGain=null;
 var musicIntroTimer=null;
