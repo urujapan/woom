@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.8';
+window.APP_VERSION = '2026-07-10.9';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2334,23 +2334,18 @@ function _runDetectCore(){
       // An exact-beat loop keeps the music locked and the repeat perfectly steady.
       const beatSecNow = 60 / detectedBPM;
 
-      // Align a music beat to the LOUDEST heartbeat in the whole loop — the
-      // main "dokun" the ear locks onto — not just the first beat. On irregular
-      // recordings the first lub can be a weaker sound while a later beat is the
-      // prominent one; aligning to that prominent beat is what makes it feel in
-      // time. We use the fractional beat phase so whichever music beat is
-      // closest lands exactly on the loudest heartbeat.
-      const loStartF = Math.max(0, Math.round(loopStart/frameSec));
-      const loEndF   = Math.min(activeEndFrame, Math.round((loopStart+loopDur)/frameSec));
-      let loudF = loStartF, loudV = -Infinity;
-      for(let f=loStartF; f<loEndF; f++){ if(env[f] > loudV){ loudV = env[f]; loudF = f; } }
-      _peakOffsetSec = loudF*frameSec - loopStart;              // loudest-peak time in loop
-      // Use the FULL offset (not just the fractional beat phase) so the music's
-      // first downbeat ENTERS exactly on the loudest heartbeat. Using only the
-      // fractional phase kept the beat grid aligned but let the music start on an
-      // off-beat grid point ~0.1s before the first prominent "dokun" — the
-      // entrance felt slightly early/off. The grid is identical either way (they
-      // differ by a whole number of beats); this only moves the entrance itself.
+      // Land the music's downbeat on the loop's FIRST heartbeat (頭拍).
+      // Previously this searched the WHOLE loop for the loudest "dokun" and
+      // anchored there — but the loudest beat is often not the first one (on
+      // Morning glow it was beat 2, so the music's downbeat sat on the loop's 2nd
+      // heartbeat and the accents read as displaced). A real heart's beats drift a
+      // few ms from a metronomic grid no matter what, and that mid-loop drift is
+      // not what the ear notices — the downbeat lining up is. So search only the
+      // FIRST heartbeat. Use the lub ONSET we already located (walking forward
+      // from inter-beat silence, so it is the lub, never the dub) rather than the
+      // envelope peak: a peak search inside the first beat can land on the louder
+      // dub, which would put the music's downbeat on the "kun" of "do-kun".
+      _peakOffsetSec = Math.max(0, lubOnsetTime - loopStart);   // first lub of the loop
       let peakOffsetBeats = _peakOffsetSec / beatSecNow;         // full offset in beats
       peakOffsetBeats = Math.round(peakOffsetBeats * 32) / 32;
       BASE_MUSIC_OFFSET     = peakOffsetBeats;
