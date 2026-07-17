@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.13';
+window.APP_VERSION = '2026-07-10.14';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2339,8 +2339,12 @@ function _runDetectCore(){
   //   (de-trended env is most negative there).  Walking forward from silence,
   //   the very first onset we find is always the LUB, never the DUB.
   {
-    const xfDur        = Math.min(CROSSFADE_MS / 1000, beatPeriodSec * 0.10);
-    const safetyBefore = 0.005; // 5 ms safety gap between crossfade end and lub
+    // Dead air to leave in front of the lub. buildLoopBuffer no longer crossfades
+    // — it applies a 5 ms raised-cosine fade to zero at each end — so reserving a
+    // whole crossfade here (41 ms at 146 bpm) only parks silence at the loop head,
+    // which is exactly the gap heard before the downbeat. 5 ms fade + 5 ms safety
+    // is all the room the fade actually needs.
+    const headPad = 0.010;
 
     // Step 1: find the deepest valley near bestStartFrame.
     // Only reach back a QUARTER beat: at half a beat this could drop into the
@@ -2371,8 +2375,8 @@ function _runDetectCore(){
 
     if(lubOnsetFrame >= 0){
       const lubOnsetTime = lubOnsetFrame * frameSec;
-      // Place loop start just before the lub (full crossfade + 5 ms in silence)
-      const targetStart = lubOnsetTime - xfDur - safetyBefore;
+      // Place loop start just before the lub — only the fade needs room.
+      const targetStart = lubOnsetTime - headPad;
       loopStart = Math.max(silenceEndFrame * frameSec, targetStart);
       if(loopStart + loopDur > rawBuffer.duration){
         loopStart = Math.max(0, rawBuffer.duration - loopDur);
