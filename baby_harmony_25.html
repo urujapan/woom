@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.12';
+window.APP_VERSION = '2026-07-10.13';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2387,6 +2387,49 @@ function _runDetectCore(){
       // loop feel irregular. Click-free seams are already guaranteed by the
       // raised-cosine fade-to-zero in buildLoopBuffer, so the snap is redundant.
       // An exact-beat loop keeps the music locked and the repeat perfectly steady.
+      //
+      // ...but "exact" is only as good as the tempo. The global estimators work on
+      // the WHOLE clip, so a couple of bpm of error is normal — and that error is
+      // what the ear catches at the seam: Memory of Birth estimated 146 while the
+      // beats inside the chosen window are really ~150.5 apart, so a 4-beat loop
+      // came out 1.644s against 1.596s of actual heartbeats. Every wrap then
+      // arrived ~48ms late, heard as a gap before the downbeat. Fix: re-measure the
+      // beat period from the ACTUAL lubs in this window and size the loop to them.
+      // Measure the period by autocorrelating the envelope over just this window
+      // and interpolating the peak (frame resolution alone is ~2.5% at these
+      // tempos — too coarse; the parabola gets it to well under 1%). Onset-picking
+      // was tried first and is not dependable here: the lub's decay keeps the
+      // envelope above any sensible threshold, so it re-triggers on the tail.
+      // Uploads only: a sample's tempo is already pinned by its label above, and
+      // this runs after that, so refining one would just undo it (Sample2 fell
+      // 182 -> 164 that way).
+      if(_knownBPM <= 0){
+        const w0 = Math.round(loopStart / frameSec);
+        const w1 = Math.min(activeEndFrame, w0 + Math.round(beatPeriodFrames * 8));
+        const lo = Math.round(beatPeriodFrames * 0.85);
+        const hi = Math.round(beatPeriodFrames * 1.15);
+        const ac = (lag) => {
+          let s = 0, n = 0;
+          for(let f = w0; f + lag < w1; f++){ s += envRaw[f] * envRaw[f+lag]; n++; }
+          return n > 0 ? s / n : 0;
+        };
+        let bestLag = 0, bestVal = -1;
+        for(let lag = lo; lag <= hi; lag++){ const v = ac(lag); if(v > bestVal){ bestVal = v; bestLag = lag; } }
+        if(bestLag > lo && bestLag < hi){
+          // parabolic interpolation through the three points around the peak
+          const yl = ac(bestLag-1), y0 = bestVal, yr = ac(bestLag+1);
+          const den = (yl - 2*y0 + yr);
+          const shift = den !== 0 ? 0.5 * (yl - yr) / den : 0;
+          const period = (bestLag + Math.max(-1, Math.min(1, shift))) * frameSec;
+          const refined = 60 / period;
+          // A refinement, never a re-detection: stay within 10% of the estimate.
+          if(refined >= detectedBPM * 0.90 && refined <= detectedBPM * 1.10 &&
+             loopStart + period * beatsNeeded <= rawBuffer.duration){
+            detectedBPM = Math.round(refined * 10) / 10;
+            loopDur     = period * beatsNeeded;
+          }
+        }
+      }
       const beatSecNow = 60 / detectedBPM;
 
       // Land the music's downbeat on the loop's FIRST heartbeat (頭拍).
