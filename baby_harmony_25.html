@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.15';
+window.APP_VERSION = '2026-07-10.16';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -478,21 +478,21 @@ input[type=range]{flex:1;accent-color:#D4537E;}
           <button class="re-detect-btn" onclick="runDetect()"><i class="ti ti-refresh" style="font-size:14px;"></i> <span id="T_redetect">Re-detect</span></button>
         </div>
       </div>
-    </details>
-    <div class="srow" id="musicFineRow" style="display:none;">
-      <span class="slbl">Fine-tune</span>
-      <input type="range" id="musicFine" min="-20" max="20" value="0" step="1" oninput="onMusicFine(this.value)">
-      <span class="sval" id="musicFineVal">±0 bpm</span>
-    </div>
-    <div class="srow" id="beatAlignRow">
-      <span class="slbl" id="beatAlignLbl">拍を合わせる</span>
-      <div style="flex:1;display:flex;gap:5px;align-items:center;">
-        <button class="bpm-adj-btn" onclick="nudgeBeat(-1)" title="音楽の拍を少し前へ">◀</button>
-        <button class="bpm-adj-btn" onclick="nudgeBeat(1)" title="音楽の拍を少し後ろへ">▶</button>
-        <button class="bpm-adj-btn" onclick="nudgeBeat(0)" title="リセット" style="font-size:11px;">⟲</button>
+      <div class="srow" id="musicFineRow" style="display:none;">
+        <span class="slbl">Fine-tune</span>
+        <input type="range" id="musicFine" min="-20" max="20" value="0" step="1" oninput="onMusicFine(this.value)">
+        <span class="sval" id="musicFineVal">±0 bpm</span>
       </div>
-      <span class="sval" id="beatAlignVal">±0</span>
-    </div>
+      <div class="srow" id="beatAlignRow">
+        <span class="slbl" id="beatAlignLbl">拍を合わせる</span>
+        <div style="flex:1;display:flex;gap:5px;align-items:center;">
+          <button class="bpm-adj-btn" onclick="nudgeBeat(-1)" title="音楽の拍を少し前へ">◀</button>
+          <button class="bpm-adj-btn" onclick="nudgeBeat(1)" title="音楽の拍を少し後ろへ">▶</button>
+          <button class="bpm-adj-btn" onclick="nudgeBeat(0)" title="リセット" style="font-size:11px;">⟲</button>
+        </div>
+        <span class="sval" id="beatAlignVal">±0</span>
+      </div>
+    </details>
   </div>
   <div class="viz" id="vizBox" style="margin-top:.75rem;margin-bottom:0;">
     <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
