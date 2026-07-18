@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-10.16';
+window.APP_VERSION = '2026-07-18.3';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -650,6 +650,10 @@ const NOW={en:'Now playing...',ja:'再生中...',zh:'播放中...','zh-TW':'播�
 // ── Robustness UI strings (BPM adjust hint, fallbacks, file-format error) ──
 const FINEOPT={en:'Fine-tune speed',ja:'速さの微調整',zh:'微调速度','zh-TW':'微調速度',ko:'속도 미세 조정',es:'Ajuste fino de velocidad',fr:'Réglage fin du tempo',de:'Tempo feinjustieren',pt:'Ajuste fino da velocidade',hi:'गति को बारीकी से समायोजित करें',id:'Penyetelan halus tempo',it:'Regolazione fine velocità',th:'ปรับความเร็วละเอียด',vi:'Tinh chỉnh tốc độ',ru:'Точная настройка темпа'};
 const FB_NODET={en:"Couldn't auto-detect. Adjust the BPM manually below.",ja:'自動解析できませんでした。下のBPMボタンで手動調整してください。',zh:'无法自动检测。请用下方按钮手动调整 BPM。','zh-TW':'無法自動偵測。請用下方按鈕手動調整 BPM。',ko:'자동 감지에 실패했습니다. 아래 BPM 버튼으로 수동 조정하세요.',es:'No se pudo detectar. Ajusta el BPM manualmente abajo.',fr:'Détection impossible. Ajustez le BPM manuellement ci-dessous.',de:'Erkennung fehlgeschlagen. BPM unten manuell anpassen.',pt:'Não foi possível detectar. Ajuste o BPM manualmente abaixo.',it:'Rilevamento non riuscito. Regola il BPM manualmente qui sotto.',hi:'स्वतः पहचान विफल। नीचे BPM मैन्युअल रूप से समायोजित करें।',id:'Deteksi otomatis gagal. Sesuaikan BPM secara manual di bawah.',th:'ตรวจจับอัตโนมัติไม่ได้ ปรับ BPM ด้วยตนเองด้านล่าง',vi:'Không thể tự nhận diện. Hãy chỉnh BPM thủ công bên dưới.',ru:'Не удалось определить. Настройте BPM вручную ниже.'};
+// Shown when the tempo is not determinable from the recording (see _bpmAgreement).
+// Not a failure — detection produced a loop and the app works — so this is advice,
+// not an error: the number it landed on just isn't trustworthy.
+const FB_UNSURE={en:'Tempo is unclear in this recording — check it by ear and adjust below if it drifts.',ja:'この録音はテンポを自動で読み取りにくいようです。ズレて聞こえる場合は下で手動調整してください。',zh:'这段录音的节奏难以自动识别。若感觉不同步，请在下方手动调整。','zh-TW':'這段錄音的節奏難以自動辨識。若感覺不同步，請在下方手動調整。',ko:'이 녹음은 템포를 자동으로 읽기 어렵습니다. 어긋나게 들리면 아래에서 수동 조정하세요.',es:'El tempo no está claro en esta grabación. Si suena desfasado, ajústalo abajo.',fr:'Le tempo est difficile à lire sur cet enregistrement. Ajustez ci-dessous si ça décale.',de:'Das Tempo ist in dieser Aufnahme unklar. Bei Versatz unten manuell anpassen.',pt:'O tempo não está claro nesta gravação. Se soar fora, ajuste abaixo.',it:'Il tempo non è chiaro in questa registrazione. Se sfasa, regolalo qui sotto.',hi:'इस रिकॉर्डिंग में टेम्पो स्पष्ट नहीं है। बेमेल लगे तो नीचे समायोजित करें।',id:'Tempo pada rekaman ini sulit dibaca. Jika terasa meleset, sesuaikan di bawah.',th:'จังหวะของไฟล์นี้อ่านอัตโนมัติได้ยาก หากฟังแล้วเพี้ยน ปรับด้านล่าง',vi:'Nhịp của bản ghi này khó nhận diện. Nếu nghe lệch, hãy chỉnh bên dưới.',ru:'Темп этой записи плохо читается. Если слышен рассинхрон, настройте ниже.'};
 const FB_SHORT={en:'Clip too short or quiet to auto-detect. Adjust the BPM manually.',ja:'音が短い/小さいため自動解析できませんでした。BPMを手動調整してください。',zh:'音频太短或太轻，无法自动检测。请手动调整 BPM。','zh-TW':'音訊太短或太輕，無法自動偵測。請手動調整 BPM。',ko:'소리가 짧거나 작아 자동 감지에 실패했습니다. BPM을 수동 조정하세요.',es:'Audio muy corto o bajo para detectar. Ajusta el BPM manualmente.',fr:'Audio trop court ou faible. Ajustez le BPM manuellement.',de:'Audio zu kurz oder leise. BPM manuell anpassen.',pt:'Áudio curto ou baixo demais. Ajuste o BPM manualmente.',it:'Audio troppo corto o basso. Regola il BPM manualmente.',hi:'ऑडियो बहुत छोटा/धीमा है। BPM मैन्युअल रूप से समायोजित करें।',id:'Audio terlalu pendek/pelan. Sesuaikan BPM secara manual.',th:'เสียงสั้นหรือเบาเกินไป ปรับ BPM ด้วยตนเอง',vi:'Âm thanh quá ngắn/nhỏ. Hãy chỉnh BPM thủ công.',ru:'Звук слишком короткий/тихий. Настройте BPM вручную.'};
 const BADFMT={en:"Couldn't read this file. Please choose an audio file (mp3 / wav / m4a).",ja:'このファイルは読み込めませんでした。mp3 / wav / m4a などの音声ファイルを選んでください。',zh:'无法读取此文件。请选择音频文件（mp3 / wav / m4a）。','zh-TW':'無法讀取此檔案。請選擇音訊檔案（mp3 / wav / m4a）。',ko:'이 파일을 읽을 수 없습니다. 오디오 파일(mp3 / wav / m4a)을 선택하세요.',es:'No se pudo leer el archivo. Elige un archivo de audio (mp3 / wav / m4a).',fr:'Lecture du fichier impossible. Choisissez un fichier audio (mp3 / wav / m4a).',de:'Datei konnte nicht gelesen werden. Bitte Audiodatei wählen (mp3 / wav / m4a).',pt:'Não foi possível ler o arquivo. Escolha um arquivo de áudio (mp3 / wav / m4a).',it:'Impossibile leggere il file. Scegli un file audio (mp3 / wav / m4a).',hi:'यह फ़ाइल नहीं पढ़ी जा सकी। कृपया ऑडियो फ़ाइल (mp3 / wav / m4a) चुनें।',id:'Tidak dapat membaca file ini. Pilih file audio (mp3 / wav / m4a).',th:'อ่านไฟล์นี้ไม่ได้ กรุณาเลือกไฟล์เสียง (mp3 / wav / m4a)',vi:'Không đọc được tệp này. Hãy chọn tệp âm thanh (mp3 / wav / m4a).',ru:'Не удалось прочитать файл. Выберите аудиофайл (mp3 / wav / m4a).'};
 function _tr(o){return (o&&(o[cl]||o.en))||'';}
@@ -669,6 +673,7 @@ var ptimer=null, playing=false, musicStartAt=0, progMusicDur=0;
 var detectedBPM=0, loopStart=0, loopDur=0;
 var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
 var _peakOffsetSec=0; // time from loop start to the heartbeat peak (for phase re-scaling)
+var _bpmUnsure=false; // tempo not determinable from the audio — see _bpmAgreement
 const CROSSFADE_MS=80;
 const INTRO_BARS=4;  // bars of heart-only intro (1 bar = 4 beats)
 const FADEIN_BARS=2; // first 2 bars = womb-sound fade-in
@@ -1714,6 +1719,122 @@ function _fluxAutocorrBPM(env, N, frameSec, bpmLo, bpmHi){
   return Math.round(bb);
 }
 
+// How trustworthy is the detected tempo? Returns the fraction of trials that agree
+// (1 = every trial landed in the same place, low = the audio does not pin a tempo).
+// Never changes the tempo — this only decides whether to advise the user to check it.
+//
+// Method: the beats can be re-fitted by measuring how far each one drifts from a
+// click grid and subtracting that drift, repeatedly, until it settles. On a readable
+// recording that lands in the same place no matter where it starts (measured:
+// Misty Forest varies 0.01 bpm across starts ±4 bpm apart, Moms Echo 0.11). On an
+// ambiguous one it just slides to whatever grid is nearest the start — Memory of
+// Birth settles at 140.9, 150.0 or 158.3 depending, and oscillates rather than
+// converging. So disagreement between starts IS the ambiguity, measured directly.
+//
+// Agreement, not spread (max-minus-min): one trial can slip to a neighbouring
+// harmonic on a recording that is otherwise perfectly clear — four of Across the
+// Blue's five trials agree on 147.7 and one bolts to 155.5 — and a spread test
+// would fail that recording on the strength of the one outlier. Agreement rates it
+// 4/5 and passes it.
+//
+// Each beat is matched by cross-correlating against the AVERAGE beat rather than by
+// picking its loudest peak: peak-picking hops between the lub, the dub and noise
+// from beat to beat, which buried the drift under ±132 ms of jitter (the drift
+// itself is ~1-10 ms/beat). The template holds lub and dub together, so it cannot hop.
+function _bpmAgreement(rawData, sr, loopStart, bpm0, activeEndSec){
+  const S = 0.0025;                       // 2.5ms — 10ms frames are too coarse here
+  const FL = Math.max(1, Math.round(sr * S));
+  const NB = 16;                          // beats of context to fit over
+  const tEnd = Math.min(activeEndSec, loopStart + 24 * (60 / bpm0));
+  const i0 = Math.round(loopStart / S);
+  const nFine = Math.floor((tEnd - loopStart) / S);
+  if(nFine < 400) return 1;               // too little audio to judge — don't cry wolf
+
+  const env = new Float64Array(nFine);
+  for(let i = 0; i < nFine; i++){
+    const o = (i0 + i) * FL;
+    if(o + FL > rawData.length) break;
+    let s = 0;
+    for(let j = 0; j < FL; j++) s += rawData[o+j] * rawData[o+j];
+    env[i] = Math.sqrt(s / FL);
+  }
+
+  // Drift per beat at this tempo, in seconds, by weighted least squares.
+  function slopeAt(bpm){
+    const beat = 60 / bpm, bf = Math.round(beat / S);
+    if(bf < 8 || bf * 6 > nFine) return null;
+    const tpl = new Float64Array(bf);
+    let cnt = 0;
+    for(let k = 0; k < NB; k++){
+      const s = Math.round(k * beat / S);
+      if(s + bf >= nFine) break;
+      for(let i = 0; i < bf; i++) tpl[i] += env[s+i];
+      cnt++;
+    }
+    if(cnt < 5) return null;
+    let tm = 0;
+    for(let i = 0; i < bf; i++){ tpl[i] /= cnt; tm += tpl[i]; }
+    tm /= bf;
+    let tn = 0;
+    for(let i = 0; i < bf; i++){ tpl[i] -= tm; tn += tpl[i] * tpl[i]; }
+    if(tn <= 0) return null;
+
+    const search = Math.round(beat * 0.35 / S);
+    let sw = 0, sk = 0, sd = 0, skk = 0, skd = 0, n = 0;
+    for(let k = 0; k < cnt; k++){
+      const s = Math.round(k * beat / S);
+      let best = -2, bestSh = 0;
+      for(let sh = -search; sh <= search; sh++){
+        const st = s + sh;
+        if(st < 0 || st + bf >= nFine) continue;
+        let m = 0;
+        for(let i = 0; i < bf; i++) m += env[st+i];
+        m /= bf;
+        let c = 0, nn = 0;
+        for(let i = 0; i < bf; i++){ const v = env[st+i] - m; c += tpl[i] * v; nn += v * v; }
+        const r = nn > 0 ? c / Math.sqrt(tn * nn) : -2;
+        if(r > best){ best = r; bestSh = sh; }
+      }
+      if(best > 0.2){
+        const w = best, d = bestSh * S;
+        sw += w; sk += w*k; sd += w*d; skk += w*k*k; skd += w*k*d; n++;
+      }
+    }
+    if(n < 5) return null;
+    const den = sw * skk - sk * sk;
+    if(Math.abs(den) < 1e-12) return null;
+    return (sw * skd - sk * sd) / den;
+  }
+
+  // Where does the correction settle from this start? Hard-capped: Memory of Birth
+  // oscillates between 149.4 and 150.0 forever and would otherwise never return.
+  function settle(start){
+    let bpm = start;
+    for(let it = 0; it < 8; it++){
+      const sl = slopeAt(bpm);
+      if(sl === null) return null;
+      const nb = 60 / ((60 / bpm) + sl);
+      if(!isFinite(nb) || nb < 80 || nb > 220) return null;
+      const done = Math.abs(nb - bpm) < 0.05;
+      bpm = nb;
+      if(done) break;
+    }
+    return bpm;
+  }
+
+  const ends = [];
+  for(const d of [-4, -2, 0, 2, 4]){
+    const e = settle(bpm0 + d);
+    if(e !== null) ends.push(e);
+  }
+  if(ends.length < 3) return 1;           // couldn't run the test — stay quiet
+  const sorted = ends.slice().sort((a,b) => a - b);
+  const med = sorted[Math.floor(sorted.length / 2)];
+  let agree = 0;
+  for(const e of ends) if(Math.abs(e - med) <= 0.5) agree++;
+  return agree / ends.length;
+}
+
 // Safe fallback loop: assume a typical fetal heart rate (140 bpm) when nothing
 // reliable was found, and build a clean 4-beat loop from the start of audio.
 function _safeFallbackLoop(msg){
@@ -2134,15 +2255,22 @@ function _runDetectCore(){
   if(bpmFinal > 0 && bpmFinal < 105){
     // Strongest evidence first: the direct IBI histogram. If it sits in the fetal
     // band AND is a near-integer multiple of the low estimate, two independent
-    // measures agree the low value is a sub-harmonic — take the histogram.
+    // measures agree the low value is a sub-harmonic — so multiply UP by that
+    // integer.
     // (Don't arbitrate this with lubDubPatternScore: on HBO_Morning glow it rated
     // the bogus 50bpm period 3x "better" than the true ~150, which is what kept
     // the wrong value and made the loop span 12 heartbeats instead of 4.)
+    // Multiply the sub-harmonic estimate (bpmFinal * nD), do NOT copy bpmDirect:
+    // the histogram only proves WHICH harmonic we are on and its 20 ms bins are far
+    // too coarse to carry the tempo, whereas bpmFinal measures an interval nD times
+    // longer and so pins the same 20 ms to a fraction of the relative error. Copying
+    // bpmDirect is the 53166ed regression that read HBO_Twinkle as 154 when 76 x 2 =
+    // 152 is right (its music was authored at 152 from this recording).
     const multD = bpmDirect > 0 ? bpmDirect / bpmFinal : 0;
     const nD    = Math.round(multD);
     if(bpmDirect >= 110 && bpmDirect <= 200 && nD >= 2 && nD <= 4 && Math.abs(multD - nD) < 0.15){
       ldScoreLow = lubDubPatternScore(Math.round(60 / bpmFinal / frameSec));
-      bpmFinal = bpmDirect;
+      bpmFinal = bpmFinal * nD;
       ldScoreHigh = lubDubPatternScore(Math.round(60 / bpmFinal / frameSec));
     } else {
       // No histogram corroboration — fall back to lub-dub structure over x2..x4.
@@ -2373,22 +2501,35 @@ function _runDetectCore(){
       if(env[f] > lubThresh){ lubOnsetFrame = f; break; }
     }
 
-    // Step 3: refine that to the AUDIBLE attack. The threshold above is a fixed
-    // fraction of the clip's mean, so it trips on the very foot of the thump's
-    // rise — 22ms before the sound is actually heard on Memory of Birth. That
-    // costs twice: it parks silence at the loop head, and since the music's
-    // downbeat is pinned to this onset, the music fires 22ms BEFORE the thump, so
-    // the heartbeat itself reads as late. Anchor on this lub's own peak instead
-    // and walk back to where it crosses 15% of it.
+    // Step 3: refine that to the AUDIBLE attack. lubThresh is a fraction of the
+    // clip-wide mean, so on a noisy recording it sits BELOW the noise floor and the
+    // walk above trips on hiss well before the heartbeat (Memory of Birth: 0.00079
+    // against a ~0.005 floor, tripping 150ms early). Searching only 0.35 beat from
+    // there then ran out before the real thump — the window closed at 142.51 and the
+    // 12x-louder thump at 142.53 was never seen, so the anchor stuck to a noise bump
+    // and the music fired 50ms before the "ドッ". Hence a FULL beat: the true thump
+    // can never fall outside it.
+    //
+    // Anchor on the EARLIEST peak worth calling a heart sound (>=30% of the beat's
+    // loudest), not the loudest itself. In several recordings the DUB is louder than
+    // the LUB (Morning glow 0.2164 vs 0.1424), and anchoring on the loudest hands the
+    // music's downbeat to the "クン" of "ドクン" — a full-beat search for the maximum
+    // alone moved Morning glow 220ms onto its dub.
+    // 30%, not 40%: at 40% Twinkle's quieter lub fell under the bar and the anchor
+    // jumped 80ms onto a later peak, which the user heard as worse. 30% keeps every
+    // recording except Memory of Birth exactly where it was.
     if(lubOnsetFrame >= 0){
-      const look = Math.round(beatPeriodFrames * 0.35);
-      let pk = lubOnsetFrame, pv = -Infinity;
-      for(let f = lubOnsetFrame; f < Math.min(activeEndFrame, lubOnsetFrame + look); f++){
-        if(envRaw[f] > pv){ pv = envRaw[f]; pk = f; }
-      }
-      const attackTh = pv * 0.15;
-      let a = pk;
-      while(a > lubOnsetFrame && envRaw[a-1] > attackTh) a--;
+      const look = Math.round(beatPeriodFrames * 1.0);
+      const from = lubOnsetFrame, to = Math.min(activeEndFrame, lubOnsetFrame + look);
+      let pv = -Infinity, pk = from;
+      for(let f = from; f < to; f++){ if(envRaw[f] > pv){ pv = envRaw[f]; pk = f; } }
+      const sigTh = pv * 0.30;
+      let sig = pk;
+      for(let f = from; f < to; f++){ if(envRaw[f] >= sigTh){ sig = f; break; } }
+      while(sig + 1 < to && envRaw[sig+1] > envRaw[sig]) sig++; // top of that sound
+      const attackTh = envRaw[sig] * 0.15;
+      let a = sig;
+      while(a > from && envRaw[a-1] > attackTh) a--;
       lubOnsetFrame = a;
     }
 
@@ -2492,12 +2633,30 @@ function _runDetectCore(){
   if(loopDur > 0 && loopDur < rawBuffer.duration*0.6){ fitViewToLoop(false); }
   else { fitViewToLoop(true); }
 
+  // Rate our own confidence in the tempo. Advisory only — detectedBPM stands either
+  // way, so a wrong verdict here can never break a loop that already works.
+  // Samples carry an authoritative label, so there is nothing to be unsure about.
+  let _agree = 1;
+  if(_knownBPM <= 0){
+    try{ _agree = _bpmAgreement(rawData, sr, loopStart, detectedBPM, activeEndFrame*frameSec); }
+    catch(e){ _agree = 1; }
+  }
+  // 0.7 deliberately: five trials means agreement only ever lands on 0.2/0.4/0.6/
+  // 0.8/1.0, so a threshold ON one of those steps flips on rounding noise — at 0.6
+  // Memory of Birth rated 0.40 against 8kHz test audio but 0.60 against the app's
+  // own 48kHz, i.e. warned or stayed silent depending on the decoder. 0.7 sits in
+  // the gap between steps, so flipping it now takes a whole trial changing its mind.
+  // Measured here: Twinkle 0.40, Memory of Birth 0.60 (both recordings the user
+  // rates as off), everything else 0.80-1.00.
+  _bpmUnsure = _agree < 0.7;
+
   const info = `Detected: ${detectedBPM} bpm · Loop: ${loopStart.toFixed(2)}s – ${(loopStart+loopDur).toFixed(2)}s (${loopDur.toFixed(2)}s)`;
-  document.getElementById('detectInfo').textContent = '✓ ' + info;
-  document.getElementById('detectInfo').className = 'detect-info';
+  const di = document.getElementById('detectInfo');
+  di.textContent = (_bpmUnsure ? '⚠ ' : '✓ ') + info + (_bpmUnsure ? ' — ' + _tr(FB_UNSURE) : '');
+  di.className = 'detect-info';
   document.getElementById('bpmAdjDisplay').textContent = detectedBPM + ' bpm';
   document.getElementById('debugInfo').textContent =
-    `A:${bpmA}(conf=${confA.toFixed(2)}) B:${bpmB}(r=${bestR.toFixed(2)}) D:${bpmDirect} LD:${ldScoreLow.toFixed(3)}vs${ldScoreHigh.toFixed(3)} →${detectedBPM}bpm | active=${(silenceEndFrame*frameSec).toFixed(2)}s–${(activeEndFrame*frameSec).toFixed(2)}s | votes=${totalVotes} | loopStart=${loopStart.toFixed(2)}s score=${bestScore.toFixed(4)}`;
+    `A:${bpmA}(conf=${confA.toFixed(2)}) B:${bpmB}(r=${bestR.toFixed(2)}) D:${bpmDirect} LD:${ldScoreLow.toFixed(3)}vs${ldScoreHigh.toFixed(3)} →${detectedBPM}bpm | agree=${_agree.toFixed(2)}${_bpmUnsure?' UNSURE':''} | active=${(silenceEndFrame*frameSec).toFixed(2)}s–${(activeEndFrame*frameSec).toFixed(2)}s | votes=${totalVotes} | loopStart=${loopStart.toFixed(2)}s score=${bestScore.toFixed(4)}`;
   updateMusicBpmLabel();
   if(cm) renderTrackPanel(cm); // refresh compatibility badges after BPM detection
   // If a multi-version track is selected, re-pick the version closest to the
@@ -2745,8 +2904,11 @@ function initGridDrag(){
     newPhase = ((newPhase % 1) + 1) % 1;
     musicPhaseOffset = newPhase;
     drawMusicGrid();
-    // Live-update music playhead if playing
-    if(playing && cm === 'file' && musicFileBuffer) applyPhaseRestart();
+    // Live-update music playhead if playing. Gate on musicFileBuffer, NOT cm==='file':
+    // library tracks load into musicFileBuffer but leave cm as their category
+    // ('lullaby', 'classical', …), so the old cm check silently skipped every library
+    // track and the nudge did nothing until a full stop/restart.
+    if(playing && musicFileBuffer) applyPhaseRestart();
   }
   function onDragEnd(){
     gridDragActive = false;
@@ -2873,8 +3035,10 @@ function nudgeBeat(dir){
   var el=document.getElementById('beatAlignVal');
   if(el) el.textContent=(_beatNudgeSteps>0?'+':'')+(_beatNudgeSteps===0?'±0':(_beatNudgeSteps+'/16'));
   try{ drawMusicGrid(); }catch(e){}
-  // apply immediately so it can be judged while listening
-  if(playing && cm==='file' && musicFileBuffer){ try{ applyPhaseRestart(); }catch(e){} }
+  // apply immediately so it can be judged while listening. Gate on musicFileBuffer,
+  // NOT cm==='file': library tracks keep cm as their category, so the old check
+  // skipped live update for every built-in track (only uploaded music worked).
+  if(playing && musicFileBuffer){ try{ applyPhaseRestart(); }catch(e){} }
 }
 
 function calcPhaseOffsetSec(){
@@ -2916,8 +3080,19 @@ function applyPhaseRestart(){
   s.buffer = musicFileBuffer;
   s.loop = true;
   if(musicLeadInSec>0){ s.loopStart=musicLeadInSec; s.loopEnd=musicFileBuffer.duration; }
-  s.playbackRate.value = calcPlaybackRate();
-  const offsetSec = calcPhaseOffsetSec();
+  const rate = calcPlaybackRate();
+  s.playbackRate.value = rate;
+  // Continue from where the music SHOULD be right now, not from its head. The track
+  // has a virtual start of musicStartAt (set in startAll, beat-aligned to the womb
+  // grid); at `now` a fresh start would be at calcPhaseOffsetSec() + elapsed*rate
+  // into the buffer. Restarting at just calcPhaseOffsetSec() (the old code) reset the
+  // phase to `now`, which is unrelated to the heartbeat grid — so a live nudge
+  // changed the sound but never matched what a stop→replay produced. Adding the
+  // elapsed term makes the live preview identical to the final (stop/replay & gift).
+  let offsetSec = calcPhaseOffsetSec() + Math.max(0, now - musicStartAt) * rate;
+  const loopS = musicLeadInSec > 0 ? musicLeadInSec : 0;
+  const loopLen = musicFileBuffer.duration - loopS;
+  if(loopLen > 0) offsetSec = loopS + (((offsetSec - loopS) % loopLen) + loopLen) % loopLen;
   s.connect(newGain);
   s.start(now, offsetSec);
 
