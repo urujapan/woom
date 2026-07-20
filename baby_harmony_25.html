@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-19.4';
+window.APP_VERSION = '2026-07-20.1';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -690,6 +690,7 @@ var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to u
 var _peakOffsetSec=0; // time from loop start to the heartbeat peak (for phase re-scaling)
 var _bpmUnsure=false; // tempo not determinable from the audio — see _bpmAgreement
 const CROSSFADE_MS=80;
+const LOOP_BEATS=8;  // heartbeats per loop — see beatsNeeded in _runDetectCore
 const INTRO_BARS=4;  // bars of heart-only intro (1 bar = 4 beats)
 const FADEIN_BARS=2; // first 2 bars = womb-sound fade-in
 var mIntroGain=null;
@@ -2351,7 +2352,15 @@ function _runDetectCore(){
 
   const beatPeriodSec = 60 / detectedBPM;
   const beatPeriodFrames = Math.round(beatPeriodSec / frameSec);
-  const beatsNeeded = 4;
+  // 8, not 4: the user's own hand-cut reference loops (HBL_*) are 8/16/32 beats on
+  // every irregular recording, and the ONE file they cut at 4 beats (Across the Blue)
+  // is also the one the app already handled well. A 4-beat window is too short for a
+  // slightly irregular heartbeat — the fragment reads as an odd meter (Florting light
+  // was heard as 5拍子) and the seam returns every 1.7 s, which is hard to ignore.
+  // At 8 beats the irregularity averages out and the seam comes half as often.
+  // User verdict on the 8-beat build: Twinkle/Misty Forest improved with no manual
+  // nudge, and every previously-good file stayed good.
+  const beatsNeeded = LOOP_BEATS;
   const windowFrames = beatPeriodFrames * beatsNeeded;
 
   // Rebuild env with original (non-de-trended) values for energy measurement
@@ -2366,6 +2375,17 @@ function _runDetectCore(){
     return (prefixEnv[end] - prefixEnv[start]) / Math.max(1, end - start);
   }
 
+  // Same, but over the TRUE envelope. Needed wherever the question is "is there
+  // any sound here at all": env is de-trended, so in real silence |env| does not
+  // fall to zero — it sits at whatever the local trend was (0.003 inside Memory of
+  // Birth's silent gap, 3x the silence floor). Only envRaw answers that honestly.
+  const prefixRaw = new Float64Array(nFrames + 1);
+  for(let i = 0; i < nFrames; i++) prefixRaw[i+1] = prefixRaw[i] + envRaw[i];
+  function windowMeanRaw(start, len){
+    const s = Math.max(0, start), end = Math.min(start + len, nFrames);
+    return end > s ? (prefixRaw[end] - prefixRaw[s]) / (end - s) : 0;
+  }
+
   // Global mean energy (for normalization)
   const globalMeanEnv = prefixEnv[nFrames] / nFrames;
 
@@ -2373,6 +2393,7 @@ function _runDetectCore(){
   // but actually slide every 5 frames (~50ms) for finer resolution
   const slideStep = 5;
   let bestScore = -Infinity, bestStartFrame = silenceEndFrame;
+  const candidates = [];
 
   // Minimum energy a sub-beat must have to count as "active" (not silence)
   const subBeatFloor = globalMeanEnv * 0.20;
@@ -2393,6 +2414,22 @@ function _runDetectCore(){
 
     // Reject windows where any sub-beat is silent (hits trailing/internal silence)
     if(minSubE < subBeatFloor) continue;
+
+    // The loop has to WRAP ONTO A REAL HEARTBEAT. A window can pass every test
+    // above and still be followed by dead air — recordings have internal gaps, not
+    // just leading/trailing ones, so activeEndFrame does not catch them. When that
+    // happens the last beat's tail is cut and the wrap lands in silence, which the
+    // ear hears as the final beat being chopped off. Memory of Birth stops dead at
+    // 145.45s (the recording resumes much later) and the best-scoring 8-beat window
+    // ended at 145.71s, right inside that gap — the "8拍目が途中で切れる" report.
+    // The check only tightens things by one beat, and only where that beat exists:
+    // near the end of a short clip there is nothing to test, so leave those alone.
+    // Measured against the window's own loudness (recordings differ by 30x in
+    // level), the wrap slot runs 70–112% on all nine reference recordings and 0.3%
+    // on Memory of Birth's gap — 25% sits in the middle of that gulf.
+    const wrapFrame = f + windowFrames;
+    if(wrapFrame + beatPeriodFrames <= activeEndFrame &&
+       windowMeanRaw(wrapFrame, beatPeriodFrames) < windowMeanRaw(f, windowFrames) * 0.25) continue;
 
     const subMean = subMeanSum / beatsNeeded;
     const subVar  = subMeanSqSum / beatsNeeded - subMean * subMean;
@@ -2457,6 +2494,7 @@ function _runDetectCore(){
 
     // Combined score
     const score = meanE * consistency * onsetBonus * pulseScore * posScore * firstScore;
+    candidates.push({ f, score });
     if(score > bestScore){ bestScore = score; bestStartFrame = f; }
   }
 
@@ -2465,6 +2503,55 @@ function _runDetectCore(){
   if(bestScore === -Infinity){
     _safeFallbackLoop(_tr(FB_SHORT));
     return;
+  }
+
+  // ── Local tempo must agree with the tempo the loop is built at ───────────────
+  // detectedBPM describes the WHOLE clip, but a real recording drifts: Florting
+  // light runs 162 bpm at the top, 139 in the middle and 136 near the end, and 140
+  // is the honest whole-clip answer. The scorer above rates a window on how loud
+  // and punchy it is, which pointed it at the 162 bpm opening — so the loop was cut
+  // 3.43 s long (8 beats at 140) out of material carrying 9.3 beats. Every wrap
+  // then hit a fractional beat, which the user heard as "9拍" (and, at 4 beats,
+  // as 5拍子). Nothing about phase or loop length can fix that; only picking a
+  // region whose own pulse matches the tempo can.
+  //
+  // So: keep the existing score as the judge of quality, but require the winner's
+  // own dominant period to be within 6% of the loop's. Measured on the nine
+  // reference recordings, every chosen region sits between −1.0% and +0.5%; the
+  // Florting light opening sits at +15.9% and the region the user cut by hand
+  // (13.27 s) at −0.4%. The gate has an enormous margin and is not a special case
+  // for one file — any drifting recording hits this.
+  {
+    const lagLo = Math.max(2, Math.round(0.28 / frameSec)); // 214 bpm
+    const lagHi = Math.round(0.60 / frameSec);              // 100 bpm
+    // Dominant period of one window, by normalised autocorrelation of the TRUE
+    // envelope. Normalised (not raw) so a loud window cannot outscore a quiet one.
+    const dominantLag = (f0) => {
+      const end = Math.min(nFrames, f0 + windowFrames);
+      let bestLag = 0, bestVal = -Infinity;
+      for(let lag = lagLo; lag <= lagHi; lag++){
+        let s = 0, a = 0, b = 0;
+        for(let i = f0; i + lag < end; i++){
+          const x = envRaw[i], y = envRaw[i+lag];
+          s += x*y; a += x*x; b += y*y;
+        }
+        const v = s / Math.max(Math.sqrt(a*b), 1e-12);
+        if(v > bestVal){ bestVal = v; bestLag = lag; }
+      }
+      return bestLag;
+    };
+    const tol = beatPeriodFrames * 0.06;
+    // Walk the ranked list and take the best window that agrees. The check is only
+    // paid until one passes — on every well-behaved recording that is the first.
+    // If nothing agrees anywhere, keep the top-scoring window: the gate must never
+    // turn a working loop into no loop.
+    candidates.sort((a, b) => b.score - a.score);
+    for(const c of candidates){
+      if(Math.abs(dominantLag(c.f) - beatPeriodFrames) <= tol){
+        bestStartFrame = c.f; bestScore = c.score;
+        break;
+      }
+    }
   }
 
   loopStart = bestStartFrame * frameSec;
@@ -2587,7 +2674,7 @@ function _runDetectCore(){
       // 182 -> 164 that way).
       if(_knownBPM <= 0){
         const w0 = Math.round(loopStart / frameSec);
-        const w1 = Math.min(activeEndFrame, w0 + Math.round(beatPeriodFrames * 8));
+        const w1 = Math.min(activeEndFrame, w0 + Math.round(beatPeriodFrames * beatsNeeded));
         const lo = Math.round(beatPeriodFrames * 0.85);
         const hi = Math.round(beatPeriodFrames * 1.15);
         const ac = (lag) => {
@@ -2961,7 +3048,7 @@ function adjustDetectedBPM(delta){
   }
   // Recalculate loop duration to match new BPM (keep loopStart, adjust length)
   if(rawBuffer){
-    const newLoopDur = 4*(60/detectedBPM);
+    const newLoopDur = LOOP_BEATS*(60/detectedBPM);
     // Only adjust if it keeps us within the buffer
     if(loopStart + newLoopDur <= rawBuffer.duration){
       loopDur = newLoopDur;
@@ -3085,15 +3172,28 @@ function syncCandidateButtons(){
   }catch(e){}
 }
 
-function calcPhaseOffsetSec(){
-  // Intro = INTRO_BARS * beatSec = exact integer multiple of beatSec,
-  // so music always starts on beat 1 — no sync correction needed.
-  // Start past any leading silence so the first audible note lands on the beat.
+// Beat-align phase, expressed as a TIMELINE SHIFT (real seconds to start EARLIER).
+//
+// This used to be applied as a BUFFER SEEK: playback began at
+// `musicLeadInSec + musicPhaseOffset*beatSec/rate` into the file, which advanced the
+// music by the right amount but did it by THROWING AWAY the head of the track. At
+// -8/16 that is half a beat (~200 ms) of the opening simply missing, in the preview
+// AND in the exported gift. Shifting the start time instead produces exactly the
+// same alignment with the track intact — the intro is 4 bars (16 beats), so moving
+// the entry up to one beat earlier is well within it.
+//
+// Note the old formula divided by rate where the maths calls for multiplying (a
+// buffer seek of X real seconds is X*rate buffer-seconds). Since the rate chooser
+// deliberately keeps rate near 1.0, that error was only a few ms and never audible;
+// expressing the phase in real seconds removes the question entirely.
+function calcPhaseShiftSec(){
   const beatSec = detectedBPM > 0 ? 60 / detectedBPM : 0;
-  const rate = calcPlaybackRate();
-  if(rate <= 0 || beatSec <= 0) return musicLeadInSec;
-  return musicLeadInSec + (musicPhaseOffset * beatSec) / rate;
+  if(beatSec <= 0) return 0;
+  return musicPhaseOffset * beatSec;
 }
+// Where in the buffer playback begins: always the true head of the music (past any
+// leading silence). Never a phase-dependent seek — that is what cut the head off.
+function calcMusicBufferStart(){ return musicLeadInSec; }
 
 function applyPhaseRestart(){
   // Seamlessly restart only the music source at new phase offset.
@@ -3128,12 +3228,15 @@ function applyPhaseRestart(){
   s.playbackRate.value = rate;
   // Continue from where the music SHOULD be right now, not from its head. The track
   // has a virtual start of musicStartAt (set in startAll, beat-aligned to the womb
-  // grid); at `now` a fresh start would be at calcPhaseOffsetSec() + elapsed*rate
-  // into the buffer. Restarting at just calcPhaseOffsetSec() (the old code) reset the
+  // grid); at `now` a fresh start would be that far into the buffer already.
+  // Restarting at the track's head (the old code) reset the
   // phase to `now`, which is unrelated to the heartbeat grid — so a live nudge
   // changed the sound but never matched what a stop→replay produced. Adding the
   // elapsed term makes the live preview identical to the final (stop/replay & gift).
-  let offsetSec = calcPhaseOffsetSec() + Math.max(0, now - musicStartAt) * rate;
+  // The virtual stream began at (musicStartAt - phaseShift) from the track's head,
+  // so at `now` it has travelled (now - musicStartAt + phaseShift) real seconds.
+  let offsetSec = calcMusicBufferStart() +
+    Math.max(0, now - musicStartAt + calcPhaseShiftSec()) * rate;
   const loopS = musicLeadInSec > 0 ? musicLeadInSec : 0;
   const loopLen = musicFileBuffer.duration - loopS;
   if(loopLen > 0) offsetSec = loopS + (((offsetSec - loopS) % loopLen) + loopLen) % loopLen;
@@ -3360,7 +3463,8 @@ function buildMusicSrc(ctx, startAt){
     if(musicLeadInSec>0){ s.loopStart=musicLeadInSec; s.loopEnd=musicFileBuffer.duration; }
     s.playbackRate.value=calcPlaybackRate();
     s.connect(out);
-    s.start(when, calcPhaseOffsetSec());
+    // Phase = start earlier, from the track's head (see calcPhaseShiftSec).
+    s.start(Math.max(ctx.currentTime, when - calcPhaseShiftSec()), calcMusicBufferStart());
     out._src=s;
     out._x=()=>{try{s.stop();}catch(e){}};
     return out;
@@ -3475,7 +3579,7 @@ function seekMusic(e){
   const frac=Math.max(0,Math.min(1,(e.clientX-bar.getBoundingClientRect().left)/bar.clientWidth));
   const newRealPos=frac*progMusicDur;
   const rate=calcPlaybackRate();
-  const fileOffset=((calcPhaseOffsetSec()+newRealPos*rate)%musicFileBuffer.duration+musicFileBuffer.duration)%musicFileBuffer.duration;
+  const fileOffset=((calcMusicBufferStart()+(newRealPos+calcPhaseShiftSec())*rate)%musicFileBuffer.duration+musicFileBuffer.duration)%musicFileBuffer.duration;
   musicStartAt=AC.currentTime-newRealPos;
   // Stop old music source and start from new position
   if(mSrc&&mSrc._x) mSrc._x();
@@ -3534,7 +3638,7 @@ function dlAudio(){
     if(musicLeadInSec>0){ ms.loopStart=musicLeadInSec; ms.loopEnd=musicFileBuffer.duration; }
     ms.playbackRate.value=calcPlaybackRate();
     ms.connect(mg);
-    ms.start(introSec, calcPhaseOffsetSec());
+    ms.start(Math.max(0, introSec - calcPhaseShiftSec()), calcMusicBufferStart());
   } else if(cm!=='none'){
     const fm={lullaby:[261.6,329.6,392,523.3],nature:[174.6,220,261.6,349.2],piano:[293.7,370,440,587.3],classical:[261.6,311.1,392,466.2],ambient:[130.8,164.8,196,261.6]};
     const notes=fm[cm]||fm.lullaby;
@@ -3864,7 +3968,7 @@ function doGift(){
   if(musicFileBuffer){
     const ms=off.createBufferSource(); ms.buffer=musicFileBuffer; ms.loop=true;
     ms.playbackRate.value=calcPlaybackRate(); ms.connect(mg);
-    ms.start(introSec,calcPhaseOffsetSec());
+    ms.start(Math.max(0, introSec - calcPhaseShiftSec()), calcMusicBufferStart());
   } else if(cm!=='none'){
     const fm={lullaby:[261.6,329.6,392,523.3],nature:[174.6,220,261.6,349.2],piano:[293.7,370,440,587.3],classical:[261.6,311.1,392,466.2],ambient:[130.8,164.8,196,261.6]};
     const notes=fm[cm]||fm.lullaby, nd=60/bpm*2;
