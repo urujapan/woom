@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-22.1';
+window.APP_VERSION = '2026-07-22.2';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -705,8 +705,9 @@ var cl='en',cs='beat',cm='lullaby';
 var rawBuffer=null, loopBuffer=null;
 var AC=null, wSrc=null, mSrc=null, wGain=null, mGain=null;
 var musicFileBuffer=null;
-var musicLeadInSec=0; // the track's 2-bar authored lead-in: played on the first
-                      // pass, skipped when the track loops (it is the loop point)
+var musicLeadInSec=0; // the track's authored 2-bar lead-in. Always played (the
+                      // source loops the whole buffer); used to know when the
+                      // song itself enters, for the intro countdown.
 var musicFineBPM=0; // user fine-tune offset in BPM
 var musicRateMult=1; // manual music-only speed: 0.5 = half, 1 = normal, 2 = double
 var BASE_MUSIC_OFFSET=0.25;     // calibrated zero point (displayed as ±0); auto-updated by lub detection
@@ -3349,8 +3350,7 @@ function applyPhaseRestart(){
 
   const s = ctx.createBufferSource();
   s.buffer = musicFileBuffer;
-  s.loop = true;
-  if(musicLeadInSec>0){ s.loopStart=musicLeadInSec; s.loopEnd=musicFileBuffer.duration; }
+  s.loop = true;   // whole buffer — see buildMusicSrc for why the loop points went
   const rate = calcPlaybackRate();
   s.playbackRate.value = rate;
   // Continue from where the music SHOULD be right now, not from its head. The track
@@ -3364,14 +3364,9 @@ function applyPhaseRestart(){
   // so at `now` it has travelled (now - musicStartAt + phaseShift) real seconds.
   let offsetSec = calcMusicBufferStart() +
     Math.max(0, now - musicStartAt + calcPhaseShiftSec()) * rate;
-  // Wrap into the loop region only once we are past the lead-in. The first pass
-  // plays the lead-in (offsets below loopStart), and wrapping those would throw
-  // playback to the far end of the track — a nudge during the intro would jump
-  // to the outro.
-  const loopS = musicLeadInSec > 0 ? musicLeadInSec : 0;
-  const loopLen = musicFileBuffer.duration - loopS;
-  if(loopLen > 0 && offsetSec >= loopS)
-    offsetSec = loopS + (((offsetSec - loopS) % loopLen) + loopLen) % loopLen;
+  // The source loops the whole buffer, so wrap over its full length.
+  const dur = musicFileBuffer.duration;
+  if(dur > 0) offsetSec = ((offsetSec % dur) + dur) % dur;
   s.connect(newGain);
   s.start(now, offsetSec);
 
@@ -3591,8 +3586,14 @@ function buildMusicSrc(ctx, startAt){
     const out=ctx.createGain();
     const s=ctx.createBufferSource();
     s.buffer=musicFileBuffer; s.loop=true;
-    // Loop past the leading silence so it never replays as a gap mid-gift.
-    if(musicLeadInSec>0){ s.loopStart=musicLeadInSec; s.loopEnd=musicFileBuffer.duration; }
+    // Loop the WHOLE buffer. It used to loop from musicLeadInSec so a repeat
+    // skipped the lead-in, but that meant starting playback at an offset BEFORE
+    // loopStart, and browsers disagree about what that means: Chrome plays from
+    // the offset, while WebKit clamps it into the loop region — which starts the
+    // song at its downbeat two bars early, exactly the "music begins in bar 3"
+    // report. Looping the whole buffer behaves identically everywhere; the cost is
+    // that a repeat replays the two-bar lead-in, which stays in phase because it
+    // is a whole number of bars.
     s.playbackRate.value=calcPlaybackRate();
     s.connect(out);
     // Phase = start earlier, from the track's head (see calcPhaseShiftSec).
@@ -3727,7 +3728,6 @@ function seekMusic(e){
   const out=AC.createGain();
   const s=AC.createBufferSource();
   s.buffer=musicFileBuffer; s.loop=true; s.playbackRate.value=rate;
-  if(musicLeadInSec>0){ s.loopStart=musicLeadInSec; s.loopEnd=musicFileBuffer.duration; }
   s.connect(out); s.start(0,fileOffset);
   out._src=s; out._x=()=>{try{s.stop();}catch(er){}};
   out.connect(mGain); mSrc=out;
@@ -3776,7 +3776,6 @@ function dlAudio(){
 
   if(musicFileBuffer){
     const ms=off.createBufferSource(); ms.buffer=musicFileBuffer; ms.loop=true;
-    if(musicLeadInSec>0){ ms.loopStart=musicLeadInSec; ms.loopEnd=musicFileBuffer.duration; }
     ms.playbackRate.value=calcPlaybackRate();
     ms.connect(mg);
     ms.start(Math.max(0, introSec - calcPhaseShiftSec()), calcMusicBufferStart());
