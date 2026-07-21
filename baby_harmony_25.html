@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-22.3';
+window.APP_VERSION = '2026-07-22.4';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -4377,6 +4377,19 @@ try{ wizInit(); }catch(e){}
         L.push('INTRO_BARS '+INTRO_BARS+'  心音のみ '+intro.toFixed(3)+'s');
         L.push('曲の1拍目 '+(intro+leadHeard).toFixed(3)+'s = '+(barS>0?((intro+leadHeard)/barS).toFixed(2):'?')+'小節');
         L.push('最後の再生指示 '+(sched?JSON.stringify(sched):'(未再生)'));
+        // What the browser actually decoded. If the leading silence is missing
+        // here, the schedule above is irrelevant — the song starts immediately.
+        if(musicFileBuffer){
+          var md=musicFileBuffer.getChannelData(0), msr=musicFileBuffer.sampleRate;
+          var pk=0, n=Math.min(md.length, msr*40);
+          for(var i=0;i<n;i++){ var a=md[i]<0?-md[i]:md[i]; if(a>pk) pk=a; }
+          var th=pk*0.001, fs=-1;
+          for(var j=0;j<md.length;j++){ var b2=md[j]<0?-md[j]:md[j]; if(b2>th){ fs=j/msr; break; } }
+          L.push('── 実際に読み込まれた音源 ──');
+          L.push('長さ '+musicFileBuffer.duration.toFixed(2)+'s  sr='+msr+'  peak='+pk.toFixed(3));
+          L.push('先頭の無音 '+(fs<0?'?':fs.toFixed(3)+'s')+'  = '+(lead>0&&fs>=0?(fs/(lead/2)).toFixed(2):'?')+'小節');
+          L.push(fs>=0 && lead>0 && fs > lead*0.9 ? '判定 ✓ 2小節の無音あり' : '判定 ⚠ 無音が足りない');
+        }
       }catch(e){ L.push('err '+e.message); }
       panel=document.createElement('div');
       panel.textContent=L.join('\n');
