@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-22.5';
+window.APP_VERSION = '2026-07-22.6';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1488,9 +1488,16 @@ async function loadMusicFile(file, key){
   // One session was found decoding 175.66 s of audio with no leading silence
   // while the server, the repo and the working copy all held the same 178.34 s
   // file with two bars of it.
-  const res = await fetch(encodedFile+'?v='+encodeURIComponent(window.APP_VERSION||'0'));
+  const url = encodedFile+'?v='+encodeURIComponent(window.APP_VERSION||'0');
+  const res = await fetch(url);
   if(!res.ok) throw new Error('HTTP '+res.status+': '+file);
   const arrayBuf = await res.arrayBuffer();
+  // Record what was actually requested and received. The panel previously showed
+  // the track's DEFAULT file, not the variant that was loaded, which could itself
+  // mislead — and the byte count separates "served different bytes" from
+  // "decoded the same bytes differently".
+  try{ window._musicFetch = {url:decodeURIComponent(url), bytes:arrayBuf.byteLength,
+    origin:location.origin}; }catch(e){}
   if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
   const decoded = await AC.decodeAudioData(arrayBuf);
   musicBufferCache[key] = decoded;
@@ -4378,7 +4385,9 @@ try{ wizInit(); }catch(e){}
         var sched = window._musicSched;
         L.push('build  '+window.APP_VERSION);
         L.push('曲      '+(selectedTrack?selectedTrack.title:'(なし)')+'  cm='+cm);
-        L.push('ファイル '+(selectedTrack&&selectedTrack.file?selectedTrack.file:'-'));
+        var mf = window._musicFetch;
+        L.push('要求URL '+(mf?mf.url:'(未取得)'));
+        L.push('受信バイト '+(mf?mf.bytes.toLocaleString():'-')+'   origin '+(mf?mf.origin:'-'));
         L.push('心音bpm '+detectedBPM+'   cs='+cs);
         L.push('曲bpm   '+musicFileBPM+'   倍率 '+rate.toFixed(4));
         L.push('リードイン '+lead.toFixed(3)+'s → 実時間 '+leadHeard.toFixed(3)+'s ('+(barS>0?(leadHeard/barS).toFixed(2):'?')+'小節)');
