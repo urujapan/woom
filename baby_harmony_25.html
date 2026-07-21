@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-22.2';
+window.APP_VERSION = '2026-07-22.3';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -3369,6 +3369,8 @@ function applyPhaseRestart(){
   if(dur > 0) offsetSec = ((offsetSec % dur) + dur) % dur;
   s.connect(newGain);
   s.start(now, offsetSec);
+  try{ window._musicSched = {via:'applyPhaseRestart', inSec:0,
+    offset:+offsetSec.toFixed(4), rate:+rate.toFixed(4)}; }catch(e){}
 
   const newSrc = newGain;
   newSrc._src = s;
@@ -3597,7 +3599,13 @@ function buildMusicSrc(ctx, startAt){
     s.playbackRate.value=calcPlaybackRate();
     s.connect(out);
     // Phase = start earlier, from the track's head (see calcPhaseShiftSec).
-    s.start(Math.max(ctx.currentTime, when - calcPhaseShiftSec()), calcMusicBufferStart());
+    const _at = Math.max(ctx.currentTime, when - calcPhaseShiftSec());
+    const _off = calcMusicBufferStart();
+    s.start(_at, _off);
+    // Record what was actually scheduled, so the diagnostic panel can report the
+    // real numbers from the user's own session rather than a reproduction.
+    try{ window._musicSched = {via:'buildMusicSrc', inSec:+(_at-ctx.currentTime).toFixed(4),
+      offset:+_off.toFixed(4), rate:+s.playbackRate.value.toFixed(4)}; }catch(e){}
     out._src=s;
     out._x=()=>{try{s.stop();}catch(e){}};
     return out;
@@ -4349,7 +4357,40 @@ try{ wizInit(); }catch(e){}
     v.style.cssText='position:fixed;right:6px;bottom:4px;z-index:9999;font-size:9px;'+
       'color:#c9a8b6;font-family:monospace;letter-spacing:.02em;cursor:pointer;'+
       'padding:3px 5px;border-radius:4px;background:rgba(255,255,255,.55);';
-    v.onclick=function(){ location.href=location.pathname+'?_r='+Date.now(); };
+    var panel=null;
+    v.onclick=function(){
+      if(panel){ panel.remove(); panel=null; return; }
+      var L=[];
+      try{
+        var hb = (cs==='uploaded'&&detectedBPM>0)?detectedBPM:0;
+        var beatS = hb>0?60/hb:0, barS=beatS*4;
+        var rate = calcPlaybackRate();
+        var lead = musicLeadInSec, leadHeard = rate>0?lead/rate:0;
+        var intro = barS>0 ? INTRO_BARS*barS + musicStartOffsetBeats*beatS : 0;
+        var sched = window._musicSched;
+        L.push('build  '+window.APP_VERSION);
+        L.push('曲      '+(selectedTrack?selectedTrack.title:'(なし)')+'  cm='+cm);
+        L.push('ファイル '+(selectedTrack&&selectedTrack.file?selectedTrack.file:'-'));
+        L.push('心音bpm '+detectedBPM+'   cs='+cs);
+        L.push('曲bpm   '+musicFileBPM+'   倍率 '+rate.toFixed(4));
+        L.push('リードイン '+lead.toFixed(3)+'s → 実時間 '+leadHeard.toFixed(3)+'s ('+(barS>0?(leadHeard/barS).toFixed(2):'?')+'小節)');
+        L.push('INTRO_BARS '+INTRO_BARS+'  心音のみ '+intro.toFixed(3)+'s');
+        L.push('曲の1拍目 '+(intro+leadHeard).toFixed(3)+'s = '+(barS>0?((intro+leadHeard)/barS).toFixed(2):'?')+'小節');
+        L.push('最後の再生指示 '+(sched?JSON.stringify(sched):'(未再生)'));
+      }catch(e){ L.push('err '+e.message); }
+      panel=document.createElement('div');
+      panel.textContent=L.join('\n');
+      panel.style.cssText='position:fixed;right:6px;bottom:26px;z-index:9999;white-space:pre;'+
+        'font-family:monospace;font-size:10px;line-height:1.6;color:#5a3a48;background:rgba(255,255,255,.96);'+
+        'border:1px solid #e8b8cc;border-radius:8px;padding:8px 10px;max-width:94vw;overflow:auto;'+
+        'box-shadow:0 4px 18px rgba(192,61,107,.18);user-select:text;';
+      var btn=document.createElement('div');
+      btn.textContent='↻ 最新版を読み込む';
+      btn.style.cssText='margin-top:6px;color:#C03D6B;cursor:pointer;text-decoration:underline;';
+      btn.onclick=function(ev){ ev.stopPropagation(); location.href=location.pathname+'?_r='+Date.now(); };
+      panel.appendChild(btn);
+      document.body.appendChild(panel);
+    };
     document.body.appendChild(v);
   }catch(e){}
 })();
