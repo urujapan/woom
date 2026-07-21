@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-21.8';
+window.APP_VERSION = '2026-07-22.1';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -4339,6 +4339,21 @@ function wizGoTo(n){
   L(match||'en');
 })();
 try{ wizInit(); }catch(e){}
+// Show which build is running. A stale cached copy has now sent three separate
+// investigations chasing behaviour that was already fixed, and there was no way
+// to tell by looking — tap it to force a fresh reload.
+(function(){
+  try{
+    var v=document.createElement('div');
+    v.textContent='v'+window.APP_VERSION;
+    v.title='タップで最新版に更新';
+    v.style.cssText='position:fixed;right:6px;bottom:4px;z-index:9999;font-size:9px;'+
+      'color:#c9a8b6;font-family:monospace;letter-spacing:.02em;cursor:pointer;'+
+      'padding:3px 5px;border-radius:4px;background:rgba(255,255,255,.55);';
+    v.onclick=function(){ location.href=location.pathname+'?_r='+Date.now(); };
+    document.body.appendChild(v);
+  }catch(e){}
+})();
 </script>
 </body>
 </html>
