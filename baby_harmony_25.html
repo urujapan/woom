@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-20.1';
+window.APP_VERSION = '2026-07-21.2';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -128,6 +128,30 @@ input[type=file]{display:none;}
 .sample-summary::-webkit-details-marker{display:none;}
 .bpm-adj-btn{min-width:34px;padding:7px 9px;border-radius:6px;border:1px solid #E8A0B8;background:#FBEAF0;font-size:13px;font-weight:600;color:#C03D6B;cursor:pointer;font-family:'Baloo 2','DM Sans',sans-serif;line-height:1;}
 .bpm-adj-btn:active{background:#F4D2DF;}
+/* Fast custom tooltip: native title[] waits ~0.7s before showing; this appears
+   almost instantly so the ◀▶ hints are readable at a glance. Text comes from the
+   data-tip attribute, which L() fills in the current language. */
+.tipbtn{position:relative;}
+.tipbtn::after{
+  content:attr(data-tip);
+  position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%) translateY(3px);
+  background:#4A2B38; color:#fff; padding:4px 8px; border-radius:6px;
+  font-size:11px; font-weight:500; white-space:nowrap; line-height:1.3;
+  opacity:0; visibility:hidden; pointer-events:none; z-index:60;
+  transition:opacity .1s ease, transform .1s ease, visibility 0s .1s;
+}
+.tipbtn::before{ /* little arrow */
+  content:''; position:absolute; bottom:calc(100% + 2px); left:50%; transform:translateX(-50%) translateY(3px);
+  border:5px solid transparent; border-top-color:#4A2B38;
+  opacity:0; visibility:hidden; pointer-events:none; z-index:60;
+  transition:opacity .1s ease, transform .1s ease, visibility 0s .1s;
+}
+.tipbtn:hover::after,.tipbtn:hover::before,.tipbtn:focus-visible::after,.tipbtn:focus-visible::before{
+  opacity:1; visibility:visible; transform:translateX(-50%) translateY(0); transition-delay:0s;
+}
+/* Hide when the button has no tip text (avoids an empty black box). */
+.tipbtn:not([data-tip])::after,.tipbtn[data-tip=""]::after,
+.tipbtn:not([data-tip])::before,.tipbtn[data-tip=""]::before{content:none;}
 .bpm-adj-btn.active{background:#D4537E;border-color:#D4537E;color:#fff;box-shadow:0 2px 8px rgba(212,83,126,.3);}
 .zoom-btn{width:38px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid #E8A0B8;background:#FBEAF0;color:#C03D6B;font-size:17px;cursor:pointer;}
 .zoom-btn:active{background:#F4D2DF;}
@@ -476,17 +500,30 @@ input[type=range]{flex:1;accent-color:#D4537E;}
     <div class="srow"><span class="slbl" id="T15">Womb sound</span><input type="range" id="vW" min="-50" max="50" value="0" step="1" oninput="onVolSlider('vW','vWv')"><span class="sval" id="vWv">0</span></div>
     <div class="srow"><span class="slbl" id="T16">Music</span><input type="range" id="vM" min="-50" max="50" value="0" step="1" oninput="onVolSlider('vM','vMv')"><span class="sval" id="vMv">0</span></div>
     <div class="srow" id="tempoRow" style="display:none"><span class="slbl" id="T17">Tempo</span><input type="range" id="vT" min="60" max="140" value="80" step="1" oninput="onSlider('vT','vTv',' bpm')"><span class="sval" id="vTv">80 bpm</span></div>
-    <div class="srow" id="musicBpmRow">
+    <!-- Music BPM row hidden: the tempo is already shown inside 速さの微調整
+         (bpmAdjDisplay). Element kept in the DOM so updateMusicBpmLabel() can still
+         write to musicBpmLabel without a null check. -->
+    <div class="srow" id="musicBpmRow" style="display:none;">
       <span class="slbl" id="T17b">Music BPM</span>
       <span style="flex:1;font-size:13px;color:#C03D6B;" id="musicBpmLabel">Auto — synced to womb sound</span>
+    </div>
+    <!-- Beat align: used often, so kept visible directly under Music BPM (was inside 速さの微調整). -->
+    <div class="srow" id="beatAlignRow" style="margin-top:.4rem;">
+      <span class="slbl" id="beatAlignLbl">拍を合わせる</span>
+      <div style="flex:1;display:flex;gap:5px;align-items:center;">
+        <button class="bpm-adj-btn tipbtn" id="btnBeatBack" onclick="nudgeBeat(-1)">◀</button>
+        <button class="bpm-adj-btn tipbtn" id="btnBeatFwd" onclick="nudgeBeat(1)">▶</button>
+        <button class="bpm-adj-btn tipbtn" id="btnBeatReset" onclick="nudgeBeat(0)" style="font-size:11px;">⟲</button>
+      </div>
+      <span class="sval" id="beatAlignVal">±0</span>
     </div>
     <details id="fineTuneBox" style="margin-top:.5rem;">
       <summary class="fine-tune-summary" id="fineToggleLbl">速さの微調整</summary>
       <div class="offset-row" style="margin-top:.6rem;flex-wrap:wrap;align-items:center;gap:6px;">
         <span style="font-size:13px;color:#D4537E;font-weight:500;" id="bpmAdjDisplay">—</span>
         <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
-          <button class="bpm-adj-btn" id="btnHalf" onclick="setMusicHalfDouble('half')" title="音楽を半分の速さに（もう一度で解除）">×½</button>
-          <button class="bpm-adj-btn" id="btnDouble" onclick="setMusicHalfDouble('double')" title="音楽を2倍の速さに（もう一度で解除）">×2</button>
+          <button class="bpm-adj-btn tipbtn" id="btnHalf" onclick="setMusicHalfDouble('half')">×½</button>
+          <button class="bpm-adj-btn tipbtn" id="btnDouble" onclick="setMusicHalfDouble('double')">×2</button>
           <button class="re-detect-btn" onclick="runDetect()"><i class="ti ti-refresh" style="font-size:14px;"></i> <span id="T_redetect">Re-detect</span></button>
         </div>
       </div>
@@ -494,15 +531,6 @@ input[type=range]{flex:1;accent-color:#D4537E;}
         <span class="slbl">Fine-tune</span>
         <input type="range" id="musicFine" min="-20" max="20" value="0" step="1" oninput="onMusicFine(this.value)">
         <span class="sval" id="musicFineVal">±0 bpm</span>
-      </div>
-      <div class="srow" id="beatAlignRow">
-        <span class="slbl" id="beatAlignLbl">拍を合わせる</span>
-        <div style="flex:1;display:flex;gap:5px;align-items:center;">
-          <button class="bpm-adj-btn" onclick="nudgeBeat(-1)" title="音楽の拍を少し前へ">◀</button>
-          <button class="bpm-adj-btn" onclick="nudgeBeat(1)" title="音楽の拍を少し後ろへ">▶</button>
-          <button class="bpm-adj-btn" onclick="nudgeBeat(0)" title="リセット" style="font-size:11px;">⟲</button>
-        </div>
-        <span class="sval" id="beatAlignVal">±0</span>
       </div>
     </details>
   </div>
@@ -684,6 +712,12 @@ var BASE_MUSIC_OFFSET=0.25;     // calibrated zero point (displayed as ±0); aut
 var musicStartOffsetBeats=BASE_MUSIC_OFFSET;
 var musicPhaseOffset=0; // phase offset 0.0–1.0 (fraction of one beat)
 const BEAT_ALIGN={en:'Beat align',ja:'拍を合わせる',zh:'对齐节拍','zh-TW':'對齊節拍',ko:'박자 맞추기',es:'Alinear el pulso',fr:'Caler le rythme',de:'Beat ausrichten',pt:'Alinhar a batida',hi:'बीट मिलाएं',id:'Selaraskan ketukan',it:'Allinea il battito',th:'จัดจังหวะ',vi:'Căn nhịp',ru:'Выровнять бит'};
+// Tooltips for the fine-tune buttons (shown via the fast .tipbtn tooltip).
+const TIP_BEAT_BACK={en:'Music beat slightly earlier',ja:'音楽の拍を少し前へ',zh:'音乐节拍稍微提前','zh-TW':'音樂節拍稍微提前',ko:'음악 박자를 살짝 앞으로',es:'Adelantar un poco el pulso de la música',fr:'Avancer légèrement le rythme de la musique',de:'Musik-Beat etwas früher',pt:'Adiantar um pouco a batida da música',hi:'संगीत की बीट थोड़ा पहले',id:'Ketukan musik sedikit lebih awal',it:'Anticipa un po’ il battito della musica',th:'เลื่อนจังหวะเพลงให้เร็วขึ้นเล็กน้อย',vi:'Nhịp nhạc sớm hơn một chút',ru:'Бит музыки чуть раньше'};
+const TIP_BEAT_FWD={en:'Music beat slightly later',ja:'音楽の拍を少し後ろへ',zh:'音乐节拍稍微延后','zh-TW':'音樂節拍稍微延後',ko:'음악 박자를 살짝 뒤로',es:'Retrasar un poco el pulso de la música',fr:'Retarder légèrement le rythme de la musique',de:'Musik-Beat etwas später',pt:'Atrasar um pouco a batida da música',hi:'संगीत की बीट थोड़ा बाद में',id:'Ketukan musik sedikit lebih lambat',it:'Ritarda un po’ il battito della musica',th:'เลื่อนจังหวะเพลงให้ช้าลงเล็กน้อย',vi:'Nhịp nhạc muộn hơn một chút',ru:'Бит музыки чуть позже'};
+const TIP_BEAT_RESET={en:'Reset',ja:'リセット',zh:'重置','zh-TW':'重設',ko:'초기화',es:'Restablecer',fr:'Réinitialiser',de:'Zurücksetzen',pt:'Redefinir',hi:'रीसेट',id:'Setel ulang',it:'Reimposta',th:'รีเซ็ต',vi:'Đặt lại',ru:'Сброс'};
+const TIP_HALF={en:'Half speed (tap again to undo)',ja:'音楽を半分の速さに（もう一度で解除）',zh:'半速播放（再次点击取消）','zh-TW':'半速播放（再次點擊取消）',ko:'절반 속도 (다시 누르면 해제)',es:'Mitad de velocidad (toca de nuevo para deshacer)',fr:'Vitesse réduite de moitié (retoucher pour annuler)',de:'Halbe Geschwindigkeit (nochmals tippen zum Aufheben)',pt:'Metade da velocidade (toque de novo para desfazer)',hi:'आधी गति (पूर्ववत करने के लिए फिर दबाएं)',id:'Setengah kecepatan (ketuk lagi untuk batal)',it:'Metà velocità (tocca di nuovo per annullare)',th:'ความเร็วครึ่งหนึ่ง (แตะอีกครั้งเพื่อยกเลิก)',vi:'Tốc độ một nửa (chạm lại để hoàn tác)',ru:'Половинная скорость (нажмите ещё раз для отмены)'};
+const TIP_DOUBLE={en:'Double speed (tap again to undo)',ja:'音楽を2倍の速さに（もう一度で解除）',zh:'双倍速播放（再次点击取消）','zh-TW':'雙倍速播放（再次點擊取消）',ko:'2배 속도 (다시 누르면 해제)',es:'Doble velocidad (toca de nuevo para deshacer)',fr:'Vitesse doublée (retoucher pour annuler)',de:'Doppelte Geschwindigkeit (nochmals tippen zum Aufheben)',pt:'Velocidade dobrada (toque de novo para desfazer)',hi:'दुगुनी गति (पूर्ववत करने के लिए फिर दबाएं)',id:'Kecepatan ganda (ketuk lagi untuk batal)',it:'Doppia velocità (tocca di nuovo per annullare)',th:'ความเร็วสองเท่า (แตะอีกครั้งเพื่อยกเลิก)',vi:'Tốc độ gấp đôi (chạm lại để hoàn tác)',ru:'Двойная скорость (нажмите ещё раз для отмены)'};
 var ptimer=null, playing=false, musicStartAt=0, progMusicDur=0;
 var detectedBPM=0, loopStart=0, loopDur=0;
 var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
@@ -731,6 +765,12 @@ function L(l){
   try{ var h=_helpI18n[l]||_helpI18n.en; document.getElementById('helpOpenBtn').textContent='？ '+h.title; }catch(e){}
   try{ var hn=_helpI18n[l]||_helpI18n.en; document.getElementById('wizBack').textContent=hn.prev; document.getElementById('wizNext').textContent=hn.next; }catch(e){}
   try{ document.getElementById('beatAlignLbl').textContent=BEAT_ALIGN[l]||BEAT_ALIGN.en; }catch(e){}
+  // Fine-tune button tooltips (fast .tipbtn tooltip, per-language via data-tip).
+  try{
+    const _tip=(id,d)=>{const el=document.getElementById(id); if(el) el.setAttribute('data-tip',d[l]||d.en);};
+    _tip('btnHalf',TIP_HALF); _tip('btnDouble',TIP_DOUBLE);
+    _tip('btnBeatBack',TIP_BEAT_BACK); _tip('btnBeatFwd',TIP_BEAT_FWD); _tip('btnBeatReset',TIP_BEAT_RESET);
+  }catch(e){}
   try{ _renderRecHistory(); }catch(e){}
   // Gift section labels
   try{
@@ -811,8 +851,7 @@ function pickSample(btn,type){
   btn.classList.add('active'); cs=type;
   // Show manual tempo slider only for synth sounds
   document.getElementById('tempoRow').style.display=(type==='uploaded')?'none':'flex';
-  document.getElementById('musicBpmRow').style.display='flex';
-  updateMusicBpmLabel();
+  updateMusicBpmLabel(); // musicBpmRow stays hidden; tempo shows in 速さの微調整
   updateNP(); refreshPreview();
   if(playing){stopAll();startAll();}
 }
@@ -885,8 +924,7 @@ async function pickHeartbeatSample(btn, filename, knownBpm=0){
     _knownBPM = knownBpm || 0;
     runDetect();
     document.getElementById('tempoRow').style.display = 'none';
-    document.getElementById('musicBpmRow').style.display = 'flex';
-    updateMusicBpmLabel();
+    updateMusicBpmLabel(); // musicBpmRow stays hidden; tempo shows in 速さの微調整
     document.getElementById('phaseHint').classList.add('show');
     updateNP(); refreshPreview();
     if(playing){stopAll();startAll();}
