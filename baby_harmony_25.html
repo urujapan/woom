@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-21.3';
+window.APP_VERSION = '2026-07-21.4';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2796,6 +2796,24 @@ function _runDetectCore(){
             detectedBPM = Math.round((beatsNeeded / bestX * 60) * 10) / 10;
           }
         }
+      }
+
+      // ── Lock the loop length to the tempo we actually publish ────────────────
+      // detectedBPM is rounded to 0.1 bpm and the music's playbackRate is derived
+      // from that rounded number, so the music beats at exactly detectedBPM. If
+      // loopDur keeps the unrounded period the loop beats at something slightly
+      // else, and the two creep apart for as long as the gift plays — the loop is
+      // never re-synced to the music, so the error only accumulates.
+      // Measured before this fix: every recording was out by 0.01–0.05 bpm, i.e.
+      // 5–20 ms per minute. On Moms Echo the loop ran at 175.0402 against music at
+      // 175.000, putting the heartbeat ~69 ms ahead after five minutes — reported
+      // as "the heartbeat gradually speeds up", which a DAW at a fixed 175 never
+      // does. Snapping the length to the published tempo makes the two identical
+      // by construction, so the drift is not reduced but eliminated.
+      // The nudge is tiny (0.7 ms on Moms Echo) and cannot undo the seam choice.
+      if(detectedBPM > 0){
+        const locked = beatsNeeded * (60 / detectedBPM);
+        if(loopStart + locked <= rawBuffer.duration) loopDur = locked;
       }
       const beatSecNow = 60 / detectedBPM;
 
