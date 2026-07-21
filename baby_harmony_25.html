@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-21.6';
+window.APP_VERSION = '2026-07-21.7';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -705,7 +705,8 @@ var cl='en',cs='beat',cm='lullaby';
 var rawBuffer=null, loopBuffer=null;
 var AC=null, wSrc=null, mSrc=null, wGain=null, mGain=null;
 var musicFileBuffer=null;
-var musicLeadInSec=0; // leading silence/fade-in in the music file, skipped on play & loop
+var musicLeadInSec=0; // the track's 2-bar authored lead-in: played on the first
+                      // pass, skipped when the track loops (it is the loop point)
 var musicFineBPM=0; // user fine-tune offset in BPM
 var musicRateMult=1; // manual music-only speed: 0.5 = half, 1 = normal, 2 = double
 var BASE_MUSIC_OFFSET=0.25;     // calibrated zero point (displayed as ±0); auto-updated by lub detection
@@ -725,7 +726,12 @@ var _peakOffsetSec=0; // time from loop start to the heartbeat peak (for phase r
 var _bpmUnsure=false; // tempo not determinable from the audio — see _bpmAgreement
 const CROSSFADE_MS=80;
 const LOOP_BEATS=8;  // heartbeats per loop — see beatsNeeded in _runDetectCore
-const INTRO_BARS=4;  // bars of heart-only intro (1 bar = 4 beats)
+// Bars of heart-only intro before the music file starts (1 bar = 4 beats).
+// 2, not 4: the file now plays from its head, and its first two bars are the
+// authored lead-in, so those two bars finish the wait. The song's beat 1 still
+// arrives four bars in, exactly as it did when the lead-in was skipped and the
+// intro was four bars — the difference is that the lead-in is now audible.
+const INTRO_BARS=2;
 const FADEIN_BARS=2; // first 2 bars = womb-sound fade-in
 var mIntroGain=null;
 var musicIntroTimer=null;
@@ -1410,57 +1416,57 @@ function normalizeBuffer(buffer, targetRMS, boostOnly){
 // bpm: 0 = unknown (auto-sync mode)
 const MUSIC_LIBRARY = {
   lullaby:[
-    {id:'lu1', title:'Fairy',      file:'WMSL_Fairy_BPM138 1.mp3',  bpm:138,
-      variants:[{bpm:118,file:'WMSL_Fairy_bpm118.mp3'},{bpm:138,file:'WMSL_Fairy_BPM138 1.mp3'},{bpm:158,file:'WMSL_Fairy_bpm158.mp3'}]},
-    {id:'lu3', title:'Moms Echo',  file:'WMSL_Moms Echo_BPM175.mp3',bpm:175,
-      variants:[{bpm:135,file:'WMSL_Moms Echo_bpm135.mp3'},{bpm:155,file:'WMSL_Moms Echo_bpm155.mp3'},{bpm:175,file:'WMSL_Moms Echo_BPM175.mp3'}]},
+    {id:'lu1', title:'Fairy',      file:'WMSL_Fairy_Org_bpm138.mp3',  bpm:138,
+      variants:[{bpm:118,file:'WMSL_Fairy_bpm118#.mp3'},{bpm:138,file:'WMSL_Fairy_Org_bpm138.mp3'},{bpm:158,file:'WMSL_Fairy_bpm158#.mp3'}]},
+    {id:'lu3', title:'Moms Echo',  file:'WMSL_Moms Echo_Org_bpm175.mp3',bpm:175,
+      variants:[{bpm:135,file:'WMSL_Moms Echo_bpm135#.mp3'},{bpm:155,file:'WMSL_Moms Echo_bpm155#.mp3'},{bpm:175,file:'WMSL_Moms Echo_Org_bpm175.mp3'}]},
     // 2-bar lead-in versions (new convention: 8 beats of silence before beat 1)
     {id:'lu2', title:'Twinkle',    file:'WMSL_Twinkle_Org_bpm152.mp3',  bpm:152,
       variants:[{bpm:133,file:'WMSL_Twinkle_bpm133#.mp3'},{bpm:152,file:'WMSL_Twinkle_Org_bpm152.mp3'},{bpm:172,file:'WMSL_Twinkle_bpm172#.mp3'}]},
   ],
   ambient:[
-    {id:'am1', title:'Ambient Piano',    file:'WMSL_Ambient Piano_BPM138.mp3',    bpm:138,
-      variants:[{bpm:118,file:'WMSL_Ambient Piano_bpm118.mp3'},{bpm:138,file:'WMSL_Ambient Piano_BPM138.mp3'},{bpm:158,file:'WMSL_Ambient Piano_bpm158.mp3'}]},
-    {id:'am3', title:'Florting light',file:'WMSL_Floating in Light_BPM140.mp3',bpm:140,
-      variants:[{bpm:120,file:'WMSL_Florting light_bpm120.mp3'},{bpm:140,file:'WMSL_Floating in Light_BPM140.mp3'},{bpm:160,file:'WMSL_Florting light_bpm160.mp3'}]},
-    {id:'am2', title:'Memory of Birth',  file:'WMSL_Memory of Birth_BPM150.mp3',  bpm:150,
-      variants:[{bpm:130,file:'WMSL_Memory of Birth_bpm130.mp3'},{bpm:150,file:'WMSL_Memory of Birth_BPM150.mp3'},{bpm:170,file:'WMSL_Memory of Birth_bpm170.mp3'}]},
-    {id:'cl1', title:'Misty Forest',     file:'WMSL_Misty Forest_BPM140.mp3',     bpm:140,
-      variants:[{bpm:120,file:'WMSL_Misty Forest_bpm120.mp3'},{bpm:140,file:'WMSL_Misty Forest_BPM140.mp3'},{bpm:160,file:'WMSL_Misty Forest_bpm160.mp3'}]},
+    {id:'am1', title:'Ambient Piano',    file:'WMSL_Ambient Piano_Org_BPM138.mp3',    bpm:138,
+      variants:[{bpm:118,file:'WMSL_Ambient Piano_bpm118#.mp3'},{bpm:138,file:'WMSL_Ambient Piano_Org_BPM138.mp3'},{bpm:158,file:'WMSL_Ambient Piano_bpm158#.mp3'}]},
+    {id:'am3', title:'Florting light',file:'WMSL_Florting light_Org_bpm140.mp3',bpm:140,
+      variants:[{bpm:120,file:'WMSL_Florting light_bpm120#.mp3'},{bpm:140,file:'WMSL_Florting light_Org_bpm140.mp3'},{bpm:160,file:'WMSL_Florting light_bpm160#.mp3'}]},
+    {id:'am2', title:'Memory of Birth',  file:'WMSL_Memory of Birth_Org_bpm150.mp3',  bpm:150,
+      variants:[{bpm:130,file:'WMSL_Memory of Birth_bpm130#.mp3'},{bpm:150,file:'WMSL_Memory of Birth_Org_bpm150.mp3'},{bpm:170,file:'WMSL_Memory of Birth_bpm170#.mp3'}]},
+    {id:'cl1', title:'Misty Forest',     file:'WMSL_Misty Forest_Org_bpm140.mp3',     bpm:140,
+      variants:[{bpm:120,file:'WMSL_Misty Forest_bpm120#.mp3'},{bpm:140,file:'WMSL_Misty Forest_Org_bpm140.mp3'},{bpm:160,file:'WMSL_Misty Forest_bpm160#.mp3'}]},
   ],
   classical:[
-    {id:'ot3', title:'Dramatic Piano', file:'WMSL_Dramatic Piano_BPM138.mp3', bpm:138},
-    {id:'cl2', title:'Elegant Violin', file:'WMSL_Elegant Violin_BPM138.mp3', bpm:138,
-      variants:[{bpm:118,file:'WMSL_Elegant Violin_bpm118.mp3'},{bpm:138,file:'WMSL_Elegant Violin_BPM138.mp3'},{bpm:158,file:'WMSL_Elegant Violin_bpm158.mp3'}]},
-    {id:'ot5', title:'Maternal Love',  file:'WMSL_Maternal Love_BPM138.mp3',  bpm:138},
+    {id:'ot3', title:'Dramatic Piano', file:'WMSL_Dramatic Piano_Org_bpm138.mp3', bpm:138},
+    {id:'cl2', title:'Elegant Violin', file:'WMSL_Elegant Violin_Org_BPM138.mp3', bpm:138,
+      variants:[{bpm:118,file:'WMSL_Elegant Violin_bpm118#.mp3'},{bpm:138,file:'WMSL_Elegant Violin_Org_BPM138.mp3'},{bpm:158,file:'WMSL_Elegant Violin_bpm158#.mp3'}]},
+    {id:'ot5', title:'Maternal Love',  file:'WMSL_Maternal Love_Org_bpm138.mp3',  bpm:138},
   ],
   world:[
-    {id:'wo4', title:'A Tiny Grasp',       file:'WMSL_A Tiny Grasp_BPM148.mp3',           bpm:148,
-      variants:[{bpm:128,file:'WMSL_A Tiny Grasp_bpm128.mp3'},{bpm:148,file:'WMSL_A Tiny Grasp_BPM148.mp3'},{bpm:168,file:'WMSL_A Tiny Grasp_bpm168.mp3'}]},
-    {id:'wo1', title:'Auspicious Gamelan', file:'WMSL_Auspicious Gamelan_BPM150.mp3',    bpm:150,
-      variants:[{bpm:130,file:'WMSL_Auspicious Gamelan_bpm130.mp3'},{bpm:150,file:'WMSL_Auspicious Gamelan_BPM150.mp3'},{bpm:170,file:'WMSL_Auspicious Gamelan_bpm170.mp3'}]},
-    {id:'wo5', title:'Bem-vindo ao mundo!',file:'WMSL_Bem-vindo ao mundo!_BPM150.9.mp3',  bpm:151,
-      variants:[{bpm:131,file:'WMSL_Bem-vindo ao mundo!_bpm130.9.mp3'},{bpm:151,file:'WMSL_Bem-vindo ao mundo!_BPM150.9.mp3'},{bpm:171,file:'WMSL_Bem-vindo ao mundo!_bpm170.9.mp3'}]},
-    {id:'wo2', title:'Morning Glow',       file:'WMSL_Morning glow_BPM150.mp3',           bpm:150,
-      variants:[{bpm:130,file:'WMSL_Morning glow_bpm130.mp3'},{bpm:150,file:'WMSL_Morning glow_BPM150.mp3'},{bpm:170,file:'WMSL_Morning glow_bpm170.mp3'}]},
-    {id:'wo3', title:'My Dear Island',     file:'WMSL_My Dear Island_BPM140.mp3',         bpm:140,
-      variants:[{bpm:120,file:'WMSL_My Dear Island_bpm120.mp3'},{bpm:140,file:'WMSL_My Dear Island_BPM140.mp3'},{bpm:160,file:'WMSL_My Dear Island_bpm160.mp3'}]},
+    {id:'wo4', title:'A Tiny Grasp',       file:'WMSL_A Tiny Grasp_Org_bpm148.mp3',           bpm:148,
+      variants:[{bpm:128,file:'WMSL_A Tiny Grasp_bpm128#.mp3'},{bpm:148,file:'WMSL_A Tiny Grasp_Org_bpm148.mp3'},{bpm:168,file:'WMSL_A Tiny Grasp_bpm168#.mp3'}]},
+    {id:'wo1', title:'Auspicious Gamelan', file:'WMSL_Auspicious Gamelan_Org_bpm150.mp3',    bpm:150,
+      variants:[{bpm:130,file:'WMSL_Auspicious Gamelan_bpm130#.mp3'},{bpm:150,file:'WMSL_Auspicious Gamelan_Org_bpm150.mp3'},{bpm:170,file:'WMSL_Auspicious Gamelan_bpm170#.mp3'}]},
+    {id:'wo5', title:'Bem-vindo ao mundo!',file:'WMSL_Bem-vindo ao mundo!_Org_bpm150.9.mp3',  bpm:151,
+      variants:[{bpm:131,file:'WMSL_Bem-vindo ao mundo!_bpm130.9#.mp3'},{bpm:151,file:'WMSL_Bem-vindo ao mundo!_Org_bpm150.9.mp3'},{bpm:171,file:'WMSL_Bem-vindo ao mundo!_bpm170.9#.mp3'}]},
+    {id:'wo2', title:'Morning Glow',       file:'WMSL_Morning glow_Org_bpm150.mp3',           bpm:150,
+      variants:[{bpm:130,file:'WMSL_Morning glow_bpm130#.mp3'},{bpm:150,file:'WMSL_Morning glow_Org_bpm150.mp3'},{bpm:170,file:'WMSL_Morning glow_bpm170#.mp3'}]},
+    {id:'wo3', title:'My Dear Island',     file:'WMSL_My Dear Island_Org_bpm140.mp3',         bpm:140,
+      variants:[{bpm:120,file:'WMSL_My Dear Island_bpm120#.mp3'},{bpm:140,file:'WMSL_My Dear Island_Org_bpm140.mp3'},{bpm:160,file:'WMSL_My Dear Island_bpm160#.mp3'}]},
   ],
   electro:[
-    {id:'el1', title:'Hyper Baby!',      file:'WMSL_Hyper Baby!_BPM173.mp3',      bpm:173,
-      variants:[{bpm:133,file:'WMSL_Hyper Baby!_bpm133.mp3'},{bpm:153,file:'WMSL_Hyper Baby!_bpm153.mp3'},{bpm:173,file:'WMSL_Hyper Baby!_BPM173.mp3'}]},
-    {id:'el2', title:'Infinite Horizon', file:'WMSL_Infinite Horizon_BPM140.mp3', bpm:140,
-      variants:[{bpm:120,file:'WMSL_Infinite Horizon_bpm120.mp3'},{bpm:140,file:'WMSL_Infinite Horizon_BPM140.mp3'},{bpm:160,file:'WMSL_Infinite Horizon_bpm160.mp3'}]},
+    {id:'el1', title:'Hyper Baby!',      file:'WMSL_Hyper Baby!_Org_bpm173.mp3',      bpm:173,
+      variants:[{bpm:133,file:'WMSL_Hyper Baby!_bpm133#.mp3'},{bpm:153,file:'WMSL_Hyper Baby!_bpm153#.mp3'},{bpm:173,file:'WMSL_Hyper Baby!_Org_bpm173.mp3'}]},
+    {id:'el2', title:'Infinite Horizon', file:'WMSL_Infinite Horizon_Org_bpm140.mp3', bpm:140,
+      variants:[{bpm:120,file:'WMSL_Infinite Horizon_bpm120#.mp3'},{bpm:140,file:'WMSL_Infinite Horizon_Org_bpm140.mp3'},{bpm:160,file:'WMSL_Infinite Horizon_bpm160#.mp3'}]},
   ],
   other:[
-    {id:'ot2', title:'Across the Blue',      file:'WMSL_Across the Blue_BPM148.mp3',      bpm:148,
-      variants:[{bpm:128,file:'WMSL_Across the Blue_bpm128.mp3'},{bpm:148,file:'WMSL_Across the Blue_BPM148.mp3'},{bpm:168,file:'WMSL_Across the Blue_bpm168.mp3'}]},
-    {id:'ot4', title:'Heart Warming Guitar', file:'WMSL_Heart Warming Guitar_BPM138.mp3', bpm:138},
-    {id:'ot1', title:'New Voyage',           file:'WMSL_New Voyage_BPM149.mp3',           bpm:149,
+    {id:'ot2', title:'Across the Blue',      file:'WMSL_Across the Blue_Org_bpm148.mp3',      bpm:148,
+      variants:[{bpm:128,file:'WMSL_Across the Blue_bpm128#.mp3'},{bpm:148,file:'WMSL_Across the Blue_Org_bpm148.mp3'},{bpm:168,file:'WMSL_Across the Blue_bpm168#.mp3'}]},
+    {id:'ot4', title:'Heart Warming Guitar', file:'WMSL_Heart Warming Guitar_Org_bpm138.mp3', bpm:138},
+    {id:'ot1', title:'New Voyage',           file:'WMSL_New Voyage_Org_bpm149.mp3',           bpm:149,
       variants:[
-        {bpm:129, file:'WMSL_New Voyage_bpm129.mp3'},
-        {bpm:149, file:'WMSL_New Voyage_BPM149.mp3'},
-        {bpm:169, file:'WMSL_New Voyage_bpm169.mp3'}
+        {bpm:129, file:'WMSL_New Voyage_bpm129#.mp3'},
+        {bpm:149, file:'WMSL_New Voyage_Org_bpm149.mp3'},
+        {bpm:169, file:'WMSL_New Voyage_bpm169#.mp3'}
       ]},
   ],
 };
@@ -3238,38 +3244,23 @@ function onMusicFine(val){
 // Phase is now controlled by dragging the music grid overlay on the waveform.
 // musicPhaseOffset (0.0–1.0) is updated by the drag handler below.
 
-// Some music files begin with a fade-in or a beat or two of near-silence.
-// If we play from sample 0 the "entrance" we so carefully align to the heart
-// peak is actually silence, and the real music enters a beat or more late —
-// which reads as "the music doesn't match the heartbeat". Detect that lead-in
-// once per buffer so playback (and every loop) can start on the first real note.
-// Tracks are authored with exactly 2 bars (8 beats) of silence before the first
-// downbeat, so the file start is a known musical position. When a buffer matches
-// that convention, start playback at the mathematically exact 2-bar point rather
-// than at a detected attack — this guarantees the music enters on beat 1 (some
-// tracks begin with a pickup, which is why trusting "first audible sound" put the
-// music on an offbeat). Files not yet converted fall back to attack detection.
+// Every track is now authored with the song's beat 1 exactly two bars from the
+// file start, so the lead-in is arithmetic — no need to hunt for it in the audio.
+//
+// It used to be measured, by finding the first sample above 15% of the track's
+// peak, and playback then STARTED there. That threw away anything quieter than
+// that: an audited pass over the finished tracks found it entering 1.6 s into
+// A Tiny Grasp and 3.3 s into Across the Blue, and cutting roughly eight seconds
+// off the front of Elegant Violin. Fade-ins and pick-ups — notes deliberately
+// written to land before the downbeat — were the very things it discarded.
+//
+// The file is now played from its head instead, entering two bars earlier, so
+// whatever was authored in the lead-in is heard exactly where it was written and
+// the song's beat 1 still lands on the heartbeat. The value below is only used
+// as the LOOP point, so a repeat rejoins the song body rather than replaying the
+// lead-in; the first pass always includes it.
 function musicStartOffsetFor(buf, bpm){
-  var detected = detectMusicLeadIn(buf);
-  if(bpm > 0){
-    var twoBars = 8 * 60 / bpm;
-    if(Math.abs(detected - twoBars) < 0.08) return twoBars;
-  }
-  return detected;
-}
-
-function detectMusicLeadIn(buf){
-  if(!buf) return 0;
-  const sr=buf.sampleRate, d=buf.getChannelData(0);
-  const scan=Math.min(d.length, Math.floor(sr*20));
-  let peak=0; for(let i=0;i<scan;i++){ const a=Math.abs(d[i]); if(a>peak) peak=a; }
-  if(peak<=0) return 0;
-  const thr=peak*0.15;              // 15% of the loudest sample = clearly audible
-  let onset=-1;
-  for(let i=0;i<d.length;i++){ if(Math.abs(d[i])>thr){ onset=i/sr; break; } }
-  if(onset<=0.05) return 0;         // no meaningful lead-in
-  // Back off ~15ms so the note's very attack isn't clipped.
-  return Math.max(0, onset-0.015);
+  return bpm > 0 ? 8 * 60 / bpm : 0;   // two bars at the track's own tempo
 }
 
 // Manual beat alignment. Auto-sync can't lock when the womb recording has no
@@ -3326,9 +3317,10 @@ function calcPhaseShiftSec(){
   if(beatSec <= 0) return 0;
   return musicPhaseOffset * beatSec;
 }
-// Where in the buffer playback begins: always the true head of the music (past any
-// leading silence). Never a phase-dependent seek — that is what cut the head off.
-function calcMusicBufferStart(){ return musicLeadInSec; }
+// Where in the buffer playback begins: the file's head, always. Never a
+// phase-dependent seek (that is what cut the head off), and no longer the
+// lead-in either — the lead-in is authored content and is meant to be heard.
+function calcMusicBufferStart(){ return 0; }
 
 function applyPhaseRestart(){
   // Seamlessly restart only the music source at new phase offset.
@@ -3372,9 +3364,14 @@ function applyPhaseRestart(){
   // so at `now` it has travelled (now - musicStartAt + phaseShift) real seconds.
   let offsetSec = calcMusicBufferStart() +
     Math.max(0, now - musicStartAt + calcPhaseShiftSec()) * rate;
+  // Wrap into the loop region only once we are past the lead-in. The first pass
+  // plays the lead-in (offsets below loopStart), and wrapping those would throw
+  // playback to the far end of the track — a nudge during the intro would jump
+  // to the outro.
   const loopS = musicLeadInSec > 0 ? musicLeadInSec : 0;
   const loopLen = musicFileBuffer.duration - loopS;
-  if(loopLen > 0) offsetSec = loopS + (((offsetSec - loopS) % loopLen) + loopLen) % loopLen;
+  if(loopLen > 0 && offsetSec >= loopS)
+    offsetSec = loopS + (((offsetSec - loopS) % loopLen) + loopLen) % loopLen;
   s.connect(newGain);
   s.start(now, offsetSec);
 
