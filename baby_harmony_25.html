@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-21.5';
+window.APP_VERSION = '2026-07-21.6';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2359,18 +2359,20 @@ function _runDetectCore(){
   }
 
   detectedBPM = bpmFinal;
-  // Samples: the labelled BPM is imprecise, but the measured periodicity
-  // (NSDF / autocorrelation = bpmB) is accurate. Use bpmB for the actual tempo
-  // and only use the label to pick the correct OCTAVE (×2 / ÷2). This fixes
-  // cases where the label is a few % off (e.g. labelled 175 but really ~182),
-  // which otherwise made the tempo-matched music drift against the heartbeat.
+  // Samples carry a labelled BPM and the label is the ground truth — these files
+  // were authored at that tempo, so nothing measured here can be more accurate.
+  //
+  // This used to prefer the measured periodicity and keep the label only for the
+  // octave, on the belief that "labelled 175 but really ~182". That belief was
+  // wrong. Sample 2 is byte-for-byte the same audio as the DAW loop the tempo was
+  // produced from (envelope correlation 0.9999, the mp3 just carries 22 ms of
+  // encoder padding), and that loop is exactly 16 beats at 175.000 bpm — 5.485714 s
+  // expected against 5.485708 s actual. The 182 was a 4% measurement error, and
+  // acting on it detuned the music against the heartbeat.
+  // Samples 1 and 3 already measured exactly on their labels, so trusting the
+  // label changes Sample 2 only.
   if(_knownBPM > 0){
-    let cand = (bpmB > 0) ? bpmB : _knownBPM;
-    while(Math.abs(cand*2 - _knownBPM) < Math.abs(cand - _knownBPM)) cand *= 2;
-    while(cand > 2 && Math.abs(cand/2 - _knownBPM) < Math.abs(cand - _knownBPM)) cand /= 2;
-    // Guard: only trust bpmB if it lands within 20% of the label after octave
-    // correction; otherwise fall back to the label.
-    detectedBPM = (Math.abs(cand - _knownBPM) <= _knownBPM*0.20) ? Math.round(cand) : _knownBPM;
+    detectedBPM = _knownBPM;
   } else if(bpmB > 0 && Math.abs(bpmB - bpmFinal) <= bpmFinal*0.12){
     // Uploads: bpmFinal resolved the correct OCTAVE, but the NSDF/autocorrelation
     // periodicity (bpmB) is the most precise tempo estimate. When bpmB agrees on
