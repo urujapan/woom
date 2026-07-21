@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-21.2';
+window.APP_VERSION = '2026-07-21.3';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2734,6 +2734,66 @@ function _runDetectCore(){
              loopStart + period * beatsNeeded <= rawBuffer.duration){
             detectedBPM = Math.round(refined * 10) / 10;
             loopDur     = period * beatsNeeded;
+          }
+        }
+      }
+
+      // ── Seam refinement: size the loop by what actually wraps cleanly ─────────
+      // The autocorrelation above measures the envelope's periodicity, which is a
+      // proxy. The thing the ear judges is different and can be measured directly:
+      // a loop of length X is correct when the audio at (loopStart + X) continues
+      // as if it were the audio at loopStart. Scoring candidate X by that
+      // similarity finds the true bar length even when the periodicity estimate is
+      // off by a bpm.
+      //
+      // Why this matters: HBO_Moms Echo reported "the rhythm drifts partway
+      // through". Autocorrelation said 176.2 bpm, so the 8-beat loop came out
+      // 2.7241 s — 18.8 ms shorter than the real 8 beats. Every wrap therefore
+      // jumped ~19 ms early while the music kept its own steady grid, heard as the
+      // beat repeatedly stumbling. The seam score peaks at 2.742 s = 175.05 bpm,
+      // matching the 175 bpm the track was actually produced at in the DAW.
+      //
+      // Guards, because this signal is not trustworthy everywhere:
+      //   · absolute score must be decent — on New Voyage the seam barely
+      //     correlates at all (0.44) and the peak lands 6.2 bpm out, so anything
+      //     below 0.55 is ignored and the existing estimate stands.
+      //   · the correction is capped at ±1.5 %, so this can only ever fine-tune a
+      //     tempo, never re-detect one.
+      if(_knownBPM <= 0){
+        const cmpSec = Math.min(1.2, loopDur * 0.45);   // stretch compared each side
+        const eFrame = 0.001;                            // 1 ms — the ear notices ~10 ms
+        const spanEnd = loopStart + loopDur * 1.02 + cmpSec + 0.05;
+        if(spanEnd <= rawBuffer.duration){
+          const eLen = Math.floor((spanEnd - loopStart) / eFrame);
+          const eStep = Math.round(sr * eFrame);
+          const base  = Math.round(loopStart * sr);
+          const senv  = new Float32Array(eLen);
+          for(let i = 0; i < eLen; i++){
+            let s = 0; const o = base + i * eStep;
+            for(let j = 0; j < eStep; j++){ const v = rawData[o+j] || 0; s += v * v; }
+            senv[i] = Math.sqrt(s / eStep);
+          }
+          const cn = Math.round(cmpSec / eFrame);
+          const seamScore = (X) => {
+            const b = Math.round(X / eFrame);
+            if(b + cn >= eLen) return -1;
+            let s = 0, x = 0, y = 0;
+            for(let i = 0; i < cn; i++){
+              const p = senv[i], q = senv[b+i];
+              s += p * q; x += p * p; y += q * q;
+            }
+            return s / Math.max(Math.sqrt(x * y), 1e-12);
+          };
+          const curScore = seamScore(loopDur);
+          let bestX = loopDur, bestS = curScore;
+          for(let X = loopDur * 0.985; X <= loopDur * 1.015; X += eFrame){
+            const s = seamScore(X);
+            if(s > bestS){ bestS = s; bestX = X; }
+          }
+          if(bestS >= 0.55 && bestS > curScore + 0.005 &&
+             loopStart + bestX <= rawBuffer.duration){
+            loopDur     = bestX;
+            detectedBPM = Math.round((beatsNeeded / bestX * 60) * 10) / 10;
           }
         }
       }
