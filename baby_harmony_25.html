@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-21.7';
+window.APP_VERSION = '2026-07-21.8';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -3650,8 +3650,17 @@ function startAll(){
   document.getElementById('vizBox').classList.add('playing');
   document.getElementById('pico').className='ti ti-player-pause';
 
-  // Countdown ticks once per beat
-  let bar=INTRO_BARS;
+  // Countdown to the moment the SONG actually enters, ticking once per bar.
+  // It used to count INTRO_BARS down once per BEAT, which never described
+  // anything real: the music entered four bars in while the counter finished
+  // after four beats. Lowering INTRO_BARS to 2 made that visible — the label
+  // said "now playing" two beats in, three and a half bars early, which reads as
+  // the heart-only intro having been shortened when it has not.
+  // The song's beat 1 arrives INTRO_BARS bars from here plus the track's own
+  // lead-in (played back at `rate`, so measure it in real seconds).
+  const leadBars = musicFileBuffer && cm!=='none'
+    ? (musicLeadInSec / Math.max(0.1, calcPlaybackRate())) / barSec : 0;
+  let bar = Math.max(1, Math.round(INTRO_BARS + leadBars));
   document.getElementById('npTitle').textContent='♩ '+bar;
   clearInterval(musicIntroTimer);
   musicIntroTimer=setInterval(()=>{
@@ -3662,7 +3671,7 @@ function startAll(){
       clearInterval(musicIntroTimer); musicIntroTimer=null;
       document.getElementById('npTitle').textContent=NOW[cl];
     }
-  },beatSec*1000);
+  },barSec*1000);
   startProg();
 }
 
