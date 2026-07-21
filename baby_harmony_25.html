@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-22.4';
+window.APP_VERSION = '2026-07-22.5';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -882,7 +882,8 @@ async function toggleSamplePreview(btn, filename){
   try {
     if(!AC) AC = new(window.AudioContext||window.webkitAudioContext)();
     if(!_sampleBufCache[filename]){
-      const res = await fetch(filename.split('/').map(s=>encodeURIComponent(s)).join('/'));
+      const res = await fetch(filename.split('/').map(s=>encodeURIComponent(s)).join('/')
+        +'?v='+encodeURIComponent(window.APP_VERSION||'0'));
       if(!res.ok) throw new Error('HTTP '+res.status);
       _sampleBufCache[filename] = await AC.decodeAudioData(await res.arrayBuffer());
     }
@@ -914,7 +915,7 @@ async function pickHeartbeatSample(btn, filename, knownBpm=0){
   try {
     if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
     const encodedFile = filename.split('/').map(s=>encodeURIComponent(s)).join('/');
-    const res = await fetch(encodedFile);
+    const res = await fetch(encodedFile+'?v='+encodeURIComponent(window.APP_VERSION||'0'));
     if(!res.ok) throw new Error('HTTP '+res.status);
     const arrayBuf = await res.arrayBuffer();
     const buf = await AC.decodeAudioData(arrayBuf);
@@ -1480,7 +1481,14 @@ async function loadMusicFile(file, key){
   if(musicBufferCache[key]) return musicBufferCache[key];
   // Encode each path segment to handle spaces and special chars in filenames
   const encodedFile = file.split('/').map(s=>encodeURIComponent(s)).join('/');
-  const res = await fetch(encodedFile);
+  // Tag the request with the build so replaced audio can never be served from a
+  // stale cache. The whole library was re-cut with a 2-bar lead-in; a browser
+  // holding an older copy plays the song two bars early and every number in the
+  // app still looks correct, because the fault is in the bytes, not the logic.
+  // One session was found decoding 175.66 s of audio with no leading silence
+  // while the server, the repo and the working copy all held the same 178.34 s
+  // file with two bars of it.
+  const res = await fetch(encodedFile+'?v='+encodeURIComponent(window.APP_VERSION||'0'));
   if(!res.ok) throw new Error('HTTP '+res.status+': '+file);
   const arrayBuf = await res.arrayBuffer();
   if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
