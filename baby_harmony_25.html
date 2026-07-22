@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-22.6';
+window.APP_VERSION = '2026-07-22.7';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -708,6 +708,8 @@ var musicFileBuffer=null;
 var musicLeadInSec=0; // the track's authored 2-bar lead-in. Always played (the
                       // source loops the whole buffer); used to know when the
                       // song itself enters, for the intro countdown.
+var musicHeadTrimSec=0; // how much of the file's head this browser's MP3 decoder
+                      // dropped. Playback starts that much later to compensate.
 var musicFineBPM=0; // user fine-tune offset in BPM
 var musicRateMult=1; // manual music-only speed: 0.5 = half, 1 = normal, 2 = double
 var BASE_MUSIC_OFFSET=0.25;     // calibrated zero point (displayed as ±0); auto-updated by lub detection
@@ -1477,6 +1479,33 @@ var selectedTrack = null;
 var musicPrevAC = null, musicPrevSrc = null, musicPrevTrackId = null;
 
 // ── Library track loading ────────────────────────────────────────────────
+// How long a CBR MP3 must be, from its own bytes. Every track in the library is
+// constant-bitrate with no Xing/LAME header (verified across all 57 files: the
+// byte maths matches the real duration to 0 ms), so this is exact — and it gives
+// a reference the decoder cannot influence.
+function _mp3ExpectedDuration(arrayBuf){
+  try{
+    const b=new Uint8Array(arrayBuf);
+    let off=0;
+    if(b[0]===0x49&&b[1]===0x44&&b[2]===0x33)      // 'ID3'
+      off=10+(((b[6]&0x7f)<<21)|((b[7]&0x7f)<<14)|((b[8]&0x7f)<<7)|(b[9]&0x7f));
+    let i=off; const limit=Math.min(b.length-4, off+65536);
+    while(i<limit && !(b[i]===0xFF&&(b[i+1]&0xE0)===0xE0)) i++;
+    if(i>=limit) return 0;
+    const ver=(b[i+1]>>3)&3, brI=(b[i+2]>>4)&15, srI=(b[i+2]>>2)&3, ch=(b[i+3]>>6)&3;
+    const BR=[0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0];
+    const SR={3:[44100,48000,32000],2:[22050,24000,16000]};
+    if(!SR[ver]) return 0;
+    const br=BR[brI]*1000, sr=SR[ver][srI];
+    if(!br||!sr) return 0;
+    // A Xing/Info header means VBR or gapless tagging; byte maths would be wrong.
+    const t=i+4+(ch===3?17:32);
+    const s=String.fromCharCode(b[t],b[t+1],b[t+2],b[t+3]);
+    if(s==='Xing'||s==='Info') return 0;
+    return (b.length-i)*8/br;
+  }catch(e){ return 0; }
+}
+
 async function loadMusicFile(file, key){
   if(musicBufferCache[key]) return musicBufferCache[key];
   // Encode each path segment to handle spaces and special chars in filenames
@@ -1499,7 +1528,21 @@ async function loadMusicFile(file, key){
   try{ window._musicFetch = {url:decodeURIComponent(url), bytes:arrayBuf.byteLength,
     origin:location.origin}; }catch(e){}
   if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
+  // Measure the file BEFORE decoding — decodeAudioData detaches the ArrayBuffer.
+  const expectedDur = _mp3ExpectedDuration(arrayBuf);
   const decoded = await AC.decodeAudioData(arrayBuf);
+  // Some MP3 decoders drop leading frames. One Chrome build was found returning
+  // 175.66 s for the same 7,133,760 bytes this one decodes to 178.34 s, losing
+  // exactly the two bars of silence at the head — so the song began two bars
+  // early while every computed value still looked right. Compare against the
+  // byte maths and remember how much of the head is missing, so playback can be
+  // scheduled that much later and the song still lands on the heartbeat.
+  try{
+    decoded._headTrim = (expectedDur > 0 && decoded.duration > 0 &&
+                         expectedDur - decoded.duration > 0.05)
+      ? (expectedDur - decoded.duration) : 0;
+    decoded._expectedDur = expectedDur;
+  }catch(e){}
   musicBufferCache[key] = decoded;
   return decoded;
 }
@@ -1561,6 +1604,7 @@ async function selectTrack(trackId){
     if(selectedTrack !== track) return; // superseded by a newer tap — ignore
     musicFileBuffer = buf;
     musicLeadInSec = musicStartOffsetFor(buf, musicFileBPM);
+    musicHeadTrimSec = buf._headTrim || 0;
     refreshPreview(); drawMusicGrid(); updateMusicBpmLabel();
     if(playing){stopAll();startAll();}
   }catch(e){
@@ -1730,6 +1774,7 @@ var _mfiEl=document.getElementById('mfi'); if(_mfiEl) _mfiEl.addEventListener('c
     AC.decodeAudioData(e.target.result,function(buf){
       musicFileBuffer=buf;
       musicLeadInSec=musicStartOffsetFor(buf, musicFileBPM);
+      musicHeadTrimSec=0; // uploaded music: no 2-bar convention to compensate for
       document.getElementById('musicUpInfo').style.display='flex';
       const rate = calcPlaybackRate();
       const mult = getBestMult();
@@ -3661,7 +3706,9 @@ function startAll(){
   wSrc=buildWombSrc(ctx); wSrc.connect(wGain); wGain.connect(ctx.destination);
 
   if(cm!=='none'){
-    musicStartAt=ctx.currentTime+introSec;
+    // Start later by whatever this decoder dropped from the file's head, so the
+    // song's beat 1 lands in the same place whether or not the lead-in survived.
+    musicStartAt=ctx.currentTime+introSec+musicHeadTrimSec/Math.max(0.1,calcPlaybackRate());
     // Fix music duration at start time to keep progress bar stable
     progMusicDur = musicFileBuffer
       ? musicFileBuffer.duration / Math.max(0.1, calcPlaybackRate())
@@ -3801,7 +3848,8 @@ function dlAudio(){
     const ms=off.createBufferSource(); ms.buffer=musicFileBuffer; ms.loop=true;
     ms.playbackRate.value=calcPlaybackRate();
     ms.connect(mg);
-    ms.start(Math.max(0, introSec - calcPhaseShiftSec()), calcMusicBufferStart());
+    ms.start(Math.max(0, introSec + musicHeadTrimSec/Math.max(0.1,calcPlaybackRate())
+      - calcPhaseShiftSec()), calcMusicBufferStart());
   } else if(cm!=='none'){
     const fm={lullaby:[261.6,329.6,392,523.3],nature:[174.6,220,261.6,349.2],piano:[293.7,370,440,587.3],classical:[261.6,311.1,392,466.2],ambient:[130.8,164.8,196,261.6]};
     const notes=fm[cm]||fm.lullaby;
@@ -4131,7 +4179,8 @@ function doGift(){
   if(musicFileBuffer){
     const ms=off.createBufferSource(); ms.buffer=musicFileBuffer; ms.loop=true;
     ms.playbackRate.value=calcPlaybackRate(); ms.connect(mg);
-    ms.start(Math.max(0, introSec - calcPhaseShiftSec()), calcMusicBufferStart());
+    ms.start(Math.max(0, introSec + musicHeadTrimSec/Math.max(0.1,calcPlaybackRate())
+      - calcPhaseShiftSec()), calcMusicBufferStart());
   } else if(cm!=='none'){
     const fm={lullaby:[261.6,329.6,392,523.3],nature:[174.6,220,261.6,349.2],piano:[293.7,370,440,587.3],classical:[261.6,311.1,392,466.2],ambient:[130.8,164.8,196,261.6]};
     const notes=fm[cm]||fm.lullaby, nd=60/bpm*2;
@@ -4404,8 +4453,11 @@ try{ wizInit(); }catch(e){}
           for(var j=0;j<md.length;j++){ var b2=md[j]<0?-md[j]:md[j]; if(b2>th){ fs=j/msr; break; } }
           L.push('── 実際に読み込まれた音源 ──');
           L.push('長さ '+musicFileBuffer.duration.toFixed(2)+'s  sr='+msr+'  peak='+pk.toFixed(3));
+          L.push('本来の長さ '+(musicFileBuffer._expectedDur?musicFileBuffer._expectedDur.toFixed(2)+'s':'?'));
           L.push('先頭の無音 '+(fs<0?'?':fs.toFixed(3)+'s')+'  = '+(lead>0&&fs>=0?(fs/(lead/2)).toFixed(2):'?')+'小節');
-          L.push(fs>=0 && lead>0 && fs > lead*0.9 ? '判定 ✓ 2小節の無音あり' : '判定 ⚠ 無音が足りない');
+          L.push('デコーダが削った量 '+musicHeadTrimSec.toFixed(3)+'s → 開始を同じだけ遅らせて補正');
+          L.push(musicHeadTrimSec>0.05 ? '判定 ✓ 頭が削られたが補正済み'
+                 : (fs>=0 && lead>0 && fs > lead*0.9 ? '判定 ✓ 2小節の無音あり' : '判定 ⚠ 無音が足りない'));
         }
       }catch(e){ L.push('err '+e.message); }
       panel=document.createElement('div');
