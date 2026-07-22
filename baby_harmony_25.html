@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-22.7';
+window.APP_VERSION = '2026-07-22.8';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -738,6 +738,7 @@ const INTRO_BARS=2;
 const FADEIN_BARS=2; // first 2 bars = womb-sound fade-in
 var mIntroGain=null;
 var musicIntroTimer=null;
+var musicIntroKick=null; // delay before the count-in starts (see startAll)
 
 function getEffectiveBPM(){
   if(cs==='uploaded'&&detectedBPM>0) return detectedBPM;
@@ -3721,34 +3722,38 @@ function startAll(){
   document.getElementById('vizBox').classList.add('playing');
   document.getElementById('pico').className='ti ti-player-pause';
 
-  // Countdown to the moment the SONG actually enters, ticking once per bar.
-  // It used to count INTRO_BARS down once per BEAT, which never described
-  // anything real: the music entered four bars in while the counter finished
-  // after four beats. Lowering INTRO_BARS to 2 made that visible — the label
-  // said "now playing" two beats in, three and a half bars early, which reads as
-  // the heart-only intro having been shortened when it has not.
-  // The song's beat 1 arrives INTRO_BARS bars from here plus the track's own
-  // lead-in (played back at `rate`, so measure it in real seconds).
-  const leadBars = musicFileBuffer && cm!=='none'
-    ? (musicLeadInSec / Math.max(0.1, calcPlaybackRate())) / barSec : 0;
-  let bar = Math.max(1, Math.round(INTRO_BARS + leadBars));
-  document.getElementById('npTitle').textContent='♩ '+bar;
-  clearInterval(musicIntroTimer);
-  musicIntroTimer=setInterval(()=>{
-    bar--;
-    if(bar>0){
-      document.getElementById('npTitle').textContent='♩ '+bar;
-    } else {
-      clearInterval(musicIntroTimer); musicIntroTimer=null;
-      document.getElementById('npTitle').textContent=NOW[cl];
-    }
-  },barSec*1000);
+  // Count-in to the moment the SONG enters. Counted in BEATS over the final bar,
+  // the way a studio count-in works, so the music arrives immediately after "1".
+  // Counting it in bars instead was read as a fault: each number lasted a whole
+  // bar, so "1" was followed by another bar of waiting — the same gap as between
+  // every other number — and it felt like the music was late. (Before that it
+  // counted INTRO_BARS down per beat, which matched nothing at all.)
+  const leadSec = (musicFileBuffer && cm!=='none')
+    ? musicLeadInSec / Math.max(0.1, calcPlaybackRate()) : 0;
+  const waitSec = INTRO_BARS*barSec + leadSec;   // until the song's beat 1
+  const COUNT_IN = 4;                            // beats of count-in
+  const npEl = document.getElementById('npTitle');
+  npEl.textContent = '♡';                        // heartbeat only, before the count
+  clearInterval(musicIntroTimer); clearTimeout(musicIntroKick);
+  let n = COUNT_IN;
+  musicIntroKick = setTimeout(()=>{
+    npEl.textContent = '♩ '+n;
+    musicIntroTimer = setInterval(()=>{
+      n--;
+      if(n>0){ npEl.textContent = '♩ '+n; }
+      else {
+        clearInterval(musicIntroTimer); musicIntroTimer=null;
+        npEl.textContent = NOW[cl];
+      }
+    }, beatSec*1000);
+  }, Math.max(0, (waitSec - COUNT_IN*beatSec))*1000);
   startProg();
 }
 
 function stopAll(){
   clearInterval(ptimer);
   clearInterval(musicIntroTimer); musicIntroTimer=null;
+  clearTimeout(musicIntroKick); musicIntroKick=null;
   if(wSrc&&wSrc._x) wSrc._x();
   if(mSrc&&mSrc._x) mSrc._x();
   wSrc=null; mSrc=null; wGain=null; mGain=null; mIntroGain=null;
