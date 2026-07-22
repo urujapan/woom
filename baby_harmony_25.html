@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-22.10';
+window.APP_VERSION = '2026-07-22.11';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -3744,16 +3744,16 @@ function startAll(){
   document.getElementById('vizBox').classList.add('playing');
   document.getElementById('pico').className='ti ti-player-pause';
 
-  // Count-in to the moment the SONG enters. Counted in BEATS over the final bar,
-  // the way a studio count-in works, so the music arrives immediately after "1".
-  // Counting it in bars instead was read as a fault: each number lasted a whole
-  // bar, so "1" was followed by another bar of waiting — the same gap as between
-  // every other number — and it felt like the music was late. (Before that it
-  // counted INTRO_BARS down per beat, which matched nothing at all.)
+  // Count-in to the moment the SONG enters, a number per BAR. A beat-per-number
+  // version was tried and rejected as too quick — a bar apiece is what gives the
+  // sense of the music gathering. "1" therefore means one bar remaining, and the
+  // song arrives as it ends. (Earlier this counted INTRO_BARS per beat, which
+  // described nothing: it finished four beats in while the music entered four
+  // BARS in.)
   const leadSec = (musicFileBuffer && cm!=='none')
     ? musicLeadInSec / Math.max(0.1, calcPlaybackRate()) : 0;
   const waitSec = INTRO_BARS*barSec + leadSec;   // until the song's beat 1
-  const COUNT_IN = 4;                            // beats of count-in
+  const COUNT_IN = 4, COUNT_UNIT = barSec;       // 4 numbers, one per bar
   const npEl = document.getElementById('npTitle');
   npEl.textContent = '♡';                        // heartbeat only, before the count
   clearInterval(musicIntroTimer); clearTimeout(musicIntroKick);
@@ -3771,9 +3771,9 @@ function startAll(){
       return;
     }
     const left = waitSec - t;
-    const txt = (left > COUNT_IN*beatSec)
-      ? '♡'
-      : '♩ '+Math.min(COUNT_IN, Math.max(1, Math.ceil(left/beatSec)));
+    // epsilon so a number does not linger an extra tick on the exact boundary
+    const n = Math.ceil((left - 1e-3) / COUNT_UNIT);
+    const txt = (n > COUNT_IN) ? '♡' : '♩ '+Math.max(1, n);
     if(npEl.textContent !== txt) npEl.textContent = txt;   // only on change
   }, 60);
   startProg();
