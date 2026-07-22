@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-22.8';
+window.APP_VERSION = '2026-07-22.10';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -1539,10 +1539,24 @@ async function loadMusicFile(file, key){
   // byte maths and remember how much of the head is missing, so playback can be
   // scheduled that much later and the song still lands on the heartbeat.
   try{
-    decoded._headTrim = (expectedDur > 0 && decoded.duration > 0 &&
-                         expectedDur - decoded.duration > 0.05)
-      ? (expectedDur - decoded.duration) : 0;
+    let missing = (expectedDur > 0 && decoded.duration > 0)
+      ? expectedDur - decoded.duration : 0;
+    if(missing <= 0.05) missing = 0;
+    // A short buffer only tells us frames are gone, not WHICH end they went from.
+    // Compare against the silence still at the head: if that is intact, the loss
+    // was at the tail and delaying playback would just add a gap before the song
+    // — the "4-3-2-1, then more waiting" report. Only compensate when the head
+    // really is missing.
+    const d0 = decoded.getChannelData(0);
+    let pk = 0; const scan = Math.min(d0.length, decoded.sampleRate*40);
+    for(let i=0;i<scan;i++){ const a = d0[i]<0?-d0[i]:d0[i]; if(a>pk) pk=a; }
+    let silence = 0; const th = pk*0.001;
+    for(let i=0;i<d0.length;i++){ const a = d0[i]<0?-d0[i]:d0[i]; if(a>th){ silence = i/decoded.sampleRate; break; } }
+    decoded._leadSilence = silence;   // how much silence survived at the head
+    decoded._missing     = missing;   // total frames lost, either end
     decoded._expectedDur = expectedDur;
+    // How much of that loss came off the HEAD is worked out per track, where the
+    // tempo (and so the authored lead-in) is known — see selectTrack.
   }catch(e){}
   musicBufferCache[key] = decoded;
   return decoded;
@@ -1605,7 +1619,15 @@ async function selectTrack(trackId){
     if(selectedTrack !== track) return; // superseded by a newer tap — ignore
     musicFileBuffer = buf;
     musicLeadInSec = musicStartOffsetFor(buf, musicFileBPM);
-    musicHeadTrimSec = buf._headTrim || 0;
+    // Work out how much of the file's HEAD this decoder dropped. A short buffer
+    // alone cannot say which end went, and delaying playback for a loss that
+    // happened at the tail just adds a gap after the count-in. The silence still
+    // sitting at the head settles it: the lead-in is two bars, so whatever is
+    // missing from it came off the front. Bounded by the total loss, so a track
+    // that simply starts on a pick-up is never mistaken for a trimmed one.
+    const _sil = buf._leadSilence || 0, _miss = buf._missing || 0;
+    musicHeadTrimSec = Math.max(0, Math.min(_miss, musicLeadInSec - _sil));
+    if(musicHeadTrimSec <= 0.05) musicHeadTrimSec = 0;
     refreshPreview(); drawMusicGrid(); updateMusicBpmLabel();
     if(playing){stopAll();startAll();}
   }catch(e){
@@ -3735,18 +3757,25 @@ function startAll(){
   const npEl = document.getElementById('npTitle');
   npEl.textContent = '♡';                        // heartbeat only, before the count
   clearInterval(musicIntroTimer); clearTimeout(musicIntroKick);
-  let n = COUNT_IN;
-  musicIntroKick = setTimeout(()=>{
-    npEl.textContent = '♩ '+n;
-    musicIntroTimer = setInterval(()=>{
-      n--;
-      if(n>0){ npEl.textContent = '♩ '+n; }
-      else {
-        clearInterval(musicIntroTimer); musicIntroTimer=null;
-        npEl.textContent = NOW[cl];
-      }
-    }, beatSec*1000);
-  }, Math.max(0, (waitSec - COUNT_IN*beatSec))*1000);
+  // Drive the label off the AUDIO clock, not off timer callbacks. setTimeout and
+  // setInterval slip whenever the main thread is busy — decoding a track, drawing
+  // the waveform — while the music itself is scheduled on the audio clock and
+  // never slips. Recomputing the label from elapsed audio time each tick makes it
+  // self-correcting, so what is on screen always describes what is being heard.
+  const introT0 = ctx.currentTime;
+  musicIntroTimer = setInterval(()=>{
+    const t = ctx.currentTime - introT0;
+    if(t >= waitSec){
+      clearInterval(musicIntroTimer); musicIntroTimer=null;
+      npEl.textContent = NOW[cl];
+      return;
+    }
+    const left = waitSec - t;
+    const txt = (left > COUNT_IN*beatSec)
+      ? '♡'
+      : '♩ '+Math.min(COUNT_IN, Math.max(1, Math.ceil(left/beatSec)));
+    if(npEl.textContent !== txt) npEl.textContent = txt;   // only on change
+  }, 60);
   startProg();
 }
 
@@ -4460,9 +4489,15 @@ try{ wizInit(); }catch(e){}
           L.push('長さ '+musicFileBuffer.duration.toFixed(2)+'s  sr='+msr+'  peak='+pk.toFixed(3));
           L.push('本来の長さ '+(musicFileBuffer._expectedDur?musicFileBuffer._expectedDur.toFixed(2)+'s':'?'));
           L.push('先頭の無音 '+(fs<0?'?':fs.toFixed(3)+'s')+'  = '+(lead>0&&fs>=0?(fs/(lead/2)).toFixed(2):'?')+'小節');
-          L.push('デコーダが削った量 '+musicHeadTrimSec.toFixed(3)+'s → 開始を同じだけ遅らせて補正');
-          L.push(musicHeadTrimSec>0.05 ? '判定 ✓ 頭が削られたが補正済み'
-                 : (fs>=0 && lead>0 && fs > lead*0.9 ? '判定 ✓ 2小節の無音あり' : '判定 ⚠ 無音が足りない'));
+          L.push('欠けている量 '+(musicFileBuffer._missing||0).toFixed(3)+'s  うち頭 '+musicHeadTrimSec.toFixed(3)+'s');
+          // the two moments that must coincide
+          var srcAt = intro + musicHeadTrimSec/rate;
+          var P = Math.max(0, lead - musicHeadTrimSec);
+          L.push('音源の再生開始 '+srcAt.toFixed(3)+'s → 曲の1拍目 '+(srcAt+P/rate).toFixed(3)+'s');
+          L.push('カウント終了 '+(intro+leadHeard).toFixed(3)+'s   ずれ '+
+                 (((srcAt+P/rate)-(intro+leadHeard))*1000).toFixed(0)+'ms');
+          L.push(Math.abs((srcAt+P/rate)-(intro+leadHeard))<0.08 ? '判定 ✓ カウントと曲が一致'
+                 : '判定 ⚠ カウントと曲がずれている');
         }
       }catch(e){ L.push('err '+e.message); }
       panel=document.createElement('div');
