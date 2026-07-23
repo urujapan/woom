@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-23.4';
+window.APP_VERSION = '2026-07-23.5';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -35,7 +35,7 @@ window.APP_VERSION = '2026-07-23.4';
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comfortaa:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,300;1,300&family=DM+Sans:wght@300;400&family=Quicksand:wght@400;500;600;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Baloo 2','DM Sans',sans-serif;background:#fff5f8;min-height:100vh;padding:2rem 1rem;}
+body{font-family:'Baloo 2','DM Sans',sans-serif;background:#fff5f8;min-height:100vh;padding:2rem 1rem;overflow-x:hidden;}
 .app{max-width:560px;margin:0 auto;}
 .lang-bar{display:flex;gap:6px;justify-content:flex-end;margin-bottom:1.5rem;flex-wrap:wrap;}
 .lang-btn{padding:4px 10px;border-radius:20px;border:.5px solid #ddd;background:#f5f5f5;font-size:11px;color:#888;cursor:pointer;font-family:'Baloo 2','DM Sans',sans-serif;}
@@ -192,7 +192,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 .pbar{width:100%;height:6px;background:#eee;border-radius:3px;margin:1rem 0 .25rem;overflow:hidden;transition:height .15s;}
 .pbar:hover{height:8px;}
 .pfill{height:100%;width:0%;background:#D4537E;border-radius:2px;transition:width .1s;}
-.ginput{width:100%;padding:12px 16px;border:1px solid #eee;border-radius:8px;font-family:'Baloo 2','DM Sans',sans-serif;font-size:14px;color:#333;background:white;margin-bottom:.75rem;outline:none;}
+.ginput{width:100%;padding:12px 16px;border:1px solid #eee;border-radius:8px;font-family:'Baloo 2','DM Sans',sans-serif;font-size:16px;color:#333;background:white;margin-bottom:.75rem;outline:none;}
 .ginput:focus{border-color:#D4537E;}
 .arow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.75rem;}
 .abtn{padding:12px 8px;border-radius:8px;border:1px solid #eee;background:#f9f9f9;font-size:13px;color:#333;cursor:pointer;font-family:'Baloo 2','DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;}
@@ -231,7 +231,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 .upload-status.done{display:none;}
 .ginput-group{margin-bottom:.6rem;}
 .ginput-label{display:block;font-size:11px;color:#999;margin-bottom:4px;font-weight:500;letter-spacing:.03em;}
-.gtextarea{width:100%;min-height:72px;resize:vertical;font-family:'Baloo 2','DM Sans',sans-serif;font-size:14px;line-height:1.5;}
+.gtextarea{width:100%;min-height:72px;resize:vertical;font-family:'Baloo 2','DM Sans',sans-serif;font-size:16px;line-height:1.5;}
 .womb-prev-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;border:1px solid #F4C0D1;background:#FBEAF0;font-size:12px;color:#D4537E;cursor:pointer;font-family:'Baloo 2','DM Sans',sans-serif;margin-top:.75rem;}
 .womb-prev-btn.playing{background:#D4537E;color:white;border-color:#D4537E;}
 .hb-prev-btn{position:absolute;bottom:5px;right:6px;width:22px;height:22px;border-radius:50%;background:#D4537E;color:white;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;transition:background .15s;}
