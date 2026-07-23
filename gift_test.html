@@ -209,7 +209,8 @@ var nbBar=document.getElementById('nbBar');
 // Nothing is re-seeked or re-played mid-run, so playback doesn't stall.
 var vids=[document.getElementById('lvA'),document.getElementById('lvB')];
 var _rafOn=false, _vidPauseTimer=null;
-var XWIN=1.4; // crossfade half-width (s) — larger = gentler dissolve
+var XWIN=1.4;    // crossfade half-width (s) — larger = gentler dissolve
+var VSPEED=0.5;  // video playback speed — <1 slows the footage (muted, so no pitch)
 vids.forEach(function(v){ v.muted=true; }); // property, not just attribute — needed for muted autoplay
 function _smooth(x){ x=x<0?0:(x>1?1:x); return x*x*(3-2*x); } // smoothstep 0→1
 function _seamLoop(){
@@ -231,7 +232,7 @@ function startVid(){
   document.body.classList.add('vidon');
   var A=vids[0], B=vids[1], D=A.duration||10;
   try{ A.currentTime=0; B.currentTime=D/2; }catch(e){} // half-clip phase offset
-  vids.forEach(function(v){ var p=v.play(); if(p&&p.catch)p.catch(function(){}); });
+  vids.forEach(function(v){ v.playbackRate=VSPEED; var p=v.play(); if(p&&p.catch)p.catch(function(){}); });
   if(!_rafOn){ _rafOn=true; requestAnimationFrame(_seamLoop); }
 }
 function stopVid(){
