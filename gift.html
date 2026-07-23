@@ -11,6 +11,12 @@ body{font-family:Georgia,serif;background:#fbeef4;min-height:100vh;display:flex;
    regardless of which song was chosen; the finished audio carries the tempo, so
    this needs no sync, just a calm backdrop for the message. */
 #bg{position:fixed;inset:0;width:100vw;height:100vh;display:block;z-index:0;}
+/* Loop video backdrop — shown only while the music is playing (body.vidon),
+   above the ambient canvas but below the card. Muted so it never fights the
+   music; it just loops seamlessly and fades out when the song ends. */
+#loopvid{position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;z-index:1;
+  opacity:0;transition:opacity 1.4s ease;pointer-events:none;}
+body.vidon #loopvid{opacity:1;}
 .anim{position:fixed;inset:0;background:linear-gradient(135deg,#fff5f8,#f0f9f6);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:10;animation:hideAnim .6s ease 3.4s forwards;}
 @keyframes hideAnim{to{opacity:0;visibility:hidden;pointer-events:none;}}
 .scene{position:relative;width:220px;height:220px;display:flex;align-items:center;justify-content:center;flex-direction:column;}
@@ -72,6 +78,7 @@ body.playing .pausebtn{opacity:1;pointer-events:auto;}
 </head>
 <body>
 <canvas id="bg" width="900" height="600"></canvas>
+<video id="loopvid" src="gift_loop.mp4" loop muted playsinline preload="auto"></video>
 <div class="anim">
   <div class="scene">
     <div class="fl" style="left:15px;top:60px;animation-delay:.3s">♪</div>
@@ -189,6 +196,21 @@ var au=document.getElementById('au');
 var pb=document.getElementById('pb');
 var br=document.getElementById('br');
 var nbBar=document.getElementById('nbBar');
+var vid=document.getElementById('loopvid');
+vid.muted=true; // property (not just attribute) — some browsers need it for muted autoplay
+var _vidPauseTimer=null;
+// Show + loop the video while the music plays; fade it out (then pause to save
+// battery) when playback stops or the song ends.
+function startVid(){
+  clearTimeout(_vidPauseTimer);
+  document.body.classList.add('vidon');
+  var pr=vid.play(); if(pr&&pr.catch) pr.catch(function(){});
+}
+function stopVid(){
+  document.body.classList.remove('vidon');
+  clearTimeout(_vidPauseTimer);
+  _vidPauseTimer=setTimeout(function(){ try{vid.pause();}catch(e){} },1500); // after the 1.4s fade
+}
 au.addEventListener('timeupdate',function(){
   if(au.duration){
     var pct=(au.currentTime/au.duration*100)+'%';
@@ -199,6 +221,7 @@ au.addEventListener('ended',function(){
   pb.textContent='▶ Play'; pb.classList.remove('on');
   br.style.width='0%'; nbBar.style.width='0%';
   setPlayingView(false);            // bring the message card back at the end
+  stopVid();                        // fade the loop video out when the song ends
 });
 
 // Playing view: card out of the way so the video fills the screen.
@@ -216,12 +239,14 @@ function tog(){
     au.play().then(function(){
       pb.textContent='⏸ Pause'; pb.classList.add('on');
       setPlayingView(true);
+      startVid();                   // start the looping video alongside the music
     }).catch(function(e){
       pb.textContent='▶ ('+e.name+')';
     });
   } else {
     au.pause(); pb.textContent='▶ Play'; pb.classList.remove('on');
     setPlayingView(false);
+    stopVid();                      // fade the video out on manual pause too
   }
 }
 document.getElementById('pauseBtn').addEventListener('click',function(e){
