@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-23.2';
+window.APP_VERSION = '2026-07-23.3';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -602,12 +602,10 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <!-- QR code -->
       <div class="qr-wrap" id="qrWrap" style="display:none;">
         <img id="qrImg" src="" alt="QR Code">
-        <p>QRコードをスキャン</p>
       </div>
-      <!-- AirDrop / download -->
+      <!-- Copy link -->
       <div style="margin-top:10px;display:flex;gap:8px;">
-        <button class="gift-share-btn" style="flex:1;" onclick="dlGiftPage()"><i class="ti ti-device-airplay"></i> AirDrop用ページ保存</button>
-        <button class="cpbtn" onclick="copyAudioLink()"><i class="ti ti-copy"></i> <span id="T25">Copy Link</span></button>
+        <button class="cpbtn" style="flex:1;" onclick="copyAudioLink()"><i class="ti ti-copy"></i> <span id="T25">Copy Link</span></button>
       </div>
     </div>
   </div>
@@ -4145,7 +4143,6 @@ function bufToBase64(buffer){
 
 // ── Complete Gift: generate audio then share ──────────────────────────────
 var _giftWavBlob  = null; // WAV audio — for LINE/messaging (widely supported)
-var _giftHtmlBlob = null; // HTML gift page — for AirDrop/email (animation + audio)
 
 function showGiftAnim(){
   const overlay=document.getElementById('giftAnim');
@@ -4294,14 +4291,6 @@ async function nativeShare(){
   toast(ts('dlA'));
 }
 
-// Download full HTML gift page (animation + audio) — for AirDrop/email
-function dlGiftPage(){
-  if(!_giftHtmlBlob){toast('Please tap "Complete Gift" first.');return;}
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(_giftHtmlBlob);
-  a.download=_giftHtmlBlob.name; a.click();
-  toast('Gift page downloaded! Share via AirDrop or email.');
-}
 
 // ── Cloudinary upload ─────────────────────────────────────────────────────
 const CLD_CLOUD  = 'dsspyytqj';
