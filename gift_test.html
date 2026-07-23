@@ -107,7 +107,7 @@ body.playing .pausebtn{opacity:1;pointer-events:auto;}
   <div id="msgWrap"></div>
   <div id="fromWrap"></div>
   <div class="info">♡ Womb sound × Music blend</div>
-  <audio id="au" preload="auto"></audio>
+  <audio id="au" preload="auto" crossorigin="anonymous"></audio>
   <button class="play-btn" id="pb" onclick="tog()">▶ Play</button>
   <div class="prog"><div class="bar" id="br"></div></div>
   <div class="brand">Baby Harmony</div>
@@ -213,8 +213,51 @@ var _wrapOp=0, _wrapTarget=0;   // wrapper opacity, hand-animated in rAF (not CS
 var XWIN=1.4;      // crossfade half-width (s) — larger = gentler dissolve
 var VSPEED=0.5;    // video playback speed — <1 slows the footage (muted, no pitch)
 var FADE_SEC=2.0;  // seconds for the whole video layer to fade in / out
+var FADEOUT_SEC=3.5; // over the last N seconds, fade the music + video out together
 vids.forEach(function(v){ v.muted=true; }); // property, not just attribute — needed for muted autoplay
 function _smooth(x){ x=x<0?0:(x>1?1:x); return x*x*(3-2*x); } // smoothstep 0→1
+
+// Web Audio gain so the music can fade out on ALL platforms, including iOS where
+// audio.volume is read-only. Cloudinary serves the WAV with CORS (access-control
+// -allow-origin:*) and the <audio> has crossorigin="anonymous", so routing the
+// cross-origin element through the graph is allowed. Falls back to .volume (or
+// nothing) if Web Audio is unavailable, so playback is never broken.
+var _actx=null,_gain=null,_audioRouted=false;
+function _ensureAudioGraph(){
+  if(_audioRouted){ if(_actx&&_actx.state==='suspended'){ try{_actx.resume();}catch(e){} } return; }
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    _actx=new AC();
+    var src=_actx.createMediaElementSource(au);
+    _gain=_actx.createGain(); _gain.gain.value=1;
+    src.connect(_gain); _gain.connect(_actx.destination);
+    _audioRouted=true;
+    if(_actx.state==='suspended') _actx.resume();
+  }catch(e){ _actx=null; _gain=null; } // leave audio on its default path
+}
+var _endFading=false;
+// Restore full level (and cancel any scheduled fade) — used at the start of
+// playback and after it ends, so a replay isn't silent.
+function _resetMusicGain(){
+  _endFading=false;
+  if(_gain&&_actx){ try{ _gain.gain.cancelScheduledValues(_actx.currentTime); _gain.gain.setValueAtTime(1,_actx.currentTime); }catch(e){} }
+  try{ au.volume=1; }catch(e){}
+}
+// Fade the music to silence over `secs`. Uses a Web Audio ramp scheduled on the
+// audio thread, so the fade stays smooth no matter what the main thread / rAF is
+// doing. Also starts the video fading out. Falls back to a stepped .volume ramp
+// (driven from timeupdate) where Web Audio isn't available.
+function _startEndFade(secs){
+  if(_endFading) return; _endFading=true;
+  _wrapTarget=0; secs=Math.max(0.1,secs);
+  if(_gain&&_actx){
+    try{ var t0=_actx.currentTime;
+      _gain.gain.cancelScheduledValues(t0);
+      _gain.gain.setValueAtTime(_gain.gain.value,t0);
+      _gain.gain.linearRampToValueAtTime(0.0001,t0+secs);
+    }catch(e){}
+  }
+}
 
 // Warm the footage as soon as it's allowed (muted autoplay needs no gesture), so
 // by the time Play is tapped the video is already decoded and moving. Revealing
@@ -274,15 +317,23 @@ if(_dbg){
   (document.body||document.documentElement).appendChild(_dbgEl);
 }
 function _dbgUpdate(A,B){ if(!_dbgEl) return;
+  var remain=au.duration?(au.duration-au.currentTime):0;
   _dbgEl.textContent='wrap '+_wrapOp.toFixed(2)+' →'+_wrapTarget
     +'\nA t'+A.currentTime.toFixed(1)+' op'+A.style.opacity+' '+(A.paused?'PAUSE':'play')+' rs'+A.readyState
     +'\nB t'+B.currentTime.toFixed(1)+' op'+B.style.opacity+' '+(B.paused?'PAUSE':'play')+' rs'+B.readyState
-    +'\nrVFC '+('requestVideoFrameCallback' in A);
+    +'\nremain '+remain.toFixed(1)+' gain '+(_gain?_gain.gain.value.toFixed(2):'vol'+au.volume.toFixed(2))
+    +'\nactx '+(_actx?_actx.state:'none')+' rVFC '+('requestVideoFrameCallback' in A);
 }
 au.addEventListener('timeupdate',function(){
   if(au.duration){
     var pct=(au.currentTime/au.duration*100)+'%';
     br.style.width=pct; nbBar.style.width=pct;
+    // Soft ending: once inside the last FADEOUT_SEC, start fading music + video.
+    var remain=au.duration-au.currentTime;
+    if(au.duration>FADEOUT_SEC+1 && remain<=FADEOUT_SEC && !au.paused) _startEndFade(remain);
+    // Fallback ramp where Web Audio isn't wired up (desktop/Android only; iOS
+    // ignores .volume, but there it fades via the scheduled Web Audio ramp above).
+    if(_endFading && !_gain){ try{ au.volume=Math.max(0,Math.min(1,remain/FADEOUT_SEC)); }catch(e){} }
   }
 });
 au.addEventListener('ended',function(){
@@ -290,6 +341,7 @@ au.addEventListener('ended',function(){
   br.style.width='0%'; nbBar.style.width='0%';
   setPlayingView(false);            // bring the message card back at the end
   stopVid();                        // fade the loop video out when the song ends
+  _resetMusicGain();                // restore level for a possible replay
 });
 
 // Playing view: card out of the way so the video fills the screen.
@@ -307,6 +359,8 @@ function tog(){
     startVid();                     // start the video synchronously inside the tap
                                     // gesture — some browsers block video.play()
                                     // once we're in au.play()'s async .then()
+    _ensureAudioGraph();            // set up / resume Web Audio in the gesture (iOS)
+    _resetMusicGain();              // full level at the start of playback
     au.play().then(function(){
       pb.textContent='⏸ Pause'; pb.classList.add('on');
       setPlayingView(true);
@@ -317,6 +371,7 @@ function tog(){
     au.pause(); pb.textContent='▶ Play'; pb.classList.remove('on');
     setPlayingView(false);
     stopVid();                      // fade the video out on manual pause too
+    _resetMusicGain();              // cancel any end-fade so a resume isn't silent
   }
 }
 document.getElementById('pauseBtn').addEventListener('click',function(e){
