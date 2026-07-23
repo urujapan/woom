@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-23.1';
+window.APP_VERSION = '2026-07-23.2';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -4179,7 +4179,7 @@ function doGift(){
   // Animation runs for 3.5s
   setTimeout(()=>{ _animDone=true; _maybeReveal(); },3500);
 
-  // Render audio: mono 22kHz full length (WAV uploaded to Cloudinary, no size limit)
+  // Render audio: mono 22kHz full length (WAV uploaded to Cloudinary /video, 100MB cap)
   const sr=22050;
   const bpm=(cs==='uploaded'&&detectedBPM>0)?getEffectiveBPM():parseInt(document.getElementById('vT').value);
   const beatSec=60/bpm, barSec=beatSec*4;
@@ -4313,8 +4313,11 @@ async function uploadToCloudinary(blob, filename){
   const fd = new FormData();
   fd.append('file', blob, filename);
   fd.append('upload_preset', CLD_PRESET);
+  // Use the video endpoint: Cloudinary treats audio as a "video" resource, whose
+  // free-plan cap is 100MB (vs 10MB for /raw). Full-length WAV gifts can exceed
+  // 10MB, so /raw/upload rejected them with "File size too large".
   const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLD_CLOUD}/raw/upload`,
+    `https://api.cloudinary.com/v1_1/${CLD_CLOUD}/video/upload`,
     {method:'POST', body:fd}
   );
   const data = await res.json();
