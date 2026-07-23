@@ -16,7 +16,7 @@ body{font-family:Georgia,serif;background:#fbeef4;min-height:100vh;display:flex;
    music. Two stacked copies crossfade across the loop point (see JS) so the
    seam dissolves instead of jumping. The wrapper handles the overall show/hide
    fade; the inner .lv layers handle the seam crossfade. */
-#loopvid{position:fixed;inset:0;z-index:1;opacity:0;transition:opacity 1.4s ease;pointer-events:none;}
+#loopvid{position:fixed;inset:0;z-index:1;opacity:0;transition:opacity 2s ease;pointer-events:none;}
 body.vidon #loopvid{opacity:1;}
 #loopvid .lv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;}
 .anim{position:fixed;inset:0;background:linear-gradient(135deg,#fff5f8,#f0f9f6);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:10;animation:hideAnim .6s ease 3.4s forwards;}
@@ -56,14 +56,14 @@ body.vidon #loopvid{opacity:1;}
    Once playback starts the card steps aside so the Music Video is unobstructed;
    the message stays, small, over the footage. Tapping anywhere brings the card
    back (and tapping again dismisses it), so nothing is ever lost. */
-.card{transition:opacity .8s ease, transform .8s ease;}
+.card{transition:opacity 1.1s ease, transform 1.1s ease;}
 /* Once the entrance animation has finished, drop it — a running `forwards`
    animation outranks plain declarations, so without this the card could never be
    faded out again. .revealed then holds it visible until the playing state hides it. */
 .card.revealed{animation:none;opacity:1;}
 body.playing .card{opacity:0;transform:translateY(18px) scale(.97);pointer-events:none;}
 .nowbar{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:22px 20px calc(20px + env(safe-area-inset-bottom));
-  text-align:center;color:#fff;opacity:0;pointer-events:none;transition:opacity .8s ease;
+  text-align:center;color:#fff;opacity:0;pointer-events:none;transition:opacity 1.1s ease;
   background:linear-gradient(to top,rgba(90,35,60,.55),rgba(90,35,60,0));
   text-shadow:0 1px 10px rgba(90,30,55,.55);}
 body.playing .nowbar{opacity:1;pointer-events:auto;}
@@ -74,7 +74,7 @@ body.playing .nowbar{opacity:1;pointer-events:auto;}
 .nowbar .nb-bar{height:100%;width:0%;background:rgba(255,255,255,.9);border-radius:2px;transition:width .3s linear;}
 .pausebtn{position:fixed;z-index:7;right:16px;top:16px;width:44px;height:44px;border-radius:50%;
   border:1px solid rgba(255,255,255,.5);background:rgba(90,35,60,.35);color:#fff;font-size:16px;
-  cursor:pointer;opacity:0;pointer-events:none;transition:opacity .8s ease;backdrop-filter:blur(6px);}
+  cursor:pointer;opacity:0;pointer-events:none;transition:opacity 1.1s ease;backdrop-filter:blur(6px);}
 body.playing .pausebtn{opacity:1;pointer-events:auto;}
 </style>
 </head>
@@ -229,18 +229,30 @@ function _seamLoop(){
 }
 function startVid(){
   clearTimeout(_vidPauseTimer);
-  document.body.classList.add('vidon');
   var A=vids[0], B=vids[1], D=A.duration||10;
   try{ A.currentTime=0; B.currentTime=D/2; }catch(e){} // half-clip phase offset
   vids.forEach(function(v){ v.playbackRate=VSPEED; var p=v.play(); if(p&&p.catch)p.catch(function(){}); });
   if(!_rafOn){ _rafOn=true; requestAnimationFrame(_seamLoop); }
+  _revealWhenReady(A); // fade the video in only once real frames are on screen
+}
+// Decode takes ~1–2s on phones. Fading in on tap would fade over a black frame,
+// so the footage seems to pop in when it finally decodes. Instead we wait for an
+// actual rendered frame, then ease the layer in gently.
+function _revealWhenReady(A){
+  var done=false;
+  function reveal(){ if(done) return; done=true; document.body.classList.add('vidon'); }
+  if('requestVideoFrameCallback' in A){ try{ A.requestVideoFrameCallback(function(){ reveal(); }); }catch(e){} }
+  A.addEventListener('playing', reveal, {once:true});
+  var tuh=function(){ if(A.currentTime>0.03){ reveal(); A.removeEventListener('timeupdate',tuh); } };
+  A.addEventListener('timeupdate', tuh);
+  setTimeout(reveal, 2500); // safety net if no frame signal arrives
 }
 function stopVid(){
   document.body.classList.remove('vidon');
   _rafOn=false;
   clearTimeout(_vidPauseTimer);
-  // Pause both copies after the wrapper's 1.4s fade-out finishes.
-  _vidPauseTimer=setTimeout(function(){ vids.forEach(function(v){ try{v.pause();}catch(e){} }); },1500);
+  // Pause both copies after the wrapper's 2s fade-out finishes.
+  _vidPauseTimer=setTimeout(function(){ vids.forEach(function(v){ try{v.pause();}catch(e){} }); },2200);
 }
 au.addEventListener('timeupdate',function(){
   if(au.duration){
