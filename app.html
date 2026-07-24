@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-24.2';
+window.APP_VERSION = '2026-07-24.3';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -4132,7 +4132,7 @@ function doGift(){
       document.getElementById('uploadStatus').textContent='⏳ ギフトを準備中...';
       // Upload WAV to Cloudinary, then build gift page URL on GitHub Pages
       const wavUrl = await uploadToCloudinary(_giftWavBlob, baseName+'.wav');
-      const giftBase = 'https://urujapan.github.io/baby-harmony/gift.html';
+      const giftBase = 'https://urujapan.github.io/woom/gift.html';
       const params = new URLSearchParams();
       params.set('audio', wavUrl);
       if(baby)  params.set('baby',  baby);
@@ -4173,7 +4173,7 @@ async function nativeShare(){
   }
   if(navigator.share){
     try{
-      await navigator.share({title:title,text:text,url:'https://urujapan.github.io/baby-harmony/baby_harmony_25.html'});
+      await navigator.share({title:title,text:text,url:'https://urujapan.github.io/woom/app.html'});
       return;
     }catch(e){ if(e.name==='AbortError') return; }
   }
