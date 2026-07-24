@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-23.5';
+window.APP_VERSION = '2026-07-24.1';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -42,7 +42,7 @@ body{font-family:'Baloo 2','DM Sans',sans-serif;background:#fff5f8;min-height:10
 .lang-btn.active{background:#FBEAF0;border-color:#D4537E;color:#D4537E;}
 .header{text-align:center;margin-bottom:2rem;}
 .logo-mark{display:inline-block;width:96px;height:96px;color:#D4537E;}
-.logo-mark svg{display:block;width:100%;height:100%;}
+.logo-mark svg,.logo-mark img{display:block;width:100%;height:100%;}
 .wordmark{margin-top:.45rem;line-height:0;}
 .wordmark svg{height:2.15rem;width:auto;display:inline-block;}
 .wordmark text{font-family:'Baloo 2','Quicksand',sans-serif;font-weight:500;font-size:100px;fill:#D4537E;}
@@ -335,15 +335,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 </div>
 <div class="header">
   <div class="logo-mark" aria-hidden="true">
-    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="40"/>
-      <g transform="translate(5,-5) rotate(12 50 50)">
-        <path d="M41,30 C33,35 33,47 43,49 C35,52 33,60 39,67 C47,56 59,54 61,45 C63,36 54,27 41,30 Z"/>
-        <path d="M43,49 C51,47 56,39 53,32"/>
-        <path d="M39,66 C40,70 41,72 42,74"/>
-        <ellipse cx="39" cy="75" rx="5" ry="3.5" transform="rotate(-18 39 75)" fill="currentColor" stroke="none"/>
-      </g>
-    </svg>
+    <img src="woom_logo_mark.png" alt="">
   </div>
   <div class="wordmark" role="img" aria-label="WooM">
     <svg viewBox="0 -2 272 58" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
