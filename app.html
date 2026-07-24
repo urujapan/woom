@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-24.12';
+window.APP_VERSION = '2026-07-24.13';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -797,6 +797,7 @@ function L(l){
   }catch(e){}
   try{ refreshPreview(); }catch(e){}
   try{ updateNP(); }catch(e){}
+  try{ if(window._verEl) window._verEl.title=(l==='ja')?'タップで最新版に更新':'Tap to update to the latest version'; }catch(e){}
 }
 
 // ── Auto-detect language (run immediately after L is defined) ─────────────
@@ -4403,7 +4404,8 @@ try{ wizInit(); }catch(e){}
   try{
     var v=document.createElement('div');
     v.textContent='v'+window.APP_VERSION;
-    v.title='タップで最新版に更新';
+    window._verEl=v;
+    v.title=(typeof cl!=='undefined'&&cl==='ja')?'タップで最新版に更新':'Tap to update to the latest version';
     v.style.cssText='position:fixed;right:6px;bottom:4px;z-index:9999;font-size:9px;'+
       'color:#c9a8b6;font-family:monospace;letter-spacing:.02em;cursor:pointer;'+
       'padding:3px 5px;border-radius:4px;background:rgba(255,255,255,.55);';
