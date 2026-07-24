@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-24.5';
+window.APP_VERSION = '2026-07-24.6';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -53,6 +53,8 @@ body{font-family:'Baloo 2','DM Sans',sans-serif;background:#fff5f8;min-height:10
 .sec{margin-bottom:1.5rem;}
 /* ── Step wizard (one part per screen) ── */
 body.wiz-on{padding-bottom:96px;}
+/* Bottom bar hidden (first step, no womb sound yet) — give the space back. */
+body.wiz-on.wiz-nav-off{padding-bottom:2rem;}
 /* Past the first step the language bar isn't needed — hide it so the WooM
    logo rises to the top and the body gets more room. */
 body.wiz-adv .lang-bar{display:none;}
@@ -4309,11 +4311,16 @@ function wizInit(){
   wizGoTo(0);
 }
 function wizGo(dir){ wizGoTo(wizStep+dir); }
-// Grey the Next button on step 1 until a womb sound is captured, so it's clear
-// why it won't advance yet (rather than looking frozen).
+// On the first step there is nothing to advance to until a womb sound exists,
+// so hide the whole bottom bar (and reclaim the 96px it reserves) rather than
+// showing a dead Next button. It appears the moment a sound is captured.
 function wizUpdateNextState(){
   var next=document.getElementById('wizNext'); if(!next) return;
-  next.classList.toggle('disabled', (wizStep===0 && !rawBuffer));
+  var waiting = (wizStep===0 && !rawBuffer);
+  next.classList.toggle('disabled', waiting);
+  var nav=document.getElementById('wizNav');
+  if(nav) nav.style.display = waiting ? 'none' : 'block';
+  document.body.classList.toggle('wiz-nav-off', waiting);
 }
 function wizGoTo(n){
   if(n<0||n>=_wizSteps.length) return;
