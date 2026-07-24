@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-24.4';
+window.APP_VERSION = '2026-07-24.5';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -958,7 +958,16 @@ function pickMusic(btn,type){
     if(playing){stopAll();startAll();}
   }
 }
-function volToGain(v){ return (parseInt(v)+50)/100*1.5; } // -50→0, 0→0.75, +50→1.5
+// Perceptual (dB) volume. A linear-amplitude slider crams all the audible
+// change into the bottom of its travel, so pushing it up barely did anything.
+// Map the slider in decibels instead: 0 keeps the previous default (0.75),
+// +50 is +12dB (4x louder), -50 is silence.
+function volToGain(v){
+  const n=parseInt(v);
+  if(n<=-50) return 0;
+  const db = n>=0 ? (n/50)*12 : (n/50)*36;
+  return 0.75*Math.pow(10,db/20);
+}
 function fmtVol(v){ const n=parseInt(v); return n>0?'+'+n:String(n); }
 function onVolSlider(id,outId){
   const v=document.getElementById(id).value;
