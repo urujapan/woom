@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Baby Harmony Gift</title>
+<title>WooM Gift</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:Georgia,serif;background:#fbeef4;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
@@ -103,14 +103,14 @@ body.playing .pausebtn{opacity:1;pointer-events:auto;}
 </div>
 <div class="card">
   <div class="heart">♡</div>
-  <div class="gtitle" id="gtitle">Baby Harmony</div>
+  <div class="gtitle" id="gtitle">WooM</div>
   <div id="msgWrap"></div>
   <div id="fromWrap"></div>
   <div class="info">♡ Womb sound × Music blend</div>
   <audio id="au" preload="auto" crossorigin="anonymous"></audio>
   <button class="play-btn" id="pb" onclick="tog()">▶ Play</button>
   <div class="prog"><div class="bar" id="br"></div></div>
-  <div class="brand">Baby Harmony</div>
+  <div class="brand">WooM</div>
 </div>
 <button class="pausebtn" id="pauseBtn" title="Pause">⏸</button>
 <div class="nowbar" id="nowbar">
@@ -128,9 +128,9 @@ body.playing .pausebtn{opacity:1;pointer-events:auto;}
   var audio=p.get('audio')||'';
 
   if(baby){
-    document.getElementById('gtitle').textContent='Baby Harmony for '+baby;
+    document.getElementById('gtitle').textContent='WooM for '+baby;
     document.getElementById('readyMsg').textContent='Gift for '+baby+' is ready! 🎁';
-    document.title='Baby Harmony for '+baby;
+    document.title='WooM for '+baby;
     document.getElementById('nbBaby').textContent='for '+baby;
   }
   // Same words repeated small over the video, for the playing state.
