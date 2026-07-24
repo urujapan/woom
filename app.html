@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-24.11';
+window.APP_VERSION = '2026-07-24.12';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -4372,7 +4372,20 @@ function wizGoTo(n){
   // Canvases can't size themselves while display:none — redraw now that they're shown.
   try{ if(n===0 && rawBuffer){ redrawWave(); } }catch(e){}
   try{ if(rawBuffer && musicFileBuffer){ drawMusicGrid(); } }catch(e){}
-  window.scrollTo({top:0,behavior:'smooth'});
+  // Entering the music step: its pre-selected track list (子守唄) is already
+  // rendered but sits below the fold. Bring it into view instead of resetting to
+  // the very top, so the lower tracks aren't hidden by the fixed bottom bar.
+  var _tp=document.getElementById('trackPanel');
+  if(_tp && _tp.offsetParent!==null && _tp.querySelector('button')){
+    document.body.classList.add('tracks-open');
+    window.scrollTo({top:0});
+    setTimeout(function(){
+      var over=_tp.getBoundingClientRect().bottom-(window.innerHeight-110);
+      if(over>0) window.scrollBy({top:over,behavior:'smooth'});
+    },160);
+  } else {
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
 }
 
 // ── Auto-detect language on load ─────────────────────────────────────────
