@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-24.10';
+window.APP_VERSION = '2026-07-24.11';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -60,6 +60,7 @@ body.wiz-on.wiz-nav-off{padding-bottom:2rem;}
 body.tab-open{padding-bottom:150px!important;}
 body.sample-open{padding-bottom:190px!important;}
 body.tracks-open{padding-bottom:180px!important;}
+body.wave-open{padding-bottom:160px!important;}
 /* Past the first step the language bar isn't needed — hide it so the WooM
    logo rises to the top and the body gets more room. */
 body.wiz-adv .lang-bar{display:none;}
@@ -841,6 +842,17 @@ function refreshPreview(){
 }
 
 var recMethod='echo'; // 'echo' = ultrasound-device audio, 'belly' = amplified belly recording
+// After a heartbeat is captured the waveform appears low on the page; add scroll
+// room and lift it (down to the "confirm" button) clear of the fixed bottom bar.
+function scrollWaveIntoView(){
+  document.body.classList.add('wave-open');
+  var el=document.getElementById('waveformWrap'); if(!el) return;
+  setTimeout(function(){
+    var r=el.getBoundingClientRect();
+    var over=r.bottom-(window.innerHeight-110);
+    if(over>0) window.scrollBy({top:Math.min(over, Math.max(0, r.top-70)),behavior:'smooth'});
+  },140);
+}
 function setTab(tab,btn){
   document.querySelectorAll('.wombtype').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
