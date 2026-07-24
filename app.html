@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-24.9';
+window.APP_VERSION = '2026-07-24.10';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -934,7 +934,7 @@ async function pickHeartbeatSample(btn, filename, knownBpm=0){
     rawBuffer = buf; cs = 'uploaded';
     document.getElementById('upinfo').style.display = 'flex';
     document.getElementById('upname').textContent = filename.replace(/\.(mp3|wav|m4a)$/i,'');
-    document.getElementById('waveformWrap').classList.add('show');
+    document.getElementById('waveformWrap').classList.add('show'); scrollWaveIntoView();
     drawWaveform(buf);
     initGridDrag();
     // Samples have an authoritative labelled BPM: feed it to runDetect so the
@@ -1053,7 +1053,7 @@ function loadWombBuffer(arrayBuffer, name){
     document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
     document.getElementById('upinfo').style.display='flex';
     document.getElementById('upname').textContent=name;
-    document.getElementById('waveformWrap').classList.add('show');
+    document.getElementById('waveformWrap').classList.add('show'); scrollWaveIntoView();
     drawWaveform(buf);
     initGridDrag();
     runDetect();
@@ -4349,7 +4349,7 @@ function wizGoTo(n){
   if(n>wizStep && wizStep===0 && !rawBuffer){ try{toast(WIZ_NEED[cl]||WIZ_NEED.en);}catch(e){} return; }
   wizStep=n;
   document.body.classList.toggle('wiz-adv', n>0);
-  document.body.classList.remove('tab-open','sample-open','tracks-open'); // clear per-step scroll room
+  document.body.classList.remove('tab-open','sample-open','tracks-open','wave-open'); // clear per-step scroll room
   _wizSteps.forEach(function(s,i){ s.classList.toggle('active', i===n); });
   var dd=document.getElementById('wizDots').children;
   for(var i=0;i<dd.length;i++){ dd[i].className='wiz-dot'+(i===n?' on':(i<n?' done':'')); }
