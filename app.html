@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-24.3';
+window.APP_VERSION = '2026-07-24.4';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -411,9 +411,9 @@ input[type=range]{flex:1;accent-color:#D4537E;}
     <details id="sampleDetails" style="margin-top:10px;display:none;">
       <summary class="sample-summary" id="sampleUseLbl">サンプル心音を使う</summary>
       <div id="sampleGrid" class="sgrid" style="margin-top:8px;">
-        <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample1_BPM138.mp3',138)"><i class="ti ti-heart-filled"></i> Sample 1<div class="ssub">Real · 138 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample1_BPM138.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
-        <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample2_BPM175.mp3',175)"><i class="ti ti-heart-filled"></i> Sample 2<div class="ssub">Real · 175 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample2_BPM175.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
-        <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat Sample3_BPM150.mp3',150)"><i class="ti ti-heart-filled"></i> Sample 3<div class="ssub">Real · 150 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat Sample3_BPM150.mp3')" title="試聴"><i class="ti ti-player-play"></i></span></button>
+        <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat_Sample1_BPM138.wav',138)"><i class="ti ti-heart-filled"></i> Sample 1<div class="ssub">Real · 138 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat_Sample1_BPM138.wav')" title="試聴"><i class="ti ti-player-play"></i></span></button>
+        <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat_Sample2_BPM175.wav',175)"><i class="ti ti-heart-filled"></i> Sample 2<div class="ssub">Real · 175 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat_Sample2_BPM175.wav')" title="試聴"><i class="ti ti-player-play"></i></span></button>
+        <button class="sbtn hb-sample-btn" onclick="pickHeartbeatSample(this,'HeartBeat_Sample3_BPM150.wav',150)"><i class="ti ti-heart-filled"></i> Sample 3<div class="ssub">Real · 150 bpm</div><span class="hb-prev-btn" onclick="event.stopPropagation();toggleSamplePreview(this,'HeartBeat_Sample3_BPM150.wav')" title="試聴"><i class="ti ti-player-play"></i></span></button>
       </div>
     </details>
     <!-- Recording history (outside uploadZoneWrap so always visible) -->
@@ -918,7 +918,7 @@ async function pickHeartbeatSample(btn, filename, knownBpm=0){
     _normalizeBuffer(buf);
     rawBuffer = buf; cs = 'uploaded';
     document.getElementById('upinfo').style.display = 'flex';
-    document.getElementById('upname').textContent = filename.replace('.mp3','').replace('.MP3','');
+    document.getElementById('upname').textContent = filename.replace(/\.(mp3|wav|m4a)$/i,'');
     document.getElementById('waveformWrap').classList.add('show');
     drawWaveform(buf);
     initGridDrag();
