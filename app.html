@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-24.13';
+window.APP_VERSION = '2026-07-24.13b';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -705,6 +705,10 @@ function _tr(o){return (o&&(o[cl]||o.en))||'';}
 var cl='en',cs='beat',cm='lullaby';
 var rawBuffer=null, loopBuffer=null;
 var AC=null, wSrc=null, mSrc=null, wGain=null, mGain=null;
+// Gentle low-pass on UPLOADED heartbeats: keeps the deep "ドクン", tames the
+// whooshy/hissy high-frequency content some recordings have. One number to tune
+// (Hz); lower = warmer/more muffled, higher = lighter effect. 12dB/oct.
+var WOMB_LP_HZ=500;
 var musicFileBuffer=null;
 var musicLeadInSec=0; // the track's authored 2-bar lead-in. Always played (the
                       // source loops the whole buffer); used to know when the
@@ -3607,7 +3611,8 @@ function buildWombSrc(ctx){
     if(!buf) return out;
     const s=ctx.createBufferSource();
     s.buffer=buf; s.loop=true;
-    s.connect(out); s.start(0);
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=WOMB_LP_HZ; lp.Q.value=0.707;
+    s.connect(lp); lp.connect(out); s.start(0);
     out._x=()=>{try{s.stop();}catch(e){}};
     return out;
   }
@@ -3904,7 +3909,8 @@ function dlAudio(){
   if(cs==='uploaded'&&(loopBuffer||rawBuffer)){
     const buf=loopBuffer||rawBuffer;
     const s=off.createBufferSource(); s.buffer=buf; s.loop=true;
-    s.connect(wg); s.start(0);
+    const lp=off.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=WOMB_LP_HZ; lp.Q.value=0.707;
+    s.connect(lp); lp.connect(wg); s.start(0);
   } else {
     const wb=off.createBuffer(1,Math.ceil(sr*dur),sr);
     const wd=wb.getChannelData(0);
@@ -4138,7 +4144,8 @@ function doGift(){
     // Resample uploaded buffer for gift page
     const buf=loopBuffer||rawBuffer;
     const s=off.createBufferSource(); s.buffer=buf; s.loop=true;
-    s.connect(wg); s.start(0);
+    const lp=off.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=WOMB_LP_HZ; lp.Q.value=0.707;
+    s.connect(lp); lp.connect(wg); s.start(0);
   } else {
     const wb=off.createBuffer(1,Math.ceil(sr*dur),sr);
     const wd=wb.getChannelData(0);
