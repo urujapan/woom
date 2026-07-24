@@ -189,7 +189,7 @@ body.playing .pausebtn{opacity:1;pointer-events:auto;}
   function tick(ts){
     if(!last) last=ts;
     clock += (ts-last)/1000; last=ts;
-    frame(clock);
+    if(!(typeof _wrapOp!=='undefined' && _wrapOp>0.9)) frame(clock);
     requestAnimationFrame(tick);
   }
   frame(0);                 // paint one frame immediately, before rAF starts
