@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.4';
+window.APP_VERSION = '2026-07-25.5';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -466,7 +466,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       </button>
       <details style="margin-top:6px;">
         <summary style="font-size:11px;color:#bbb;cursor:pointer;user-select:none;">Debug info</summary>
-        <div style="font-size:11px;font-family:monospace;color:#888;margin-top:4px;padding:6px 10px;background:#f5f5f5;border-radius:6px;" id="debugInfo">—</div>
+        <div style="font-size:11px;font-family:monospace;color:#888;margin-top:4px;padding:6px 10px;background:#f5f5f5;border-radius:6px;white-space:pre-wrap;" id="debugInfo">—</div>
       </details>
     </div>
 
@@ -2766,7 +2766,7 @@ function _runDetectCore(){
 
     // Combined score
     const score = meanE * consistency * onsetBonus * pulseScore * posScore * firstScore * regScore;
-    candidates.push({ f, score });
+    candidates.push({ f, score, meanE, onsetBonus, pulseScore, firstScore, regScore, per });
     if(score > bestScore){ bestScore = score; bestStartFrame = f; }
   }
 
@@ -3120,8 +3120,15 @@ function _runDetectCore(){
     setBeatNudge(0);  // fresh recording → start from the auto alignment (candidates from ±0)
   }catch(e){}
   document.getElementById('bpmAdjDisplay').textContent = detectedBPM + ' bpm';
+  let _candDbg = '';
+  try{
+    const _top = candidates.slice().sort((a,b)=>b.score-a.score).slice(0,4)
+      .map(c=>`t${(c.f*frameSec).toFixed(1)} s${c.score.toFixed(4)} per${(c.per||0).toFixed(3)} reg${(c.regScore||0).toFixed(2)} ob${(c.onsetBonus||0).toFixed(2)} me${(c.meanE||0).toFixed(3)}`)
+      .join('\n');
+    _candDbg = '\nTOP:\n' + _top;
+  }catch(e){}
   document.getElementById('debugInfo').textContent =
-    `A:${bpmA}(conf=${confA.toFixed(2)}) B:${bpmB}(r=${bestR.toFixed(2)}) D:${bpmDirect} LD:${ldScoreLow.toFixed(3)}vs${ldScoreHigh.toFixed(3)} →${detectedBPM}bpm | agree=${_agree.toFixed(2)}${_bpmUnsure?' UNSURE':''} | active=${(silenceEndFrame*frameSec).toFixed(2)}s–${(activeEndFrame*frameSec).toFixed(2)}s | votes=${totalVotes} | loopStart=${loopStart.toFixed(2)}s score=${bestScore.toFixed(4)}`;
+    `A:${bpmA}(conf=${confA.toFixed(2)}) B:${bpmB}(r=${bestR.toFixed(2)}) D:${bpmDirect} LD:${ldScoreLow.toFixed(3)}vs${ldScoreHigh.toFixed(3)} →${detectedBPM}bpm | agree=${_agree.toFixed(2)}${_bpmUnsure?' UNSURE':''} | active=${(silenceEndFrame*frameSec).toFixed(2)}s–${(activeEndFrame*frameSec).toFixed(2)}s | votes=${totalVotes} | loopStart=${loopStart.toFixed(2)}s score=${bestScore.toFixed(4)}` + _candDbg;
   updateMusicBpmLabel();
   if(cm) renderTrackPanel(cm); // refresh compatibility badges after BPM detection
   // If a multi-version track is selected, re-pick the version closest to the
