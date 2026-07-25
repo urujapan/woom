@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.2';
+window.APP_VERSION = '2026-07-25.3';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2619,6 +2619,12 @@ function _runDetectCore(){
   // Minimum energy a sub-beat must have to count as "active" (not silence)
   const subBeatFloor = globalMeanEnv * 0.20;
 
+  // Onset envelope (rising edges of the raw envelope) for a rhythm-regularity
+  // score: a regular pulse autocorrelates strongly at the beat lag, an irregular
+  // stretch (the ear hears it as "off-rhythm") does not.
+  const onset = new Float32Array(nFrames);
+  for(let i = 1; i < nFrames; i++) onset[i] = Math.max(0, envRaw[i] - envRaw[i-1]);
+
   for(let f = silenceEndFrame; f + windowFrames <= activeEndFrame; f += slideStep){
     // (a) Mean energy over the full 4-beat window
     const meanE = windowMeanEnv(f, windowFrames);
@@ -2733,8 +2739,27 @@ function _runDetectCore(){
       if(maxRun > holeMaxFrames && wMean > wPeak * 0.15) continue;
     }
 
+    // Rhythm-regularity: normalised autocorrelation of the onset envelope at the
+    // beat lag. High = the beats fall on a steady pulse; low = an off-rhythm patch
+    // the ear rejects even when it is loud and hole-free. Rewarding it steers away
+    // from irregular windows toward the metronomic ones. Measured: a regular loop
+    // scores ~0.15–0.9, an off-rhythm patch ~0.07.
+    let per = 0;
+    {
+      const wEnd = Math.min(nFrames, f + windowFrames);
+      let om = 0, oc = 0; for(let i=f;i<wEnd;i++){ om += onset[i]; oc++; } om /= Math.max(oc,1);
+      const loLag = Math.round(beatPeriodFrames*0.85), hiLag = Math.round(beatPeriodFrames*1.15);
+      for(let lag=loLag; lag<=hiLag; lag++){
+        let s=0, pa=0, pb=0;
+        for(let i=f; i+lag<wEnd; i++){ const x=onset[i]-om, y=onset[i+lag]-om; s+=x*y; pa+=x*x; pb+=y*y; }
+        const v = s / Math.max(Math.sqrt(pa*pb), 1e-12);
+        if(v > per) per = v;
+      }
+    }
+    const regScore = Math.pow(Math.min(1, per / 0.15), 2); // strong preference for a steady pulse
+
     // Combined score
-    const score = meanE * consistency * onsetBonus * pulseScore * posScore * firstScore;
+    const score = meanE * consistency * onsetBonus * pulseScore * posScore * firstScore * regScore;
     candidates.push({ f, score });
     if(score > bestScore){ bestScore = score; bestStartFrame = f; }
   }
