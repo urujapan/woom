@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.7';
+window.APP_VERSION = '2026-07-25.8';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -466,7 +466,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       </button>
       <details style="margin-top:6px;">
         <summary style="font-size:11px;color:#bbb;cursor:pointer;user-select:none;">Debug info</summary>
-        <div style="font-size:11px;font-family:monospace;color:#888;margin-top:4px;padding:6px 10px;background:#f5f5f5;border-radius:6px;white-space:pre-wrap;" id="debugInfo">—</div>
+        <div style="font-size:11px;font-family:monospace;color:#888;margin-top:4px;padding:6px 10px;background:#f5f5f5;border-radius:6px;" id="debugInfo">—</div>
       </details>
     </div>
 
@@ -2631,11 +2631,7 @@ function _runDetectCore(){
   const onset = new Float32Array(nFrames);
   for(let i = 1; i < nFrames; i++) onset[i] = Math.max(0, envRaw[i] - envRaw[i-1]);
 
-  const _REJ = {n:0, sub:0, wrap:0, hole:0, pass:0};
-  window.__REJ = _REJ;
   for(let f = silenceEndFrame; f + windowFrames <= activeEndFrame; f += slideStep){
-    const _early = (f * frameSec) < 5;   // count rejections in the 0-5s band only
-    if(_early) _REJ.n++;
     // (a) Mean energy over the full 4-beat window
     const meanE = windowMeanEnv(f, windowFrames);
 
@@ -2650,7 +2646,7 @@ function _runDetectCore(){
     }
 
     // Reject windows where any sub-beat is silent (hits trailing/internal silence)
-    if(minSubE < subBeatFloor){ if(_early)_REJ.sub++; continue; }
+    if(minSubE < subBeatFloor) continue;
 
     // The loop has to WRAP ONTO A REAL HEARTBEAT. A window can pass every test
     // above and still be followed by dead air — recordings have internal gaps, not
@@ -2666,7 +2662,7 @@ function _runDetectCore(){
     // on Memory of Birth's gap — 25% sits in the middle of that gulf.
     const wrapFrame = f + windowFrames;
     if(wrapFrame + beatPeriodFrames <= activeEndFrame &&
-       windowMeanRaw(wrapFrame, beatPeriodFrames) < windowMeanRaw(f, windowFrames) * 0.25){ if(_early)_REJ.wrap++; continue; }
+       windowMeanRaw(wrapFrame, beatPeriodFrames) < windowMeanRaw(f, windowFrames) * 0.25) continue;
 
     const subMean = subMeanSum / beatsNeeded;
     const subVar  = subMeanSqSum / beatsNeeded - subMean * subMean;
@@ -2746,7 +2742,7 @@ function _runDetectCore(){
       const holeT = wPeak * 0.06, holeMaxFrames = Math.round(0.12 / frameSec);
       let run=0, maxRun=0;
       for(let i=f;i<wEnd;i++){ if(envRaw[i] < holeT){ if(++run>maxRun) maxRun=run; } else run=0; }
-      if(maxRun > holeMaxFrames && wMean > wPeak * 0.15){ if(_early)_REJ.hole++; continue; }
+      if(maxRun > holeMaxFrames && wMean > wPeak * 0.15) continue;
     }
 
     // Rhythm-regularity: normalised autocorrelation of the onset envelope at the
@@ -2770,8 +2766,7 @@ function _runDetectCore(){
 
     // Combined score
     const score = meanE * consistency * onsetBonus * pulseScore * posScore * firstScore * regScore;
-    candidates.push({ f, score, meanE, onsetBonus, pulseScore, firstScore, regScore, per });
-    if(_early)_REJ.pass++;
+    candidates.push({ f, score });
     if(score > bestScore){ bestScore = score; bestStartFrame = f; }
   }
 
@@ -3125,18 +3120,8 @@ function _runDetectCore(){
     setBeatNudge(0);  // fresh recording → start from the auto alignment (candidates from ±0)
   }catch(e){}
   document.getElementById('bpmAdjDisplay').textContent = detectedBPM + ' bpm';
-  let _candDbg = '';
-  try{
-    const _fmt = c=>`t${(c.f*frameSec).toFixed(1)} s${c.score.toFixed(4)} per${(c.per||0).toFixed(3)} reg${(c.regScore||0).toFixed(2)} ob${(c.onsetBonus||0).toFixed(2)} me${(c.meanE||0).toFixed(3)}`;
-    const _top = candidates.slice().sort((a,b)=>b.score-a.score).slice(0,3).map(_fmt).join('\n');
-    // Best candidate in each 5s time-band, so the early region's score is always visible
-    const _bandBest = lo=>{ let b=null; for(const c of candidates){ const t=c.f*frameSec; if(t>=lo&&t<lo+5&&(!b||c.score>b.score))b=c; } return b?_fmt(b):`t${lo}-${lo+5} none`; };
-    const _r = window.__REJ||{};
-    _candDbg = '\nTOP:\n'+_top+'\nBANDS:\n'+_bandBest(0)+'\n'+_bandBest(5)+'\n'+_bandBest(10)
-      +`\nEARLY0-5 n${_r.n||0} sub${_r.sub||0} wrap${_r.wrap||0} hole${_r.hole||0} pass${_r.pass||0}`;
-  }catch(e){}
   document.getElementById('debugInfo').textContent =
-    `A:${bpmA}(conf=${confA.toFixed(2)}) B:${bpmB}(r=${bestR.toFixed(2)}) D:${bpmDirect} LD:${ldScoreLow.toFixed(3)}vs${ldScoreHigh.toFixed(3)} →${detectedBPM}bpm | agree=${_agree.toFixed(2)}${_bpmUnsure?' UNSURE':''} | active=${(silenceEndFrame*frameSec).toFixed(2)}s–${(activeEndFrame*frameSec).toFixed(2)}s | votes=${totalVotes} | loopStart=${loopStart.toFixed(2)}s score=${bestScore.toFixed(4)}` + _candDbg;
+    `A:${bpmA}(conf=${confA.toFixed(2)}) B:${bpmB}(r=${bestR.toFixed(2)}) D:${bpmDirect} LD:${ldScoreLow.toFixed(3)}vs${ldScoreHigh.toFixed(3)} →${detectedBPM}bpm | agree=${_agree.toFixed(2)}${_bpmUnsure?' UNSURE':''} | active=${(silenceEndFrame*frameSec).toFixed(2)}s–${(activeEndFrame*frameSec).toFixed(2)}s | votes=${totalVotes} | loopStart=${loopStart.toFixed(2)}s score=${bestScore.toFixed(4)}`;
   updateMusicBpmLabel();
   if(cm) renderTrackPanel(cm); // refresh compatibility badges after BPM detection
   // If a multi-version track is selected, re-pick the version closest to the
