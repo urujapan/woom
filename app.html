@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.5';
+window.APP_VERSION = '2026-07-25.6';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -3122,10 +3122,11 @@ function _runDetectCore(){
   document.getElementById('bpmAdjDisplay').textContent = detectedBPM + ' bpm';
   let _candDbg = '';
   try{
-    const _top = candidates.slice().sort((a,b)=>b.score-a.score).slice(0,4)
-      .map(c=>`t${(c.f*frameSec).toFixed(1)} s${c.score.toFixed(4)} per${(c.per||0).toFixed(3)} reg${(c.regScore||0).toFixed(2)} ob${(c.onsetBonus||0).toFixed(2)} me${(c.meanE||0).toFixed(3)}`)
-      .join('\n');
-    _candDbg = '\nTOP:\n' + _top;
+    const _fmt = c=>`t${(c.f*frameSec).toFixed(1)} s${c.score.toFixed(4)} per${(c.per||0).toFixed(3)} reg${(c.regScore||0).toFixed(2)} ob${(c.onsetBonus||0).toFixed(2)} me${(c.meanE||0).toFixed(3)}`;
+    const _top = candidates.slice().sort((a,b)=>b.score-a.score).slice(0,3).map(_fmt).join('\n');
+    // Best candidate in each 5s time-band, so the early region's score is always visible
+    const _bandBest = lo=>{ let b=null; for(const c of candidates){ const t=c.f*frameSec; if(t>=lo&&t<lo+5&&(!b||c.score>b.score))b=c; } return b?_fmt(b):`t${lo}-${lo+5} none`; };
+    _candDbg = '\nTOP:\n'+_top+'\nBANDS:\n'+_bandBest(0)+'\n'+_bandBest(5)+'\n'+_bandBest(10);
   }catch(e){}
   document.getElementById('debugInfo').textContent =
     `A:${bpmA}(conf=${confA.toFixed(2)}) B:${bpmB}(r=${bestR.toFixed(2)}) D:${bpmDirect} LD:${ldScoreLow.toFixed(3)}vs${ldScoreHigh.toFixed(3)} →${detectedBPM}bpm | agree=${_agree.toFixed(2)}${_bpmUnsure?' UNSURE':''} | active=${(silenceEndFrame*frameSec).toFixed(2)}s–${(activeEndFrame*frameSec).toFixed(2)}s | votes=${totalVotes} | loopStart=${loopStart.toFixed(2)}s score=${bestScore.toFixed(4)}` + _candDbg;
