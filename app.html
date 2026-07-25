@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.1';
+window.APP_VERSION = '2026-07-25.2';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -2712,6 +2712,26 @@ function _runDetectCore(){
     const firstRel   = loudestAmp > 0 ? firstAmp / loudestAmp : 0;
     // Full credit once the first beat is >=85% of the window's loudest beat.
     const firstScore = 0.30 + 0.70 * Math.min(1, firstRel / 0.85);
+
+    // Reject "holes" — a sudden extreme blank. A hole is a run where the sound
+    // collapses to near-silence (below 6% of the window's OWN peak) for >0.12s,
+    // inside a window that is otherwise active (window mean > 15% of its peak). The
+    // ear hears that as the loop cutting out. The "otherwise active" guard is what
+    // keeps this from firing on a naturally punchy/slow heartbeat, whose every
+    // between-beat gap is deep silence (there the window mean sits low, so a deep
+    // gap is normal, not anomalous). Measured: a real hole runs ~0.23s while the
+    // window stays 50% active; the three sample heartbeats' deepest runs are
+    // 0.03–0.07s, so none is ever rejected.
+    {
+      const wEnd = Math.min(nFrames, f + windowFrames);
+      let wPeak = 0, wSum = 0, wCnt = 0;
+      for(let i=f;i<wEnd;i++){ const v=envRaw[i]; if(v>wPeak) wPeak=v; wSum+=v; wCnt++; }
+      const wMean = wCnt ? wSum/wCnt : 0;          // RAW mean (meanE above is de-trended)
+      const holeT = wPeak * 0.06, holeMaxFrames = Math.round(0.12 / frameSec);
+      let run=0, maxRun=0;
+      for(let i=f;i<wEnd;i++){ if(envRaw[i] < holeT){ if(++run>maxRun) maxRun=run; } else run=0; }
+      if(maxRun > holeMaxFrames && wMean > wPeak * 0.15) continue;
+    }
 
     // Combined score
     const score = meanE * consistency * onsetBonus * pulseScore * posScore * firstScore;
