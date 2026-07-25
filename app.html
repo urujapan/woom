@@ -13,7 +13,12 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.3';
+window.APP_VERSION = '2026-07-25.4';
+// Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
+// from APP_VERSION so shipping code changes doesn't force phones to re-download
+// ~8MB per song every update (that made music "not play" until it finished
+// loading). Bump this ONLY when an audio file's bytes actually change.
+window.ASSET_VERSION = 'a1';
 (function(){
   try{
     var url=location.pathname+'?_cv='+Date.now();
@@ -254,7 +259,8 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 .track-item{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;border-radius:8px;border:1px solid #eee;background:#f9f9f9;font-size:13px;color:#333;cursor:pointer;margin-bottom:6px;font-family:'Baloo 2','DM Sans',sans-serif;text-align:left;}
 .track-item:hover{background:#f0f0f0;}
 .track-item.active{background:#FBEAF0;border-color:#E89BB4;color:#C03D6B;}
-.track-item.loading{opacity:.6;pointer-events:none;}
+.track-item.loading{opacity:.85;pointer-events:none;position:relative;}
+.track-item.loading::after{content:'';position:absolute;right:10px;top:50%;width:13px;height:13px;margin-top:-7px;border:2px solid #F4C0D1;border-top-color:#D4537E;border-radius:50%;animation:spin .7s linear infinite;}
 .track-item.compat-poor{opacity:1;}
 .compat-badge{margin-left:auto;flex-shrink:0;font-size:12px;display:flex;align-items:center;gap:3px;white-space:nowrap;}
 .compat-badge.lv3{color:#C03D6B;font-weight:600;}
@@ -914,7 +920,7 @@ async function toggleSamplePreview(btn, filename){
     if(!AC) AC = new(window.AudioContext||window.webkitAudioContext)();
     if(!_sampleBufCache[filename]){
       const res = await fetch(filename.split('/').map(s=>encodeURIComponent(s)).join('/')
-        +'?v='+encodeURIComponent(window.APP_VERSION||'0'));
+        +'?v='+encodeURIComponent(window.ASSET_VERSION||'0'));
       if(!res.ok) throw new Error('HTTP '+res.status);
       _sampleBufCache[filename] = await AC.decodeAudioData(await res.arrayBuffer());
     }
@@ -946,7 +952,7 @@ async function pickHeartbeatSample(btn, filename, knownBpm=0){
   try {
     if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
     const encodedFile = filename.split('/').map(s=>encodeURIComponent(s)).join('/');
-    const res = await fetch(encodedFile+'?v='+encodeURIComponent(window.APP_VERSION||'0'));
+    const res = await fetch(encodedFile+'?v='+encodeURIComponent(window.ASSET_VERSION||'0'));
     if(!res.ok) throw new Error('HTTP '+res.status);
     const arrayBuf = await res.arrayBuffer();
     const buf = await AC.decodeAudioData(arrayBuf);
@@ -1609,7 +1615,7 @@ async function loadMusicFile(file, key){
   // One session was found decoding 175.66 s of audio with no leading silence
   // while the server, the repo and the working copy all held the same 178.34 s
   // file with two bars of it.
-  const url = encodedFile+'?v='+encodeURIComponent(window.APP_VERSION||'0');
+  const url = encodedFile+'?v='+encodeURIComponent(window.ASSET_VERSION||'0');
   const res = await fetch(url);
   if(!res.ok) throw new Error('HTTP '+res.status+': '+file);
   const arrayBuf = await res.arrayBuffer();
