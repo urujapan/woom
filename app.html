@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.18';
+window.APP_VERSION = '2026-07-25.19';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -2777,13 +2777,7 @@ function _runDetectCore(){
       let wPeak = 0, wSum = 0, wCnt = 0;
       for(let i=f;i<wEnd;i++){ const v=envRaw[i]; if(v>wPeak) wPeak=v; wSum+=v; wCnt++; }
       const wMean = wCnt ? wSum/wCnt : 0;          // RAW mean (meanE above is de-trended)
-      // 0.35 of a beat (was a fixed 0.12s): a punchy heartbeat's normal between-beat
-      // silence runs ~0.5 beat, so a real "hole" must be shorter-relative. Beat-scaled
-      // so slow hearts (longer natural gaps) aren't over-rejected. This rescues the
-      // clean early region of messy recordings that iOS Safari's decode pushed just
-      // over the old 0.12s (e.g. Chie: Safari picked a worse spot only because the
-      // early region got hole-rejected there but not on Chrome).
-      const holeT = wPeak * 0.06, holeMaxFrames = Math.round(beatPeriodFrames * 0.35);
+      const holeT = wPeak * 0.06, holeMaxFrames = Math.round(0.12 / frameSec);
       let run=0, maxRun=0;
       for(let i=f;i<wEnd;i++){ if(envRaw[i] < holeT){ if(++run>maxRun) maxRun=run; } else run=0; }
       if(maxRun > holeMaxFrames && wMean > wPeak * 0.15) continue;
@@ -2806,7 +2800,7 @@ function _runDetectCore(){
         if(v > per) per = v;
       }
     }
-    const regScore = Math.pow(Math.min(1, per / 0.15), 4); // strong preference for a steady pulse (exp 4: lets the more-regular region win on decodes where onset-alignment would otherwise pick a less-regular one)
+    const regScore = Math.pow(Math.min(1, per / 0.15), 2); // strong preference for a steady pulse
 
     // Combined score
     const score = meanE * consistency * onsetBonus * pulseScore * posScore * firstScore * regScore;
