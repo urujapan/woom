@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.12';
+window.APP_VERSION = '2026-07-25.13';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1553,53 +1553,53 @@ function normalizeBuffer(buffer, targetRMS, boostOnly){
 // bpm: 0 = unknown (auto-sync mode)
 const MUSIC_LIBRARY = {
   lullaby:[
-    {id:'lu1', title:'Fairy',      file:'WMSL_Fairy_Org_bpm138.m4a',  bpm:138,
+    {id:'lu1', vid:'Angels_flying_loop1.mp4', title:'Fairy',      file:'WMSL_Fairy_Org_bpm138.m4a',  bpm:138,
       variants:[{bpm:118,file:'WMSL_Fairy_bpm118#.m4a'},{bpm:138,file:'WMSL_Fairy_Org_bpm138.m4a'},{bpm:158,file:'WMSL_Fairy_bpm158#.m4a'}]},
-    {id:'lu3', title:'Moms Echo',  file:'WMSL_Moms Echo_Org_bpm175.m4a',bpm:175,
+    {id:'lu3', vid:'Forest_sunlight_loop1.mp4', title:'Moms Echo',  file:'WMSL_Moms Echo_Org_bpm175.m4a',bpm:175,
       variants:[{bpm:135,file:'WMSL_Moms Echo_bpm135#.m4a'},{bpm:155,file:'WMSL_Moms Echo_bpm155#.m4a'},{bpm:175,file:'WMSL_Moms Echo_Org_bpm175.m4a'}]},
     // 2-bar lead-in versions (new convention: 8 beats of silence before beat 1)
-    {id:'lu2', title:'Twinkle',    file:'WMSL_Twinkle_Org_bpm152.m4a',  bpm:152,
+    {id:'lu2', vid:'Cute_animals_celebrating_loop1.mp4', title:'Twinkle',    file:'WMSL_Twinkle_Org_bpm152.m4a',  bpm:152,
       variants:[{bpm:133,file:'WMSL_Twinkle_bpm133#.m4a'},{bpm:152,file:'WMSL_Twinkle_Org_bpm152.m4a'},{bpm:172,file:'WMSL_Twinkle_bpm172#.m4a'}]},
   ],
   ambient:[
-    {id:'am1', title:'Ambient Piano',    file:'WMSL_Ambient Piano_Org_BPM138.m4a',    bpm:138,
+    {id:'am1', vid:'space_loop1.mp4', title:'Ambient Piano',    file:'WMSL_Ambient Piano_Org_BPM138.m4a',    bpm:138,
       variants:[{bpm:118,file:'WMSL_Ambient Piano_bpm118#.m4a'},{bpm:138,file:'WMSL_Ambient Piano_Org_BPM138.m4a'},{bpm:158,file:'WMSL_Ambient Piano_bpm158#.m4a'}]},
-    {id:'am3', title:'Florting light',file:'WMSL_Florting light_Org_bpm140.m4a',bpm:140,
+    {id:'am3', vid:'Night Sky_loop1.mp4', title:'Florting light',file:'WMSL_Florting light_Org_bpm140.m4a',bpm:140,
       variants:[{bpm:120,file:'WMSL_Florting light_bpm120#.m4a'},{bpm:140,file:'WMSL_Florting light_Org_bpm140.m4a'},{bpm:160,file:'WMSL_Florting light_bpm160#.m4a'}]},
-    {id:'am2', title:'Memory of Birth',  file:'WMSL_Memory of Birth_Org_bpm150.m4a',  bpm:150,
+    {id:'am2', vid:'space_loop1.mp4', title:'Memory of Birth',  file:'WMSL_Memory of Birth_Org_bpm150.m4a',  bpm:150,
       variants:[{bpm:130,file:'WMSL_Memory of Birth_bpm130#.m4a'},{bpm:150,file:'WMSL_Memory of Birth_Org_bpm150.m4a'},{bpm:170,file:'WMSL_Memory of Birth_bpm170#.m4a'}]},
-    {id:'cl1', title:'Misty Forest',     file:'WMSL_Misty Forest_Org_bpm140.m4a',     bpm:140,
+    {id:'cl1', vid:'Sunrise_sea_loop1.mp4', title:'Misty Forest',     file:'WMSL_Misty Forest_Org_bpm140.m4a',     bpm:140,
       variants:[{bpm:120,file:'WMSL_Misty Forest_bpm120#.m4a'},{bpm:140,file:'WMSL_Misty Forest_Org_bpm140.m4a'},{bpm:160,file:'WMSL_Misty Forest_bpm160#.m4a'}]},
   ],
   classical:[
-    {id:'ot3', title:'Dramatic Piano', file:'WMSL_Dramatic Piano_Org_bpm138.m4a', bpm:138},
-    {id:'cl2', title:'Elegant Violin', file:'WMSL_Elegant Violin_Org_BPM138.m4a', bpm:138,
+    {id:'ot3', vid:'Night Sky_loop1.mp4', title:'Dramatic Piano', file:'WMSL_Dramatic Piano_Org_bpm138.m4a', bpm:138},
+    {id:'cl2', vid:'Forest_sunlight_loop1.mp4', title:'Elegant Violin', file:'WMSL_Elegant Violin_Org_BPM138.m4a', bpm:138,
       variants:[{bpm:118,file:'WMSL_Elegant Violin_bpm118#.m4a'},{bpm:138,file:'WMSL_Elegant Violin_Org_BPM138.m4a'},{bpm:158,file:'WMSL_Elegant Violin_bpm158#.m4a'}]},
-    {id:'ot5', title:'Maternal Love',  file:'WMSL_Maternal Love_Org_bpm138.m4a',  bpm:138},
+    {id:'ot5', vid:'Night Sky_loop1.mp4', title:'Maternal Love',  file:'WMSL_Maternal Love_Org_bpm138.m4a',  bpm:138},
   ],
   world:[
-    {id:'wo4', title:'A Tiny Grasp',       file:'WMSL_A Tiny Grasp_Org_bpm148.m4a',           bpm:148,
+    {id:'wo4', vid:'space_loop1.mp4', title:'A Tiny Grasp',       file:'WMSL_A Tiny Grasp_Org_bpm148.m4a',           bpm:148,
       variants:[{bpm:128,file:'WMSL_A Tiny Grasp_bpm128#.m4a'},{bpm:148,file:'WMSL_A Tiny Grasp_Org_bpm148.m4a'},{bpm:168,file:'WMSL_A Tiny Grasp_bpm168#.m4a'}]},
-    {id:'wo1', title:'Auspicious Gamelan', file:'WMSL_Auspicious Gamelan_Org_bpm150.m4a',    bpm:150,
+    {id:'wo1', vid:'Sunrise_sea_loop1.mp4', title:'Auspicious Gamelan', file:'WMSL_Auspicious Gamelan_Org_bpm150.m4a',    bpm:150,
       variants:[{bpm:130,file:'WMSL_Auspicious Gamelan_bpm130#.m4a'},{bpm:150,file:'WMSL_Auspicious Gamelan_Org_bpm150.m4a'},{bpm:170,file:'WMSL_Auspicious Gamelan_bpm170#.m4a'}]},
-    {id:'wo5', title:'Bem-vindo ao mundo!',file:'WMSL_Bem-vindo ao mundo!_Org_bpm150.9.m4a',  bpm:151,
+    {id:'wo5', vid:'Ocean_waves_loop1.mp4', title:'Bem-vindo ao mundo!',file:'WMSL_Bem-vindo ao mundo!_Org_bpm150.9.m4a',  bpm:151,
       variants:[{bpm:131,file:'WMSL_Bem-vindo ao mundo!_bpm130.9#.m4a'},{bpm:151,file:'WMSL_Bem-vindo ao mundo!_Org_bpm150.9.m4a'},{bpm:171,file:'WMSL_Bem-vindo ao mundo!_bpm170.9#.m4a'}]},
-    {id:'wo2', title:'Morning Glow',       file:'WMSL_Morning glow_Org_bpm150.m4a',           bpm:150,
+    {id:'wo2', vid:'Forest_sunlight_loop1.mp4', title:'Morning Glow',       file:'WMSL_Morning glow_Org_bpm150.m4a',           bpm:150,
       variants:[{bpm:130,file:'WMSL_Morning glow_bpm130#.m4a'},{bpm:150,file:'WMSL_Morning glow_Org_bpm150.m4a'},{bpm:170,file:'WMSL_Morning glow_bpm170#.m4a'}]},
-    {id:'wo3', title:'My Dear Island',     file:'WMSL_My Dear Island_Org_bpm140.m4a',         bpm:140,
+    {id:'wo3', vid:'Ocean_waves_loop1.mp4', title:'My Dear Island',     file:'WMSL_My Dear Island_Org_bpm140.m4a',         bpm:140,
       variants:[{bpm:120,file:'WMSL_My Dear Island_bpm120#.m4a'},{bpm:140,file:'WMSL_My Dear Island_Org_bpm140.m4a'},{bpm:160,file:'WMSL_My Dear Island_bpm160#.m4a'}]},
   ],
   electro:[
-    {id:'el1', title:'Hyper Baby!',      file:'WMSL_Hyper Baby!_Org_bpm173.m4a',      bpm:173, vid:'gift_space.mp4',
+    {id:'el1', title:'Hyper Baby!',      file:'WMSL_Hyper Baby!_Org_bpm173.m4a',      bpm:173, vid:'Baby_dancing_loop1.mp4',
       variants:[{bpm:133,file:'WMSL_Hyper Baby!_bpm133#.m4a'},{bpm:153,file:'WMSL_Hyper Baby!_bpm153#.m4a'},{bpm:173,file:'WMSL_Hyper Baby!_Org_bpm173.m4a'}]},
-    {id:'el2', title:'Infinite Horizon', file:'WMSL_Infinite Horizon_Org_bpm140.m4a', bpm:140,
+    {id:'el2', vid:'space_loop1.mp4', title:'Infinite Horizon', file:'WMSL_Infinite Horizon_Org_bpm140.m4a', bpm:140,
       variants:[{bpm:120,file:'WMSL_Infinite Horizon_bpm120#.m4a'},{bpm:140,file:'WMSL_Infinite Horizon_Org_bpm140.m4a'},{bpm:160,file:'WMSL_Infinite Horizon_bpm160#.m4a'}]},
   ],
   other:[
-    {id:'ot2', title:'Across the Blue',      file:'WMSL_Across the Blue_Org_bpm148.m4a',      bpm:148,
+    {id:'ot2', vid:'Night Sky_loop1.mp4', title:'Across the Blue',      file:'WMSL_Across the Blue_Org_bpm148.m4a',      bpm:148,
       variants:[{bpm:128,file:'WMSL_Across the Blue_bpm128#.m4a'},{bpm:148,file:'WMSL_Across the Blue_Org_bpm148.m4a'},{bpm:168,file:'WMSL_Across the Blue_bpm168#.m4a'}]},
-    {id:'ot4', title:'Heart Warming Guitar', file:'WMSL_Heart Warming Guitar_Org_bpm138.m4a', bpm:138},
-    {id:'ot1', title:'New Voyage',           file:'WMSL_New Voyage_Org_bpm149.m4a',           bpm:149,
+    {id:'ot4', vid:'Ocean_waves_loop1.mp4', title:'Heart Warming Guitar', file:'WMSL_Heart Warming Guitar_Org_bpm138.m4a', bpm:138},
+    {id:'ot1', vid:'Sunrise_sea_loop1.mp4', title:'New Voyage',           file:'WMSL_New Voyage_Org_bpm149.m4a',           bpm:149,
       variants:[
         {bpm:129, file:'WMSL_New Voyage_bpm129#.m4a'},
         {bpm:149, file:'WMSL_New Voyage_Org_bpm149.m4a'},
