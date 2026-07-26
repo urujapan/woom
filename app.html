@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.14';
+window.APP_VERSION = '2026-07-25.15';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -4253,7 +4253,11 @@ function doGift(){
   function _maybeReveal(){
     if(!_renderDone||!_animDone) return;
     hideGiftAnim();
-    document.getElementById('giftResult').classList.add('show');
+    const gr=document.getElementById('giftResult');
+    gr.classList.add('show');
+    // Scroll the finished gift link into view. Without this the Complete Gift
+    // button stays mid-screen and it isn't obvious the gift is ready.
+    setTimeout(()=>{ try{ (document.getElementById('audioLinkBox')||gr).scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){} }, 120);
   }
   // Animation runs for 3.5s
   setTimeout(()=>{ _animDone=true; _maybeReveal(); },3500);
