@@ -126,6 +126,13 @@ body.playing .pausebtn{opacity:1;pointer-events:auto;}
   var msg=p.get('msg')||'';
   var from=p.get('from')||'';
   var audio=p.get('audio')||'';
+  // Per-song loop video. Only a bare .mp4 filename in THIS folder is honoured
+  // (no "/", "\" or ":" → can't be pointed at an external or path-traversed URL).
+  // Falls back to the default gift_loop.mp4 already in the markup.
+  var vid=p.get('vid')||'';
+  if(vid && vid.indexOf('/')<0 && vid.indexOf('\\')<0 && vid.indexOf(':')<0 && /\.mp4$/i.test(vid)){
+    try{ document.getElementById('lvA').src=vid; document.getElementById('lvB').src=vid; }catch(e){}
+  }
 
   if(baby){
     document.getElementById('gtitle').textContent='WooM for '+baby;

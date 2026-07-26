@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.11';
+window.APP_VERSION = '2026-07-25.12';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1590,7 +1590,7 @@ const MUSIC_LIBRARY = {
       variants:[{bpm:120,file:'WMSL_My Dear Island_bpm120#.m4a'},{bpm:140,file:'WMSL_My Dear Island_Org_bpm140.m4a'},{bpm:160,file:'WMSL_My Dear Island_bpm160#.m4a'}]},
   ],
   electro:[
-    {id:'el1', title:'Hyper Baby!',      file:'WMSL_Hyper Baby!_Org_bpm173.m4a',      bpm:173,
+    {id:'el1', title:'Hyper Baby!',      file:'WMSL_Hyper Baby!_Org_bpm173.m4a',      bpm:173, vid:'gift_space.mp4',
       variants:[{bpm:133,file:'WMSL_Hyper Baby!_bpm133#.m4a'},{bpm:153,file:'WMSL_Hyper Baby!_bpm153#.m4a'},{bpm:173,file:'WMSL_Hyper Baby!_Org_bpm173.m4a'}]},
     {id:'el2', title:'Infinite Horizon', file:'WMSL_Infinite Horizon_Org_bpm140.m4a', bpm:140,
       variants:[{bpm:120,file:'WMSL_Infinite Horizon_bpm120#.m4a'},{bpm:140,file:'WMSL_Infinite Horizon_Org_bpm140.m4a'},{bpm:160,file:'WMSL_Infinite Horizon_bpm160#.m4a'}]},
@@ -4325,6 +4325,9 @@ function doGift(){
       if(baby)  params.set('baby',  baby);
       if(msg)   params.set('msg',   msg);
       if(from_) params.set('from',  from_);
+      // Per-song loop video: each track may declare its own `vid` (a bare .mp4
+      // filename hosted next to gift.html). Absent → gift.html uses its default.
+      if(selectedTrack && selectedTrack.vid) params.set('vid', selectedTrack.vid);
       const giftPageUrl = giftBase + '?' + params.toString();
       _audioUrl = giftPageUrl; // primary share URL = the gift page
       // Show gift link
