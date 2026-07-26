@@ -217,6 +217,11 @@ var nbBar=document.getElementById('nbBar');
 // own seam, dissolving between them — the loop point's jump is never visible.
 // Nothing is re-seeked or re-played mid-run, so playback doesn't stall.
 var vids=[document.getElementById('lvA'),document.getElementById('lvB')];
+// Decoding TWO videos at once (for the seam crossfade) starves the audio thread on
+// phones → crackling. Default to a SINGLE looping video (half the decode load);
+// the source clips are purpose-made loops so the native loop point is clean.
+// Add &twovid=1 to restore the 2-video crossfade for comparison.
+var ONE_VIDEO = new URLSearchParams(location.search).get('twovid')!=='1';
 var wrap=document.getElementById('loopvid');
 var _rafOn=false, _warm=false, _lastTs=0;
 var _wrapOp=0, _wrapTarget=0;   // wrapper opacity, hand-animated in rAF (not CSS)
@@ -274,8 +279,14 @@ function _startEndFade(secs){
 // it is then a pure opacity fade — no decode "pop", no fade over a black frame.
 function _warmVideo(){
   var A=vids[0], B=vids[1], D=A.duration||10;
-  if(!_warm){ _warm=true; try{ A.currentTime=0; B.currentTime=D/2; }catch(e){} } // half-clip offset
-  vids.forEach(function(v){ v.playbackRate=VSPEED; var p=v.play(); if(p&&p.catch)p.catch(function(){}); });
+  if(ONE_VIDEO){
+    if(!_warm){ _warm=true; try{ A.currentTime=0; }catch(e){} }
+    A.playbackRate=VSPEED; A.style.opacity='1'; var pA=A.play(); if(pA&&pA.catch)pA.catch(function(){});
+    try{ B.pause(); B.style.opacity='0'; }catch(e){} // stop the 2nd decode entirely
+  } else {
+    if(!_warm){ _warm=true; try{ A.currentTime=0; B.currentTime=D/2; }catch(e){} } // half-clip offset
+    vids.forEach(function(v){ v.playbackRate=VSPEED; var p=v.play(); if(p&&p.catch)p.catch(function(){}); });
+  }
   if(!_rafOn){ _rafOn=true; requestAnimationFrame(_seamLoop); }
 }
 if(vids[0].readyState>=1) _warmVideo();
@@ -297,16 +308,21 @@ function _seamLoop(ts){
   if(_wrapOp<_wrapTarget) _wrapOp=Math.min(_wrapTarget,_wrapOp+dt/FADE_SEC);
   else if(_wrapOp>_wrapTarget) _wrapOp=Math.max(_wrapTarget,_wrapOp-dt/FADE_SEC);
   wrap.style.opacity=_wrapOp.toFixed(3);
-  // Seam crossfade between the two phase-offset copies.
   var A=vids[0], B=vids[1], D=A.duration||10;
-  var dA=Math.min(A.currentTime, D-A.currentTime);
-  var dB=Math.min(B.currentTime, D-B.currentTime);
-  var aA=_smooth(0.5 + (dA-dB)/(2*XWIN));
-  A.style.opacity=aA.toFixed(3);
-  B.style.opacity=(1-aA).toFixed(3);
-  // Watchdog: resume a copy that a browser paused at a loop wrap (muted → no gesture).
-  if(A.paused){ var pa=A.play(); if(pa&&pa.catch)pa.catch(function(){}); }
-  if(B.paused){ var pb2=B.play(); if(pb2&&pb2.catch)pb2.catch(function(){}); }
+  if(ONE_VIDEO){
+    A.style.opacity='1';
+    if(A.paused){ var p1=A.play(); if(p1&&p1.catch)p1.catch(function(){}); } // native loop keeps it going
+  } else {
+    // Seam crossfade between the two phase-offset copies.
+    var dA=Math.min(A.currentTime, D-A.currentTime);
+    var dB=Math.min(B.currentTime, D-B.currentTime);
+    var aA=_smooth(0.5 + (dA-dB)/(2*XWIN));
+    A.style.opacity=aA.toFixed(3);
+    B.style.opacity=(1-aA).toFixed(3);
+    // Watchdog: resume a copy that a browser paused at a loop wrap (muted → no gesture).
+    if(A.paused){ var pa=A.play(); if(pa&&pa.catch)pa.catch(function(){}); }
+    if(B.paused){ var pb2=B.play(); if(pb2&&pb2.catch)pb2.catch(function(){}); }
+  }
   if(_dbg) _dbgUpdate(A,B);
   requestAnimationFrame(_seamLoop);
 }
