@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.15';
+window.APP_VERSION = '2026-07-25.16';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -4262,8 +4262,13 @@ function doGift(){
   // Animation runs for 3.5s
   setTimeout(()=>{ _animDone=true; _maybeReveal(); },3500);
 
-  // Render audio: mono 22kHz full length (WAV uploaded to Cloudinary /video, 100MB cap)
-  const sr=22050;
+  // Render audio: mono 44.1kHz full length (WAV uploaded to Cloudinary /video, 100MB cap).
+  // 44100, NOT 22050: on iOS Safari the OfflineAudioContext resampler produced audible
+  // clicks/aliasing when downsampling bright, busy music (Moms Echo 175bpm hit ~5.5
+  // click/s at 22050; Ambient-type calm tracks were fine — which is why it looked
+  // song/video specific). 32000 already cleared the clicks; 44100 is fully clean and
+  // still ~26MB for a 5-min mono gift, well under the 100MB cap.
+  const sr=44100;
   const bpm=(cs==='uploaded'&&detectedBPM>0)?getEffectiveBPM():parseInt(document.getElementById('vT').value);
   const beatSec=60/bpm, barSec=beatSec*4;
   const fadeInSec=FADEIN_BARS*barSec;

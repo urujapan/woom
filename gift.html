@@ -217,11 +217,11 @@ var nbBar=document.getElementById('nbBar');
 // own seam, dissolving between them — the loop point's jump is never visible.
 // Nothing is re-seeked or re-played mid-run, so playback doesn't stall.
 var vids=[document.getElementById('lvA'),document.getElementById('lvB')];
-// Decoding TWO videos at once (for the seam crossfade) starves the audio thread on
-// phones → crackling. Default to a SINGLE looping video (half the decode load);
-// the source clips are purpose-made loops so the native loop point is clean.
-// Add &twovid=1 to restore the 2-video crossfade for comparison.
-var ONE_VIDEO = new URLSearchParams(location.search).get('twovid')!=='1';
+// Default: the smooth 2-video seam crossfade. (The crackling once blamed on 2-video
+// decode load was actually the 22050Hz gift render aliasing bright music — fixed by
+// rendering at 44100 in app.html, so the crossfade can stay.) &onevid=1 forces a
+// single looping video (half the decode load) for very low-power devices.
+var ONE_VIDEO = new URLSearchParams(location.search).get('onevid')==='1';
 var wrap=document.getElementById('loopvid');
 var _rafOn=false, _warm=false, _lastTs=0;
 var _wrapOp=0, _wrapTarget=0;   // wrapper opacity, hand-animated in rAF (not CSS)
