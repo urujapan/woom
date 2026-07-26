@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.19';
+window.APP_VERSION = '2026-07-25.20';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1150,20 +1150,44 @@ function _wombPlaybackFilter(buf){
   }catch(e){ return buf; }
 }
 
+// Position (ms into the first beat) of the loudest point of the current loop's
+// first beat. A tight loop puts its "thump" right at the start (small value); a
+// junk/soft region has its peak drift late. Used to choose between the untrimmed
+// and trimmed detections below.
+function _firstBeatPeakMs(){
+  try{
+    if(!loopBuffer || !detectedBPM) return 9999;
+    const d=loopBuffer.getChannelData(0), sr=loopBuffer.sampleRate, beatN=Math.round(sr*60/detectedBPM);
+    let p=0,pi=0; for(let i=0;i<Math.min(beatN,d.length);i++){ const a=Math.abs(d[i]); if(a>p){p=a;pi=i;} }
+    return pi/sr*1000;
+  }catch(e){ return 9999; }
+}
+
 function loadWombBuffer(arrayBuffer, name){
   if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
   _knownBPM=0; // uploads/recordings have no authoritative BPM
   AC.decodeAudioData(arrayBuffer, function(buf){
     _normalizeBuffer(buf);
-    buf=_trimToActiveRegion(buf);   // drop long silence / isolated blips before detection
+    // Adaptive trim. The active-region trim rescues messy recordings whose best loop
+    // otherwise lands in trailing/isolated junk (Chie, Memory of Birth), but it also
+    // subtly re-scores a clean recording onto a worse beat (Ambient Piano regressed
+    // from 11.98s to 6.77s when the trim was added). So detect BOTH ways and keep the
+    // one whose first beat's "thump" sits tightest to the loop start — the version
+    // that will sync best. The trimmed pick wins ties (20ms margin) since it is the
+    // safer default for junk-heavy uploads.
+    const trimmed=_trimToActiveRegion(buf); const ti=_trimInfo;
     rawBuffer=buf; cs='uploaded';
     document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
     document.getElementById('upinfo').style.display='flex';
     document.getElementById('upname').textContent=name;
     document.getElementById('waveformWrap').classList.add('show'); scrollWaveIntoView();
-    drawWaveform(buf);
-    initGridDrag();
-    runDetect();
+    drawWaveform(buf); initGridDrag(); runDetect();
+    const uPk=_firstBeatPeakMs();
+    if(ti){
+      rawBuffer=trimmed; drawWaveform(trimmed); initGridDrag(); runDetect();
+      const tPk=_firstBeatPeakMs();
+      if(uPk < tPk - 20){ rawBuffer=buf; drawWaveform(buf); initGridDrag(); runDetect(); }
+    }
     updateNP(); refreshPreview();
     if(playing){stopAll();startAll();}
   }, function(e){toast(_tr(BADFMT));});
