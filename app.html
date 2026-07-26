@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.8';
+window.APP_VERSION = '2026-07-25.9';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1527,8 +1527,8 @@ const MUSIC_LIBRARY = {
       variants:[{bpm:133,file:'WMSL_Twinkle_bpm133#.mp3'},{bpm:152,file:'WMSL_Twinkle_Org_bpm152.mp3'},{bpm:172,file:'WMSL_Twinkle_bpm172#.mp3'}]},
   ],
   ambient:[
-    {id:'am1', title:'Ambient Piano',    file:'WMSL_Ambient Piano_Org_BPM138.mp3',    bpm:138,
-      variants:[{bpm:118,file:'WMSL_Ambient Piano_bpm118#.mp3'},{bpm:138,file:'WMSL_Ambient Piano_Org_BPM138.mp3'},{bpm:158,file:'WMSL_Ambient Piano_bpm158#.mp3'}]},
+    {id:'am1', title:'Ambient Piano',    file:'WMSL_Ambient Piano_Org_BPM138.m4a',    bpm:138,
+      variants:[{bpm:118,file:'WMSL_Ambient Piano_bpm118#.m4a'},{bpm:138,file:'WMSL_Ambient Piano_Org_BPM138.m4a'},{bpm:158,file:'WMSL_Ambient Piano_bpm158#.m4a'}]},
     {id:'am3', title:'Florting light',file:'WMSL_Florting light_Org_bpm140.mp3',bpm:140,
       variants:[{bpm:120,file:'WMSL_Florting light_bpm120#.mp3'},{bpm:140,file:'WMSL_Florting light_Org_bpm140.mp3'},{bpm:160,file:'WMSL_Florting light_bpm160#.mp3'}]},
     {id:'am2', title:'Memory of Birth',  file:'WMSL_Memory of Birth_Org_bpm150.mp3',  bpm:150,
