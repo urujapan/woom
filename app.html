@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.16';
+window.APP_VERSION = '2026-07-25.17';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -4282,10 +4282,19 @@ function doGift(){
   const targetW=volToGain(document.getElementById('vW').value);
   const targetM=volToGain(document.getElementById('vM').value);
 
+  // Master limiter so heartbeat + music can never sum past full scale. A loud
+  // recording (Chie, peak 0.94) over a loud musical passage summed to 1.22 → 247
+  // clipped samples = the "ブチブチ". Peaks near/above full scale are tucked in;
+  // everything quieter passes untouched, so overall loudness is kept. The
+  // post-render normalize below is the hard guarantee.
+  const master=off.createDynamicsCompressor();
+  master.threshold.value=-1; master.knee.value=0; master.ratio.value=20;
+  master.attack.value=0.002; master.release.value=0.12;
+  master.connect(off.destination);
   const wg=off.createGain();
   wg.gain.setValueAtTime(0,0);
   wg.gain.linearRampToValueAtTime(targetW,fadeInSec);
-  wg.connect(off.destination);
+  wg.connect(master);
 
   if(cs==='uploaded'&&(loopBuffer||rawBuffer)){
     // Resample uploaded buffer for gift page
@@ -4301,7 +4310,7 @@ function doGift(){
     const ws=off.createBufferSource(); ws.buffer=wb; ws.connect(wg); ws.start(0);
   }
 
-  const mg=off.createGain(); mg.gain.value=targetM; mg.connect(off.destination);
+  const mg=off.createGain(); mg.gain.value=targetM; mg.connect(master);
   if(musicFileBuffer){
     const ms=off.createBufferSource(); ms.buffer=musicFileBuffer; ms.loop=true;
     ms.playbackRate.value=calcPlaybackRate(); ms.connect(mg);
@@ -4321,6 +4330,13 @@ function doGift(){
   }
 
   off.startRendering().then(async buf=>{
+    // Hard guarantee against clipping: if any peak slipped past the limiter, scale
+    // the whole render down so nothing reaches full scale (no wrap/click in the WAV).
+    try{
+      let pk=0;
+      for(let ch=0; ch<buf.numberOfChannels; ch++){ const d=buf.getChannelData(ch); for(let i=0;i<d.length;i++){ const a=d[i]<0?-d[i]:d[i]; if(a>pk)pk=a; } }
+      if(pk>0.99){ const gg=0.99/pk; for(let ch=0; ch<buf.numberOfChannels; ch++){ const d=buf.getChannelData(ch); for(let i=0;i<d.length;i++) d[i]*=gg; } }
+    }catch(e){}
     const wav=toWav(buf);
     const baby=document.getElementById('gBaby').value.trim();
     const msg=document.getElementById('gMsg').value.trim();
