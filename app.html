@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.20';
+window.APP_VERSION = '2026-07-25.21';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1182,11 +1182,17 @@ function loadWombBuffer(arrayBuffer, name){
     document.getElementById('upname').textContent=name;
     document.getElementById('waveformWrap').classList.add('show'); scrollWaveIntoView();
     drawWaveform(buf); initGridDrag(); runDetect();
-    const uPk=_firstBeatPeakMs();
+    const uPk=_firstBeatPeakMs(), uScore=window._lastDetScore||0;
     if(ti){
       rawBuffer=trimmed; drawWaveform(trimmed); initGridDrag(); runDetect();
-      const tPk=_firstBeatPeakMs();
-      if(uPk < tPk - 20){ rawBuffer=buf; drawWaveform(buf); initGridDrag(); runDetect(); }
+      const tPk=_firstBeatPeakMs(), tScore=window._lastDetScore||0;
+      // Prefer the untrimmed pick only if its beat is clearly tighter AND it is a
+      // real loop, not a near-zero-score junk region. On iOS the untrimmed detector
+      // can latch onto a silent stretch (Chie → a ~0-score spot at 20s) that looks
+      // "tight" but is garbage; the score check keeps those on the trimmed pick.
+      if(uPk < tPk - 20 && uScore > 0.004){
+        rawBuffer=buf; drawWaveform(buf); initGridDrag(); runDetect();
+      }
     }
     updateNP(); refreshPreview();
     if(playing){stopAll();startAll();}
@@ -3182,6 +3188,7 @@ function _runDetectCore(){
     setBeatNudge(0);  // fresh recording → start from the auto alignment (candidates from ±0)
   }catch(e){}
   document.getElementById('bpmAdjDisplay').textContent = detectedBPM + ' bpm';
+  window._lastDetScore = bestScore; // exposed for the adaptive-trim guard in loadWombBuffer
   document.getElementById('debugInfo').textContent =
     `A:${bpmA}(conf=${confA.toFixed(2)}) B:${bpmB}(r=${bestR.toFixed(2)}) D:${bpmDirect} LD:${ldScoreLow.toFixed(3)}vs${ldScoreHigh.toFixed(3)} →${detectedBPM}bpm | agree=${_agree.toFixed(2)}${_bpmUnsure?' UNSURE':''} | active=${(silenceEndFrame*frameSec).toFixed(2)}s–${(activeEndFrame*frameSec).toFixed(2)}s | votes=${totalVotes} | loopStart=${loopStart.toFixed(2)}s score=${bestScore.toFixed(4)}`;
   updateMusicBpmLabel();
