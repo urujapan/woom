@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.21';
+window.APP_VERSION = '2026-07-25.22';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -717,7 +717,7 @@ var AC=null, wSrc=null, mSrc=null, wGain=null, mGain=null;
 // Gentle low-pass on UPLOADED heartbeats: keeps the deep "ドクン", tames the
 // whooshy/hissy high-frequency content some recordings have. One number to tune
 // (Hz); lower = warmer/more muffled, higher = lighter effect. 12dB/oct.
-var WOMB_LP_HZ=500;
+var WOMB_LP_HZ=1500;
 var WOMB_HP_HZ=70; // gentle high-pass (Q0.5) on the heartbeat PLAYBACK buffer — see _wombPlaybackFilter
 var musicFileBuffer=null;
 var musicLeadInSec=0; // the track's authored 2-bar lead-in. Always played (the
