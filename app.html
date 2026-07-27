@@ -13,7 +13,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-25.22';
+window.APP_VERSION = '2026-07-27.1';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -113,10 +113,18 @@ input[type=file]{display:none;}
 .waveform-wrap.show{display:block;}
 .waveform-canvas-wrap{position:relative;width:100%;height:80px;border-radius:8px;overflow:hidden;background:#FBEAF0;cursor:crosshair;}
 .waveform-canvas-wrap canvas{display:block;width:100%;height:100%;}
-.loop-region{position:absolute;top:0;height:100%;background:rgba(212,83,126,0.15);border-left:2px solid #D4537E;border-right:2px solid #D4537E;pointer-events:auto;cursor:grab;}
+.loop-region{position:absolute;top:0;height:100%;background:transparent;border-left:3px solid #C03D6B;border-right:3px solid #C03D6B;pointer-events:auto;cursor:grab;}
 .loop-region:active{cursor:grabbing;}
+/* Grip handles on the loop-region edges — signal that the band is draggable and
+   stay visible even when the waveform is loud/dense (pink-on-pink). */
+.loop-region::before,.loop-region::after{content:'';position:absolute;top:50%;transform:translateY(-50%);width:7px;height:38px;border-radius:4px;background:#C03D6B;box-shadow:0 1px 3px rgba(0,0,0,0.3);}
+.loop-region::before{left:-5px;}
+.loop-region::after{right:-5px;}
+/* Dim the waveform OUTSIDE the loop so the selected part stands out regardless of
+   amplitude. pointer-events:none so it never blocks the drag. */
+.loop-mask{position:absolute;top:0;height:100%;background:rgba(255,247,250,0.7);pointer-events:none;}
 .music-grid{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
-.phase-drag-hint{font-size:11px;color:#E89BB4;margin-top:5px;display:none;}
+.phase-drag-hint{font-size:12px;font-weight:500;color:#D4537E;margin-top:6px;display:none;}
 .phase-drag-hint.show{display:block;}
 .detect-info{font-size:12px;color:#C03D6B;background:#FBEAF0;border-radius:6px;padding:8px 12px;margin-top:.75rem;}
 .detect-info.warn{color:#854F0B;background:#FAEEDA;}
@@ -447,6 +455,8 @@ input[type=range]{flex:1;accent-color:#D4537E;}
     <div class="waveform-wrap" id="waveformWrap">
       <div class="waveform-canvas-wrap" id="waveformCanvasWrap">
         <canvas id="waveformCanvas"></canvas>
+        <div class="loop-mask" id="loopMaskL"></div>
+        <div class="loop-mask" id="loopMaskR"></div>
         <div class="loop-region" id="loopRegion"></div>
         <canvas id="gridCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
         <div id="wombPlayhead" style="position:absolute;top:0;width:2px;height:100%;background:#D4537E;opacity:0.85;display:none;pointer-events:none;border-radius:1px;"></div>
@@ -459,7 +469,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
           <button class="zoom-btn" onclick="zoomView(0.625)" title="拡大"><i class="ti ti-zoom-in"></i></button>
         </div>
       </details>
-      <p class="phase-drag-hint" id="phaseHint">Drag to fine-tune</p>
+      <p class="phase-drag-hint" id="phaseHint">Drag the pink band to move the loop</p>
       <div class="detect-info" id="detectInfo">Analyzing...</div>
       <button class="womb-prev-btn" id="wombPrevBtn" onclick="toggleWombPreview()">
         <i class="ti ti-player-play" id="wombPrevIco"></i><span id="wombPrevLbl">心音を確認</span>
@@ -681,7 +691,7 @@ const GT={
 };
 const REC={en:'Tap to record',ja:'タップして録音',zh:'点击录音','zh-TW':'點擊錄音',ko:'탭하여 녹음',es:'Grabar',fr:'Enregistrer',de:'Aufnehmen',pt:'Gravar',hi:'रिकॉर्ड करें',id:'Rekam',it:'Registra',th:'บันทึกเสียง',vi:'Ghi âm',ru:'Записать'};
 const RECSTOP={en:'Tap to stop',ja:'タップして停止',zh:'点击停止','zh-TW':'點擊停止',ko:'탭하여 중지',es:'Detener',fr:'Arrêter',de:'Stoppen',pt:'Parar',hi:'रोकें',id:'Berhenti',it:'Ferma',th:'หยุด',vi:'Dừng lại',ru:'Остановить'};
-const DRAG={en:'Drag to fine-tune',ja:'ドラッグで微調整',zh:'拖动以微调','zh-TW':'拖動以微調',ko:'드래그로 미세 조정',es:'Arrastra para ajustar',fr:'Glisser pour ajuster',de:'Ziehen zum Anpassen',pt:'Arraste para ajustar',hi:'ड्रैग करके समायोजित करें',id:'Seret untuk menyesuaikan',it:'Trascina per regolare',th:'ลากเพื่อปรับ',vi:'Kéo để tinh chỉnh',ru:'Перетащите для настройки'};
+const DRAG={en:'Drag the pink band to move the loop',ja:'ピンクの枠をドラッグして区間を動かせます',zh:'拖动粉色区域可移动循环区间','zh-TW':'拖曳粉紅色區域可移動循環區間',ko:'분홍색 구간을 드래그하면 루프를 옮길 수 있어요',es:'Arrastra la banda rosa para mover el bucle',fr:'Glissez la bande rose pour déplacer la boucle',de:'Ziehe den rosa Bereich, um den Loop zu verschieben',pt:'Arraste a faixa rosa para mover o loop',hi:'लूप को हिलाने के लिए गुलाबी क्षेत्र को खींचें',id:'Seret area merah muda untuk memindahkan loop',it:'Trascina la banda rosa per spostare il loop',th:'ลากแถบสีชมพูเพื่อย้ายลูป',vi:'Kéo dải màu hồng để di chuyển vùng lặp',ru:'Перетащите розовую область, чтобы переместить луп'};
 const REC_HIST={en:'📼 Recording History',ja:'📼 録音履歴',zh:'📼 录音记录','zh-TW':'📼 錄音記錄',ko:'📼 녹음 기록',es:'📼 Grabaciones',fr:'📼 Enregistrements',de:'📼 Aufnahmen',pt:'📼 Gravações',hi:'📼 रिकॉर्डिंग',id:'📼 Rekaman',it:'📼 Registrazioni',th:'📼 การบันทึก',vi:'📼 Bản ghi âm',ru:'📼 Записи'};
 const REC_USE={en:'Use',ja:'使う',zh:'使用','zh-TW':'使用',ko:'사용',es:'Usar',fr:'Utiliser',de:'Nutzen',pt:'Usar',hi:'उपयोग',id:'Gunakan',it:'Usa',th:'ใช้',vi:'Dùng',ru:'Использовать'};
 const REC_CLEAR={en:'Clear all',ja:'すべて削除',zh:'全部清除','zh-TW':'全部清除',ko:'전체 삭제',es:'Borrar todo',fr:'Tout effacer',de:'Alle löschen',pt:'Limpar tudo',hi:'सभी हटाएं',id:'Hapus semua',it:'Cancella tutto',th:'ล้างทั้งหมด',vi:'Xóa tất cả',ru:'Очистить всё'};
@@ -1194,6 +1204,11 @@ function loadWombBuffer(arrayBuffer, name){
         rawBuffer=buf; drawWaveform(buf); initGridDrag(); runDetect();
       }
     }
+    // Uploads/recordings often have a better loop elsewhere than the auto-pick
+    // (some belly recordings are only well-behaved in a later stretch), so surface
+    // the "you can drag the pink band to move the loop" hint right away — the loop
+    // region is on screen now, before any music is chosen.
+    document.getElementById('phaseHint').classList.add('show');
     updateNP(); refreshPreview();
     if(playing){stopAll();startAll();}
   }, function(e){toast(_tr(BADFMT));});
@@ -3683,6 +3698,13 @@ function updateLoopRegion(){
   const width=(loopDur/v.span)*100;
   region.style.left=left+'%';
   region.style.width=width+'%';
+  // Dimming veils on either side of the loop (clamped to the visible 0–100%).
+  const maskL=document.getElementById('loopMaskL'), maskR=document.getElementById('loopMaskR');
+  if(maskL&&maskR){
+    const l=Math.max(0,Math.min(100,left)), r=Math.max(0,Math.min(100,left+width));
+    maskL.style.left='0%'; maskL.style.width=l+'%';
+    maskR.style.left=r+'%'; maskR.style.width=(100-r)+'%';
+  }
   drawMusicGrid();
 }
 
