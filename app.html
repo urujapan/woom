@@ -7,13 +7,19 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>WooM</title>
+<!-- Home-screen / tab icon + name (WooM). iOS caches these at add-time, so an
+     already-added shortcut must be removed and re-added to pick up changes. -->
+<link rel="icon" type="image/png" href="woom_icon.png">
+<link rel="apple-touch-icon" href="woom_icon.png">
+<meta name="apple-mobile-web-app-title" content="WooM">
+<meta name="application-name" content="WooM">
 <script>
 // ── Auto-update guard ──────────────────────────────────────────────────────
 // Home-screen webclips (especially iOS) cache the page aggressively, so a
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-27.1';
+window.APP_VERSION = '2026-07-27.2';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
