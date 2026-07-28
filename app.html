@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-27.2';
+window.APP_VERSION = '2026-07-28.1';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1833,14 +1833,22 @@ function calcRateForTrackBpm(trackBpm){
   }
   return bestRate;
 }
-// Returns 'best' | 'good' | 'poor' based on how close rate is to 1.0.
-function trackCompatLevel(trackBpm){
-  if(!trackBpm || !(cs==='uploaded' && detectedBPM > 0)) return 'good';
-  const rate = calcRateForTrackBpm(trackBpm);
+// Returns 'best' | 'good' | 'poor' for a whole track (needs original bpm + variants).
+// The tiers are deliberately tied to WHICH pre-produced file will actually play:
+//   👌 best  — the ORIGINAL production plays, at essentially its native tempo
+//              (within ±10 bpm of the original). The re-pitched ±20 variants never
+//              earn this: a song shifted 20 bpm from how it was written isn't its
+//              musical best, so it shouldn't claim "Best Match".
+//   👍 good  — a variant (incl. the ±20 ones) still lands on an acceptable tempo.
+//   🤔 poor  — no version aligns well.
+function trackCompatLevel(track){
+  if(!(cs==='uploaded' && detectedBPM > 0)) return 'good';
+  const vb = trackEffectiveBpm(track);      // the variant that will actually play
+  const rate = calcRateForTrackBpm(vb);
   const dev  = Math.abs(rate - 1.0);
-  if(dev <= 0.08) return 'best'; // rate 0.92–1.08: almost perfect tempo match
-  if(dev <= 0.18) return 'good'; // rate 0.82–1.18: noticeable but acceptable
-  return 'poor';                  // rate < 0.82 or > 1.18: clearly mismatched
+  if(vb === track.bpm && dev <= 10 / track.bpm) return 'best'; // original, ±10 bpm
+  if(dev <= 0.18) return 'good'; // an acceptable variant match
+  return 'poor';                  // clearly mismatched
 }
 
 function renderTrackPanel(type){
@@ -1848,12 +1856,12 @@ function renderTrackPanel(type){
   const tracks=MUSIC_LIBRARY[type];
   if(!tracks||tracks.length===0){panel.style.display='none';return;}
   panel.innerHTML=tracks.map(t=>{
-    // Best Match reflects the BPM version that would ACTUALLY play for this
-    // heartbeat — the closest pre-produced variant (pickVariant), not just the
-    // original. Each variant is a native production at its own BPM, so a heartbeat
-    // that lands between originals still gets an honest "best" via the nearest
-    // variant (e.g. a 126 bpm heart matches a track's 128 variant).
-    const level = trackCompatLevel(trackEffectiveBpm(t));
+    // Badge tiers reflect which pre-produced file actually plays. 👌 Best Match is
+    // reserved for the ORIGINAL production playing near its native tempo (±10 bpm);
+    // a heartbeat that only lands on a re-pitched ±20 variant gets 👍, not 👌, so
+    // the badge never promises "best" for a version shifted 20 bpm from how it was
+    // written. See trackCompatLevel.
+    const level = trackCompatLevel(t);
     const lvClass = level==='best'?'lv3':level==='good'?'lv2':'lv1';
     const badgeContent = level==='best' ? '👌 Best Match!!!' : level==='good' ? '👍' : '🤔';
     const badge = (cs==='uploaded'&&detectedBPM>0)
