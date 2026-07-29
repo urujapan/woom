@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-29.1';
+window.APP_VERSION = '2026-07-29.2';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1657,7 +1657,7 @@ const MUSIC_LIBRARY = {
         {bpm:169, file:'WMSL_New Voyage_bpm169#.m4a'}
       ]},
     // 120s original — fills the 👌 gap for slow heartbeats (~118–138). No variants yet.
-    {id:'ot6', vid:'Night Sky_loop1.mp4', title:'Neon Heartbeats',        file:'WMSL_Neon Heartbeats_bpm128.mp3',          bpm:128},
+    {id:'ot6', vid:'Night Sky_loop1.mp4', title:'Neon Heartbeats',        file:'WMSL_Neon Heartbeats_bpm128.m4a',          bpm:128},
   ],
 };
 const musicBufferCache = {};
