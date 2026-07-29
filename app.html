@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-29.2';
+window.APP_VERSION = '2026-07-29.3';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1780,6 +1780,11 @@ async function selectTrack(trackId){
   }
   if(!track) return;
 
+  // Stop any ▶ preview still looping. Without this, auditioning track A and then
+  // choosing track B left A's preview playing while the panel showed B selected —
+  // "I picked Neon Heartbeats but Across the Blue is playing."
+  stopMusicPreview();
+
   // ── Instant UI feedback: select immediately, no innerHTML rebuild ──────────
   // (The old code awaited the file load before marking the track selected and
   //  rebuilt the whole panel each time — taps during loading were lost, so it
@@ -1816,7 +1821,16 @@ async function selectTrack(trackId){
     refreshPreview(); drawMusicGrid(); updateMusicBpmLabel();
     if(playing){stopAll();startAll();}
   }catch(e){
-    if(selectedTrack===track){ toast('Load error: '+e.message); }
+    if(selectedTrack===track){
+      // A failed load (e.g. a freshly-deployed file not yet propagated → 404) must
+      // NOT leave the previously-loaded song playing under this track's label. That
+      // was the "picked Neon Heartbeats but Across the Blue keeps playing" report:
+      // the category auto-selects its top track, then the new pick failed to load
+      // and the old buffer stayed. Clear it so nothing masquerades.
+      musicFileBuffer = null;
+      if(playing){ stopAll(); startAll(); }
+      toast('Load error: '+e.message);
+    }
   }finally{
     if(btn) btn.classList.remove('loading');
   }
