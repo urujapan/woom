@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-29.4';
+window.APP_VERSION = '2026-07-30.1';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -4641,6 +4641,11 @@ function wizGoTo(n){
   if(n<0||n>=_wizSteps.length) return;
   // Guard: a womb sound must be captured before leaving the first step.
   if(n>wizStep && wizStep===0 && !rawBuffer){ try{toast(WIZ_NEED[cl]||WIZ_NEED.en);}catch(e){} return; }
+  // Leaving a step must not leave its check/preview audio looping. Stop both the
+  // "心音を確認" heartbeat-loop preview and the music ▶ preview on any step change
+  // (Next / Back / dot) — the main mix (startAll) is separate and unaffected.
+  try{ stopWombPreview(); }catch(e){}
+  try{ stopMusicPreview(); }catch(e){}
   wizStep=n;
   document.body.classList.toggle('wiz-adv', n>0);
   document.body.classList.remove('tab-open','sample-open','tracks-open','wave-open'); // clear per-step scroll room
