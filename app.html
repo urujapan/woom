@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.4';
+window.APP_VERSION = '2026-07-31.5';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1042,7 +1042,7 @@ function onVolSlider(id,outId){
   const v=document.getElementById(id).value;
   document.getElementById(outId).textContent=fmtVol(v);
   if(id==='vW'&&wGain) wGain.gain.value=volToGain(v);
-  if(id==='vM'&&mGain) mGain.gain.value=volToGain(v);
+  if(id==='vM'&&mGain) mGain.gain.value=volToGain(v)*musicNorm();
 }
 function onSlider(id,outId,sfx){
   document.getElementById(outId).textContent=document.getElementById(id).value+sfx;
@@ -1665,6 +1665,21 @@ const MUSIC_LIBRARY = {
 };
 const musicBufferCache = {};
 var selectedTrack = null;
+// Per-track loudness normalization (measured 2026-07-31 by decoding every master).
+// The masters spanned ~11 dB (Fairy quietest ~-19 dB RMS, Hyper Baby! loudest
+// ~-8 dB) and several clipped. This multiplier brings each track to a consistent
+// ~-16 dB RMS while keeping worst-case peaks under -1 dBFS, so nothing is boosted
+// into clipping (only Fairy is lifted; the rest are attenuated). Applied to live
+// playback, the gift render, and the audition. Keyed by track id — see MUSIC_LIBRARY.
+const MUSIC_NRM = {
+  lu1:1.211, lu2:0.793, lu3:0.453,
+  am1:0.919, am2:0.871, am3:0.552, cl1:0.630,
+  ot3:0.734, cl2:0.790, ot5:0.774,
+  wo1:0.585, wo2:0.639, wo3:0.554, wo4:0.486, wo5:0.484,
+  el1:0.414, el2:0.445,
+  ot1:0.561, ot2:0.938, ot4:0.584, ot6:0.474
+};
+function musicNorm(){ return (selectedTrack && MUSIC_NRM[selectedTrack.id]) || 1; }
 var musicPrevAC = null, musicPrevSrc = null, musicPrevTrackId = null;
 // Streaming audition: a plain <audio> element plays the ORIGINAL file progressively
 // (starts in ~1–2 s instead of waiting for the whole ~3–5 MB to download + decode).
@@ -1978,6 +1993,11 @@ function startMusicPreview(trackId){
   const url = leadIn>0 ? base + '#t=' + leadIn.toFixed(3) : base;
   const a = new Audio();
   a.preload = 'auto';
+  // Match the per-track loudness normalization used by the mix/gift so the audition
+  // isn't louder/quieter than the others. <audio>.volume caps at 1, so this can only
+  // attenuate (the louder tracks, which is where it matters); the few tracks that
+  // would be boosted just play at full volume.
+  a.volume = Math.min(1, MUSIC_NRM[trackId] || 1);
   a.src = url;
   a.loop = false; // looped manually below so each pass also skips the lead-in
   a.addEventListener('loadedmetadata', function(){
@@ -3760,7 +3780,7 @@ function applyPhaseRestart(){
   const newGain = ctx.createGain();
   newGain.gain.setValueAtTime(0, now);
   newGain.gain.linearRampToValueAtTime(
-    volToGain(document.getElementById('vM').value),
+    volToGain(document.getElementById('vM').value)*musicNorm(),
     now + FADE
   );
   newGain.connect(ctx.destination);
@@ -4078,7 +4098,7 @@ function startAll(){
     progMusicDur = musicFileBuffer
       ? musicFileBuffer.duration / Math.max(0.1, calcPlaybackRate())
       : 0;
-    mGain=ctx.createGain(); mGain.gain.value=volToGain(document.getElementById('vM').value);
+    mGain=ctx.createGain(); mGain.gain.value=volToGain(document.getElementById('vM').value)*musicNorm();
     mSrc=buildMusicSrc(ctx,musicStartAt);
     if(mSrc){mSrc.connect(mGain); mGain.connect(ctx.destination);}
   }
@@ -4197,7 +4217,7 @@ function dlAudio(){
   const off=new OfflineAudioContext(2, Math.ceil(sr*dur), sr);
 
   const targetW = volToGain(document.getElementById('vW').value);
-  const targetM = volToGain(document.getElementById('vM').value);
+  const targetM = volToGain(document.getElementById('vM').value)*musicNorm();
 
   // ── Womb sound: starts at 0, fades in over fadeInSec ─────────────────
   const wg=off.createGain();
@@ -4441,7 +4461,7 @@ function doGift(){
   const dur=introSec+musicContentSec;
   const off=new OfflineAudioContext(1,Math.ceil(sr*dur),sr);
   const targetW=volToGain(document.getElementById('vW').value);
-  const targetM=volToGain(document.getElementById('vM').value);
+  const targetM=volToGain(document.getElementById('vM').value)*musicNorm();
 
   // Master limiter so heartbeat + music can never sum past full scale. A loud
   // recording (Chie, peak 0.94) over a loud musical passage summed to 1.22 → 247
