@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-30.13';
+window.APP_VERSION = '2026-07-30.14';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1666,6 +1666,10 @@ const MUSIC_LIBRARY = {
 const musicBufferCache = {};
 var selectedTrack = null;
 var musicPrevAC = null, musicPrevSrc = null, musicPrevTrackId = null;
+// Streaming audition: a plain <audio> element plays the ORIGINAL file progressively
+// (starts in ~1–2 s instead of waiting for the whole ~3–5 MB to download + decode).
+// musicPrevSrc/musicPrevAC are the old buffer-based path, kept only for cleanup.
+var musicPrevEl = null, _variantPreloadT = null;
 
 // ── Library track loading ────────────────────────────────────────────────
 // How long a CBR MP3 must be, from its own bytes. Every track in the library is
@@ -1923,66 +1927,74 @@ function renderTrackPanel(type){
 // stop, keeping it selected. Replaces the old separate ▶ button so the previewed
 // track and the selected track can never diverge.
 async function pickTrack(trackId){
-  // iOS/Safari: the preview AudioContext MUST be created and resumed inside this
-  // tap's synchronous frame (before any await). Creating/resuming it later leaves
-  // it 'suspended' on Safari and the preview is silent. See the Safari unlock
-  // block — it can't reach musicPrevAC because that is created lazily.
-  try{
-    if(!musicPrevAC) musicPrevAC=new(window.AudioContext||window.webkitAudioContext)();
-    if(musicPrevAC.state==='suspended') musicPrevAC.resume();
-  }catch(e){}
   if(musicPrevTrackId===trackId){ stopMusicPreview(); return; } // 2nd tap → stop, stay selected
   stopMusicPreview();                                            // stop any OTHER track's audition
-  // Select immediately (highlight + BPM label) but DON'T download the BPM variant
-  // yet — that background fetch competing with the audition download was what
-  // made the first play take ~30 s on mobile (two ~3 MB files at once).
+  // Select immediately (highlight + BPM label) without downloading anything.
   selectTrack(trackId, {defer:true});
   if(!playing){
-    // Audition the ORIGINAL file with the whole connection to itself, so the first
-    // play is as quick as the old ▶ button. It's cached by filename, so switching
-    // heartbeats and re-auditioning the same song stays an instant cache hit.
-    await startMusicPreview(trackId);
+    // Audition by STREAMING the original file — starts in ~1–2 s instead of waiting
+    // for the whole file. startMusicPreview must run synchronously here so its
+    // <audio>.play() is inside the tap gesture (iOS/Safari only allow playback that
+    // a user gesture starts). No await before it.
+    startMusicPreview(trackId);
+    // Preload the BPM variant (grid + final mix) a moment later, so it doesn't fight
+    // the audition's initial buffering but is likely ready by the time the user
+    // advances. The mix step (wizGoTo) also guarantees it if they skip ahead fast.
+    clearTimeout(_variantPreloadT);
+    _variantPreloadT = setTimeout(function(){
+      if(selectedTrack && selectedTrack.id===trackId && !musicFileBuffer) loadSelectedVariant();
+    }, 2500);
+  } else {
+    // Full mix already running → swap in the precise BPM variant now.
+    loadSelectedVariant();
   }
-  // Now that the audition is sounding, fetch the BPM variant (grid + final mix).
-  // The mix step also guarantees it via wizGoTo, in case the user skips ahead.
-  if(selectedTrack && selectedTrack.id===trackId) loadSelectedVariant();
 }
 
-async function startMusicPreview(trackId){
+// Stream the track's ORIGINAL file for audition. Progressive playback means sound
+// starts as soon as a little has buffered — no full download, no decode wait. The
+// file is independent of the heartbeat BPM, so re-auditioning the same song after a
+// heartbeat change reuses the browser's cache. The final mix still uses the precise
+// decoded BPM variant, unchanged.
+function startMusicPreview(trackId){
   stopMusicPreview();
   let track=null;
   for(const cat of Object.values(MUSIC_LIBRARY)){ track=cat.find(t=>t.id===trackId); if(track) break; }
   if(!track) return;
   const ico=document.getElementById('ptico_'+trackId);
   if(ico) ico.className='ti ti-loader spin track-play-ico';
-  try{
-    // Audition the track's ORIGINAL file (track.file), independent of the
-    // heartbeat BPM. It is cached by filename, so auditioning the same song under
-    // different heartbeats reuses one download instead of fetching a new per-BPM
-    // variant each time — the previous behaviour that made every heartbeat change
-    // re-download and wait. The final mix still uses the precise BPM variant.
-    const buf=await loadMusicTrack(track);
-    if(!musicPrevAC) musicPrevAC=new(window.AudioContext||window.webkitAudioContext)();
-    if(musicPrevAC.state==='suspended') musicPrevAC.resume();
-    const s=musicPrevAC.createBufferSource();
-    s.buffer=buf; s.loop=true;
-    // Skip the authored ~2-bar lead-in silence so the preview sounds immediately
-    // instead of after a silent gap — and loop back to after the silence too, so
-    // repeats stay immediate. _leadSilence is the measured onset (robust even to
-    // files that don't follow the 2-bar convention exactly).
-    const startAt = Math.max(0, buf._leadSilence||0);
-    if(startAt>0 && startAt < buf.duration-1){ s.loopStart=startAt; s.loopEnd=buf.duration; }
-    s.connect(musicPrevAC.destination); s.start(0, startAt);
-    s.onended=()=>stopMusicPreview();
-    musicPrevSrc=s; musicPrevTrackId=trackId;
-    if(ico) ico.className='ti ti-player-pause track-play-ico';
-  }catch(err){
-    toast('Preview error: '+err.message);
-    if(ico) ico.className='ti ti-player-play track-play-ico';
-  }
+  const base = track.file.split('/').map(encodeURIComponent).join('/')
+            + '?v=' + encodeURIComponent(window.ASSET_VERSION||'0');
+  // Skip the authored ~2-bar lead-in so the audition opens on music, not silence.
+  // The lead-in is arithmetic: 8 beats (2 bars) at the track's own tempo. A media
+  // fragment (#t=) makes playback START at that offset — the initial play() begins
+  // on the music, without a from-zero silent moment before a seek can apply. The
+  // loadedmetadata seek is a fallback for engines that ignore the fragment.
+  const leadIn = track.bpm ? (8*60/track.bpm) : 0;
+  const url = leadIn>0 ? base + '#t=' + leadIn.toFixed(3) : base;
+  const a = new Audio();
+  a.preload = 'auto';
+  a.src = url;
+  a.loop = false; // looped manually below so each pass also skips the lead-in
+  a.addEventListener('loadedmetadata', function(){
+    try{ if(leadIn>0 && a.duration && leadIn < a.duration-1 && a.currentTime < 0.5) a.currentTime = leadIn; }catch(e){}
+  }, {once:true});
+  a.addEventListener('ended', function(){
+    try{ a.currentTime = (leadIn>0 && leadIn < a.duration-1) ? leadIn : 0; a.play(); }catch(e){}
+  });
+  a.addEventListener('playing', function(){
+    if(musicPrevTrackId===trackId && ico) ico.className='ti ti-player-pause track-play-ico';
+  });
+  a.addEventListener('error', function(){
+    if(musicPrevTrackId===trackId){ toast('Preview error'); if(ico) ico.className='ti ti-player-play track-play-ico'; }
+  });
+  musicPrevEl = a; musicPrevTrackId = trackId;
+  const p = a.play();
+  if(p && p.catch) p.catch(function(){ if(ico) ico.className='ti ti-player-play track-play-ico'; });
 }
 
 function stopMusicPreview(){
+  clearTimeout(_variantPreloadT);
+  if(musicPrevEl){ try{ musicPrevEl.pause(); musicPrevEl.removeAttribute('src'); musicPrevEl.load(); }catch(e){} musicPrevEl=null; }
   if(musicPrevSrc){try{musicPrevSrc.stop();}catch(e){} musicPrevSrc=null;}
   musicPrevTrackId=null;
   document.querySelectorAll('.track-play-ico').forEach(i=>{
