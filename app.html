@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-30.9';
+window.APP_VERSION = '2026-07-30.10';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1901,6 +1901,17 @@ function renderTrackPanel(type){
 // stop, keeping it selected. Replaces the old separate ▶ button so the previewed
 // track and the selected track can never diverge.
 function pickTrack(trackId){
+  // iOS/Safari: the preview AudioContext MUST be created and resumed inside this
+  // tap's synchronous frame. startMusicPreview only reaches its create/resume
+  // AFTER awaiting the (slow) file load, by which point the user gesture has
+  // ended, so on Safari the context stays 'suspended' and the preview is silent
+  // ("spinner stops but nothing plays"). Unlock it here, in the gesture. See the
+  // Safari AudioContext unlock block — it can't reach musicPrevAC because that is
+  // created lazily and is still null at first-touch time.
+  try{
+    if(!musicPrevAC) musicPrevAC=new(window.AudioContext||window.webkitAudioContext)();
+    if(musicPrevAC.state==='suspended') musicPrevAC.resume();
+  }catch(e){}
   if(musicPrevTrackId===trackId){ stopMusicPreview(); return; } // 2nd tap → stop, stay selected
   selectTrack(trackId);                                          // select + load (also stops other preview)
   if(!playing){ startMusicPreview(trackId); }                    // audition; if the full mix runs it swaps live
