@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-30.12';
+window.APP_VERSION = '2026-07-30.13';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1014,9 +1014,12 @@ function pickMusic(btn,type){
       var over=_p.getBoundingClientRect().bottom-(window.innerHeight-110);
       if(over>0) window.scrollBy({top:over,behavior:'smooth'});
     },80);
-    // Auto-load first track if none from this category is selected
+    // Auto-select the first track if none from this category is chosen — but only
+    // highlight it; don't eagerly download its variant. That background fetch would
+    // otherwise compete with the audition the user starts moments later. The
+    // variant loads when they audition it, or on entering the mix step (wizGoTo).
     const hasSelected=selectedTrack&&tracks.find(t=>t.id===selectedTrack.id);
-    if(!hasSelected) selectTrack(tracks[0].id);
+    if(!hasSelected) selectTrack(tracks[0].id, {defer:true});
   } else {
     document.getElementById('trackPanel').style.display='none';
     if(type!=='file'){ selectedTrack=null; musicFileBuffer=null; }
@@ -1773,7 +1776,15 @@ function pickVariant(track){
 // Effective BPM of a track for the current heartbeat (the version that would be used)
 function trackEffectiveBpm(track){ return pickVariant(track).bpm; }
 
-async function selectTrack(trackId){
+// Selecting a track is split in two:
+//   1) selectTrack()        — synchronous UI selection (highlight, BPM label).
+//   2) loadSelectedVariant()— downloads the BPM-matched variant used by the grid
+//                             and the final mix.
+// pickTrack passes {defer:true} so the variant download does NOT run while the
+// original-file audition is downloading — two ~3 MB files at once halved mobile
+// bandwidth and doubled the wait. Other callers (auto-select, re-detect) load as
+// needed; the mix step also guarantees the variant via wizGoTo.
+async function selectTrack(trackId, opts){
   let track=null;
   for(const cat of Object.values(MUSIC_LIBRARY)){
     track=cat.find(t=>t.id===trackId); if(track) break;
@@ -1788,9 +1799,6 @@ async function selectTrack(trackId){
   if(musicPrevTrackId && musicPrevTrackId!==trackId) stopMusicPreview();
 
   // ── Instant UI feedback: select immediately, no innerHTML rebuild ──────────
-  // (The old code awaited the file load before marking the track selected and
-  //  rebuilt the whole panel each time — taps during loading were lost, so it
-  //  felt like it needed 2–3 taps.)
   selectedTrack = track;
   const variant = pickVariant(track);       // closest pre-produced BPM version
   musicFileBPM = variant.bpm||track.bpm||0;
@@ -1802,10 +1810,22 @@ async function selectTrack(trackId){
   // highlight the chosen track by toggling classes (fast, keeps tap targets)
   document.querySelectorAll('.track-item').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('ti_'+trackId);
-  if(btn){ btn.classList.add('active','loading'); }
+  if(btn){ btn.classList.add('active'); }
   updateNP(); updateMusicBpmLabel();
   if(cs==='uploaded') document.getElementById('phaseHint').classList.add('show');
 
+  if(opts && opts.defer) return;            // caller loads the variant later
+  return loadSelectedVariant();
+}
+
+// Downloads + decodes the BPM variant for the currently selected track and wires
+// it into the grid / final mix. Safe to call more than once (buffer is cached).
+async function loadSelectedVariant(){
+  const track = selectedTrack;
+  if(!track) return;
+  const variant = pickVariant(track);
+  const btn=document.getElementById('ti_'+track.id);
+  if(btn) btn.classList.add('loading');
   try{
     const buf = await loadMusicFile(variant.file, variant.file);
     if(selectedTrack !== track) return; // superseded by a newer tap — ignore
@@ -1913,14 +1933,19 @@ async function pickTrack(trackId){
   }catch(e){}
   if(musicPrevTrackId===trackId){ stopMusicPreview(); return; } // 2nd tap → stop, stay selected
   stopMusicPreview();                                            // stop any OTHER track's audition
-  // Audition the track's ORIGINAL version right away, independent of the chosen
-  // heartbeat. The audition file never changes with the heartbeat BPM, so
-  // re-auditioning the same song after switching heartbeats is an instant cache
-  // hit. Crucially we do NOT await selectTrack: its per-BPM variant download
-  // (needed only for the grid + final mix) must not hold up the sound — that
-  // BPM-dependent fetch was what added the tens-of-seconds wait.
-  if(!playing){ startMusicPreview(trackId); }                    // audition; if the full mix runs it swaps live
-  selectTrack(trackId);                                          // select + load BPM variant in the background
+  // Select immediately (highlight + BPM label) but DON'T download the BPM variant
+  // yet — that background fetch competing with the audition download was what
+  // made the first play take ~30 s on mobile (two ~3 MB files at once).
+  selectTrack(trackId, {defer:true});
+  if(!playing){
+    // Audition the ORIGINAL file with the whole connection to itself, so the first
+    // play is as quick as the old ▶ button. It's cached by filename, so switching
+    // heartbeats and re-auditioning the same song stays an instant cache hit.
+    await startMusicPreview(trackId);
+  }
+  // Now that the audition is sounding, fetch the BPM variant (grid + final mix).
+  // The mix step also guarantees it via wizGoTo, in case the user skips ahead.
+  if(selectedTrack && selectedTrack.id===trackId) loadSelectedVariant();
 }
 
 async function startMusicPreview(trackId){
@@ -4691,6 +4716,9 @@ function wizGoTo(n){
   // Canvases can't size themselves while display:none — redraw now that they're shown.
   try{ if(n===0 && rawBuffer){ redrawWave(); } }catch(e){}
   try{ if(rawBuffer && musicFileBuffer){ drawMusicGrid(); } }catch(e){}
+  // Entering the mix/preview step (2+): the BPM variant download was deferred while
+  // auditioning, so make sure it's loaded now that the grid + mix actually need it.
+  try{ if(n>=2 && selectedTrack && !musicFileBuffer){ loadSelectedVariant(); } }catch(e){}
   // Entering the music step: its pre-selected track list (子守唄) is already
   // rendered but sits below the fold. Bring it into view instead of resetting to
   // the very top, so the lower tracks aren't hidden by the fixed bottom bar.
