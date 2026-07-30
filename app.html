@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-30.14';
+window.APP_VERSION = '2026-07-30.15';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1828,8 +1828,13 @@ async function loadSelectedVariant(){
   const track = selectedTrack;
   if(!track) return;
   const variant = pickVariant(track);
-  const btn=document.getElementById('ti_'+track.id);
-  if(btn) btn.classList.add('loading');
+  // NOTE: deliberately do NOT add the `.loading` class to the track row here. That
+  // class sets `pointer-events:none`, and this variant fetch now runs in the
+  // BACKGROUND while the streaming audition already plays. On a slow connection the
+  // ~3 MB fetch takes many seconds, and marking the row `loading` made it
+  // untappable that whole time — so a second tap couldn't stop the audition and a
+  // spinner sat on the row ("plays but keeps spinning, won't stop"). The audition's
+  // own play/pause icon is the only indicator the row needs.
   try{
     const buf = await loadMusicFile(variant.file, variant.file);
     if(selectedTrack !== track) return; // superseded by a newer tap — ignore
@@ -1857,8 +1862,6 @@ async function loadSelectedVariant(){
       if(playing){ stopAll(); startAll(); }
       toast('Load error: '+e.message);
     }
-  }finally{
-    if(btn) btn.classList.remove('loading');
   }
 }
 
@@ -1981,9 +1984,13 @@ function startMusicPreview(trackId){
   a.addEventListener('ended', function(){
     try{ a.currentTime = (leadIn>0 && leadIn < a.duration-1) ? leadIn : 0; a.play(); }catch(e){}
   });
-  a.addEventListener('playing', function(){
-    if(musicPrevTrackId===trackId && ico) ico.className='ti ti-player-pause track-play-ico';
-  });
+  // Switch the icon to "pause" as soon as playback is requested. iOS doesn't always
+  // fire 'playing' promptly, which left the loader spinning even though sound was
+  // coming out; 'play' fires synchronously on the play() call, so the spinner never
+  // sticks. 'playing' keeps it correct if playback was briefly re-buffering.
+  var toPause=function(){ if(musicPrevTrackId===trackId && ico) ico.className='ti ti-player-pause track-play-ico'; };
+  a.addEventListener('play', toPause);
+  a.addEventListener('playing', toPause);
   a.addEventListener('error', function(){
     if(musicPrevTrackId===trackId){ toast('Preview error'); if(ico) ico.className='ti ti-player-play track-play-ico'; }
   });
