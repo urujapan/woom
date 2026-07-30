@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.1';
+window.APP_VERSION = '2026-07-31.2';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -276,10 +276,10 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 .track-item.loading{opacity:.85;pointer-events:none;position:relative;}
 .track-item.loading::after{content:'';position:absolute;right:10px;top:50%;width:13px;height:13px;margin-top:-7px;border:2px solid #F4C0D1;border-top-color:#D4537E;border-radius:50%;animation:spin .7s linear infinite;}
 .track-item.compat-poor{opacity:1;}
-.compat-badge{margin-left:auto;flex-shrink:0;font-size:12px;display:flex;align-items:center;gap:3px;white-space:nowrap;}
-.compat-badge.lv3{color:#C03D6B;font-weight:600;}
-.compat-badge.lv2{color:#F5A623;}
-.compat-badge.lv1{color:#bbb;}
+.compat-badge{margin-left:auto;flex-shrink:0;font-size:11px;font-weight:600;display:flex;align-items:center;gap:3px;white-space:nowrap;padding:2px 8px;border-radius:999px;}
+.compat-badge.lv3{color:#993556;background:#F7DBE6;}
+.compat-badge.lv2{color:#8A5410;background:#F9E0B0;}
+.compat-badge.lv1{color:#6E6D67;background:#E3E1D7;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .spin{display:inline-block;animation:spin .8s linear infinite;}
 
