@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-30.3';
+window.APP_VERSION = '2026-07-30.4';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -537,7 +537,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
     </div>
     <!-- Beat align: used often, so kept visible directly under Music BPM (was inside 速さの微調整). -->
     <div class="srow" id="beatAlignRow" style="margin-top:.4rem;">
-      <span class="slbl" id="beatAlignLbl">拍を合わせる</span>
+      <span class="slbl" id="beatAlignLbl">タイミングを合わせる</span>
       <div style="flex:1;display:flex;gap:5px;align-items:center;">
         <button class="bpm-adj-btn tipbtn" id="btnBeatBack" onclick="nudgeBeat(-1)">◀</button>
         <button class="bpm-adj-btn tipbtn" id="btnBeatFwd" onclick="nudgeBeat(1)">▶</button>
@@ -746,10 +746,10 @@ var musicRateMult=1; // manual music-only speed: 0.5 = half, 1 = normal, 2 = dou
 var BASE_MUSIC_OFFSET=0.25;     // calibrated zero point (displayed as ±0); auto-updated by lub detection
 var musicStartOffsetBeats=BASE_MUSIC_OFFSET;
 var musicPhaseOffset=0; // phase offset 0.0–1.0 (fraction of one beat)
-const BEAT_ALIGN={en:'Beat align',ja:'拍を合わせる',zh:'对齐节拍','zh-TW':'對齊節拍',ko:'박자 맞추기',es:'Alinear el pulso',fr:'Caler le rythme',de:'Beat ausrichten',pt:'Alinhar a batida',hi:'बीट मिलाएं',id:'Selaraskan ketukan',it:'Allinea il battito',th:'จัดจังหวะ',vi:'Căn nhịp',ru:'Выровнять бит'};
+const BEAT_ALIGN={en:'Beat align',ja:'タイミングを合わせる',zh:'对齐节拍','zh-TW':'對齊節拍',ko:'박자 맞추기',es:'Alinear el pulso',fr:'Caler le rythme',de:'Beat ausrichten',pt:'Alinhar a batida',hi:'बीट मिलाएं',id:'Selaraskan ketukan',it:'Allinea il battito',th:'จัดจังหวะ',vi:'Căn nhịp',ru:'Выровнять бит'};
 // Tooltips for the fine-tune buttons (shown via the fast .tipbtn tooltip).
-const TIP_BEAT_BACK={en:'Music beat slightly earlier',ja:'音楽の拍を少し前へ',zh:'音乐节拍稍微提前','zh-TW':'音樂節拍稍微提前',ko:'음악 박자를 살짝 앞으로',es:'Adelantar un poco el pulso de la música',fr:'Avancer légèrement le rythme de la musique',de:'Musik-Beat etwas früher',pt:'Adiantar um pouco a batida da música',hi:'संगीत की बीट थोड़ा पहले',id:'Ketukan musik sedikit lebih awal',it:'Anticipa un po’ il battito della musica',th:'เลื่อนจังหวะเพลงให้เร็วขึ้นเล็กน้อย',vi:'Nhịp nhạc sớm hơn một chút',ru:'Бит музыки чуть раньше'};
-const TIP_BEAT_FWD={en:'Music beat slightly later',ja:'音楽の拍を少し後ろへ',zh:'音乐节拍稍微延后','zh-TW':'音樂節拍稍微延後',ko:'음악 박자를 살짝 뒤로',es:'Retrasar un poco el pulso de la música',fr:'Retarder légèrement le rythme de la musique',de:'Musik-Beat etwas später',pt:'Atrasar um pouco a batida da música',hi:'संगीत की बीट थोड़ा बाद में',id:'Ketukan musik sedikit lebih lambat',it:'Ritarda un po’ il battito della musica',th:'เลื่อนจังหวะเพลงให้ช้าลงเล็กน้อย',vi:'Nhịp nhạc muộn hơn một chút',ru:'Бит музыки чуть позже'};
+const TIP_BEAT_BACK={en:'Music beat slightly earlier',ja:'音楽を少し前へ',zh:'音乐节拍稍微提前','zh-TW':'音樂節拍稍微提前',ko:'음악 박자를 살짝 앞으로',es:'Adelantar un poco el pulso de la música',fr:'Avancer légèrement le rythme de la musique',de:'Musik-Beat etwas früher',pt:'Adiantar um pouco a batida da música',hi:'संगीत की बीट थोड़ा पहले',id:'Ketukan musik sedikit lebih awal',it:'Anticipa un po’ il battito della musica',th:'เลื่อนจังหวะเพลงให้เร็วขึ้นเล็กน้อย',vi:'Nhịp nhạc sớm hơn một chút',ru:'Бит музыки чуть раньше'};
+const TIP_BEAT_FWD={en:'Music beat slightly later',ja:'音楽を少し後ろへ',zh:'音乐节拍稍微延后','zh-TW':'音樂節拍稍微延後',ko:'음악 박자를 살짝 뒤로',es:'Retrasar un poco el pulso de la música',fr:'Retarder légèrement le rythme de la musique',de:'Musik-Beat etwas später',pt:'Atrasar um pouco a batida da música',hi:'संगीत की बीट थोड़ा बाद में',id:'Ketukan musik sedikit lebih lambat',it:'Ritarda un po’ il battito della musica',th:'เลื่อนจังหวะเพลงให้ช้าลงเล็กน้อย',vi:'Nhịp nhạc muộn hơn một chút',ru:'Бит музыки чуть позже'};
 const TIP_BEAT_RESET={en:'Reset',ja:'リセット',zh:'重置','zh-TW':'重設',ko:'초기화',es:'Restablecer',fr:'Réinitialiser',de:'Zurücksetzen',pt:'Redefinir',hi:'रीसेट',id:'Setel ulang',it:'Reimposta',th:'รีเซ็ต',vi:'Đặt lại',ru:'Сброс'};
 const TIP_HALF={en:'Half speed (tap again to undo)',ja:'音楽を半分の速さに（もう一度で解除）',zh:'半速播放（再次点击取消）','zh-TW':'半速播放（再次點擊取消）',ko:'절반 속도 (다시 누르면 해제)',es:'Mitad de velocidad (toca de nuevo para deshacer)',fr:'Vitesse réduite de moitié (retoucher pour annuler)',de:'Halbe Geschwindigkeit (nochmals tippen zum Aufheben)',pt:'Metade da velocidade (toque de novo para desfazer)',hi:'आधी गति (पूर्ववत करने के लिए फिर दबाएं)',id:'Setengah kecepatan (ketuk lagi untuk batal)',it:'Metà velocità (tocca di nuovo per annullare)',th:'ความเร็วครึ่งหนึ่ง (แตะอีกครั้งเพื่อยกเลิก)',vi:'Tốc độ một nửa (chạm lại để hoàn tác)',ru:'Половинная скорость (нажмите ещё раз для отмены)'};
 const TIP_DOUBLE={en:'Double speed (tap again to undo)',ja:'音楽を2倍の速さに（もう一度で解除）',zh:'双倍速播放（再次点击取消）','zh-TW':'雙倍速播放（再次點擊取消）',ko:'2배 속도 (다시 누르면 해제)',es:'Doble velocidad (toca de nuevo para deshacer)',fr:'Vitesse doublée (retoucher pour annuler)',de:'Doppelte Geschwindigkeit (nochmals tippen zum Aufheben)',pt:'Velocidade dobrada (toque de novo para desfazer)',hi:'दुगुनी गति (पूर्ववत करने के लिए फिर दबाएं)',id:'Kecepatan ganda (ketuk lagi untuk batal)',it:'Doppia velocità (tocca di nuovo per annullare)',th:'ความเร็วสองเท่า (แตะอีกครั้งเพื่อยกเลิก)',vi:'Tốc độ gấp đôi (chạm lại để hoàn tác)',ru:'Двойная скорость (нажмите ещё раз для отмены)'};
