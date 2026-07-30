@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-30.11';
+window.APP_VERSION = '2026-07-30.12';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1780,10 +1780,12 @@ async function selectTrack(trackId){
   }
   if(!track) return;
 
-  // Stop any ▶ preview still looping. Without this, auditioning track A and then
-  // choosing track B left A's preview playing while the panel showed B selected —
-  // "I picked Neon Heartbeats but Across the Blue is playing."
-  stopMusicPreview();
+  // Stop any OTHER track's ▶ audition still looping. Without this, auditioning
+  // track A and then choosing track B left A's preview playing while the panel
+  // showed B selected. But leave THIS track's audition alone: pickTrack starts it
+  // just before calling us, and it must survive selection (the audition and the
+  // selected track are the same song).
+  if(musicPrevTrackId && musicPrevTrackId!==trackId) stopMusicPreview();
 
   // ── Instant UI feedback: select immediately, no innerHTML rebuild ──────────
   // (The old code awaited the file load before marking the track selected and
@@ -1910,18 +1912,15 @@ async function pickTrack(trackId){
     if(musicPrevAC.state==='suspended') musicPrevAC.resume();
   }catch(e){}
   if(musicPrevTrackId===trackId){ stopMusicPreview(); return; } // 2nd tap → stop, stay selected
-  stopMusicPreview();
-  // Show the loading spinner on THIS track's play icon for the whole wait.
-  const ico=document.getElementById('ptico_'+trackId);
-  if(ico) ico.className='ti ti-loader spin track-play-ico';
-  // selectTrack downloads the BPM-matched variant into musicFileBuffer. Await it,
-  // then preview FROM that same buffer instead of fetching the track's default
-  // file again. Previously pickTrack fired selectTrack (variant.file) and
-  // startMusicPreview (track.file) in parallel: two different ~3 MB files pulled
-  // at once, saturating a mobile link (~1 min) and previewing the wrong version.
-  await selectTrack(trackId);                                    // select + load (also stops other preview)
-  if(!selectedTrack || selectedTrack.id!==trackId) return;       // superseded by a newer tap
+  stopMusicPreview();                                            // stop any OTHER track's audition
+  // Audition the track's ORIGINAL version right away, independent of the chosen
+  // heartbeat. The audition file never changes with the heartbeat BPM, so
+  // re-auditioning the same song after switching heartbeats is an instant cache
+  // hit. Crucially we do NOT await selectTrack: its per-BPM variant download
+  // (needed only for the grid + final mix) must not hold up the sound — that
+  // BPM-dependent fetch was what added the tens-of-seconds wait.
   if(!playing){ startMusicPreview(trackId); }                    // audition; if the full mix runs it swaps live
+  selectTrack(trackId);                                          // select + load BPM variant in the background
 }
 
 async function startMusicPreview(trackId){
@@ -1932,11 +1931,12 @@ async function startMusicPreview(trackId){
   const ico=document.getElementById('ptico_'+trackId);
   if(ico) ico.className='ti ti-loader spin track-play-ico';
   try{
-    // Reuse the buffer selectTrack already decoded for this track (the BPM
-    // variant, also used by the final mix) instead of fetching the track's
-    // default file again. Only fall back to a fetch if it isn't ready yet.
-    const buf=(selectedTrack && selectedTrack.id===trackId && musicFileBuffer)
-      ? musicFileBuffer : await loadMusicTrack(track);
+    // Audition the track's ORIGINAL file (track.file), independent of the
+    // heartbeat BPM. It is cached by filename, so auditioning the same song under
+    // different heartbeats reuses one download instead of fetching a new per-BPM
+    // variant each time — the previous behaviour that made every heartbeat change
+    // re-download and wait. The final mix still uses the precise BPM variant.
+    const buf=await loadMusicTrack(track);
     if(!musicPrevAC) musicPrevAC=new(window.AudioContext||window.webkitAudioContext)();
     if(musicPrevAC.state==='suspended') musicPrevAC.resume();
     const s=musicPrevAC.createBufferSource();
