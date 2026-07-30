@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-30.10';
+window.APP_VERSION = '2026-07-30.11';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1900,20 +1900,27 @@ function renderTrackPanel(type){
 // Tap a track to select AND audition it; tap the same (playing) track again to
 // stop, keeping it selected. Replaces the old separate ▶ button so the previewed
 // track and the selected track can never diverge.
-function pickTrack(trackId){
+async function pickTrack(trackId){
   // iOS/Safari: the preview AudioContext MUST be created and resumed inside this
-  // tap's synchronous frame. startMusicPreview only reaches its create/resume
-  // AFTER awaiting the (slow) file load, by which point the user gesture has
-  // ended, so on Safari the context stays 'suspended' and the preview is silent
-  // ("spinner stops but nothing plays"). Unlock it here, in the gesture. See the
-  // Safari AudioContext unlock block — it can't reach musicPrevAC because that is
-  // created lazily and is still null at first-touch time.
+  // tap's synchronous frame (before any await). Creating/resuming it later leaves
+  // it 'suspended' on Safari and the preview is silent. See the Safari unlock
+  // block — it can't reach musicPrevAC because that is created lazily.
   try{
     if(!musicPrevAC) musicPrevAC=new(window.AudioContext||window.webkitAudioContext)();
     if(musicPrevAC.state==='suspended') musicPrevAC.resume();
   }catch(e){}
   if(musicPrevTrackId===trackId){ stopMusicPreview(); return; } // 2nd tap → stop, stay selected
-  selectTrack(trackId);                                          // select + load (also stops other preview)
+  stopMusicPreview();
+  // Show the loading spinner on THIS track's play icon for the whole wait.
+  const ico=document.getElementById('ptico_'+trackId);
+  if(ico) ico.className='ti ti-loader spin track-play-ico';
+  // selectTrack downloads the BPM-matched variant into musicFileBuffer. Await it,
+  // then preview FROM that same buffer instead of fetching the track's default
+  // file again. Previously pickTrack fired selectTrack (variant.file) and
+  // startMusicPreview (track.file) in parallel: two different ~3 MB files pulled
+  // at once, saturating a mobile link (~1 min) and previewing the wrong version.
+  await selectTrack(trackId);                                    // select + load (also stops other preview)
+  if(!selectedTrack || selectedTrack.id!==trackId) return;       // superseded by a newer tap
   if(!playing){ startMusicPreview(trackId); }                    // audition; if the full mix runs it swaps live
 }
 
@@ -1925,7 +1932,11 @@ async function startMusicPreview(trackId){
   const ico=document.getElementById('ptico_'+trackId);
   if(ico) ico.className='ti ti-loader spin track-play-ico';
   try{
-    const buf=await loadMusicTrack(track);
+    // Reuse the buffer selectTrack already decoded for this track (the BPM
+    // variant, also used by the final mix) instead of fetching the track's
+    // default file again. Only fall back to a fetch if it isn't ready yet.
+    const buf=(selectedTrack && selectedTrack.id===trackId && musicFileBuffer)
+      ? musicFileBuffer : await loadMusicTrack(track);
     if(!musicPrevAC) musicPrevAC=new(window.AudioContext||window.webkitAudioContext)();
     if(musicPrevAC.state==='suspended') musicPrevAC.resume();
     const s=musicPrevAC.createBufferSource();
