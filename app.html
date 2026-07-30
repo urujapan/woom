@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-30.1';
+window.APP_VERSION = '2026-07-30.2';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1883,32 +1883,36 @@ function renderTrackPanel(type){
     const badge = (cs==='uploaded'&&detectedBPM>0)
       ? `<span class="compat-badge ${lvClass}">${badgeContent}</span>` : '';
     const poorClass = level==='poor' ? ' compat-poor' : '';
+    // One combined control: the whole row selects AND auditions the track. The
+    // leading icon shows play / pause so the previewed track can never drift apart
+    // from the selected one (there is no separate ▶ button anymore).
+    const isPreviewing = (musicPrevTrackId===t.id);
     return `
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-      <button class="track-prev-btn" id="prev_${t.id}" onclick="toggleMusicPreview('${t.id}',event)"
-        style="width:30px;height:30px;border-radius:50%;border:1px solid #eee;background:#f9f9f9;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <i class="ti ti-player-play" style="font-size:13px;color:#888;"></i>
-      </button>
       <button class="track-item${selectedTrack&&selectedTrack.id===t.id?' active':''}${poorClass}" id="ti_${t.id}"
-        onclick="selectTrack('${t.id}')" style="flex:1;margin-bottom:0;">
-        ${t.title}${badge}
-      </button>
-    </div>`;
+        onclick="pickTrack('${t.id}')">
+        <i class="ti ${isPreviewing?'ti-player-pause':'ti-player-play'} track-play-ico" id="ptico_${t.id}" style="font-size:14px;flex-shrink:0;"></i>
+        <span style="flex:1;">${t.title}</span>${badge}
+      </button>`;
   }).join('');
   panel.style.display='block';
 }
 
-async function toggleMusicPreview(trackId, e){
-  e.stopPropagation();
-  if(musicPrevTrackId===trackId){
-    stopMusicPreview(); return;
-  }
+// Tap a track to select AND audition it; tap the same (playing) track again to
+// stop, keeping it selected. Replaces the old separate ▶ button so the previewed
+// track and the selected track can never diverge.
+function pickTrack(trackId){
+  if(musicPrevTrackId===trackId){ stopMusicPreview(); return; } // 2nd tap → stop, stay selected
+  selectTrack(trackId);                                          // select + load (also stops other preview)
+  if(!playing){ startMusicPreview(trackId); }                    // audition; if the full mix runs it swaps live
+}
+
+async function startMusicPreview(trackId){
   stopMusicPreview();
   let track=null;
   for(const cat of Object.values(MUSIC_LIBRARY)){ track=cat.find(t=>t.id===trackId); if(track) break; }
   if(!track) return;
-  const btn=document.getElementById('prev_'+trackId);
-  if(btn) btn.innerHTML='<i class="ti ti-loader spin" style="font-size:13px;color:#D4537E;"></i>';
+  const ico=document.getElementById('ptico_'+trackId);
+  if(ico) ico.className='ti ti-loader spin track-play-ico';
   try{
     const buf=await loadMusicTrack(track);
     if(!musicPrevAC) musicPrevAC=new(window.AudioContext||window.webkitAudioContext)();
@@ -1918,18 +1922,18 @@ async function toggleMusicPreview(trackId, e){
     s.connect(musicPrevAC.destination); s.start(0);
     s.onended=()=>stopMusicPreview();
     musicPrevSrc=s; musicPrevTrackId=trackId;
-    if(btn) btn.innerHTML='<i class="ti ti-player-pause" style="font-size:13px;color:#D4537E;"></i>';
+    if(ico) ico.className='ti ti-player-pause track-play-ico';
   }catch(err){
     toast('Preview error: '+err.message);
-    if(btn) btn.innerHTML='<i class="ti ti-player-play" style="font-size:13px;color:#888;"></i>';
+    if(ico) ico.className='ti ti-player-play track-play-ico';
   }
 }
 
 function stopMusicPreview(){
   if(musicPrevSrc){try{musicPrevSrc.stop();}catch(e){} musicPrevSrc=null;}
   musicPrevTrackId=null;
-  document.querySelectorAll('.track-prev-btn').forEach(b=>{
-    b.innerHTML='<i class="ti ti-player-play" style="font-size:13px;color:#888;"></i>';
+  document.querySelectorAll('.track-play-ico').forEach(i=>{
+    i.className='ti ti-player-play track-play-ico';
   });
 }
 
