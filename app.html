@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-30.2';
+window.APP_VERSION = '2026-07-30.3';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1919,7 +1919,13 @@ async function startMusicPreview(trackId){
     if(musicPrevAC.state==='suspended') musicPrevAC.resume();
     const s=musicPrevAC.createBufferSource();
     s.buffer=buf; s.loop=true;
-    s.connect(musicPrevAC.destination); s.start(0);
+    // Skip the authored ~2-bar lead-in silence so the preview sounds immediately
+    // instead of after a silent gap — and loop back to after the silence too, so
+    // repeats stay immediate. _leadSilence is the measured onset (robust even to
+    // files that don't follow the 2-bar convention exactly).
+    const startAt = Math.max(0, buf._leadSilence||0);
+    if(startAt>0 && startAt < buf.duration-1){ s.loopStart=startAt; s.loopEnd=buf.duration; }
+    s.connect(musicPrevAC.destination); s.start(0, startAt);
     s.onended=()=>stopMusicPreview();
     musicPrevSrc=s; musicPrevTrackId=trackId;
     if(ico) ico.className='ti ti-player-pause track-play-ico';
