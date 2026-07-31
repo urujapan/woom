@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.6';
+window.APP_VERSION = '2026-07-31.7';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1689,6 +1689,11 @@ var musicPrevAC = null, musicPrevSrc = null, musicPrevTrackId = null;
 // (starts in ~1–2 s instead of waiting for the whole ~3–5 MB to download + decode).
 // musicPrevSrc/musicPrevAC are the old buffer-based path, kept only for cleanup.
 var musicPrevEl = null, _variantPreloadT = null;
+// Web Audio graph for the audition: the streaming <audio> element is routed through
+// a GainNode so we can (a) match per-track loudness on iOS, where <audio>.volume is
+// ignored, and (b) fade in at the music's downbeat to kill the start click and the
+// brief from-zero moment before the lead-in skip applies.
+var musicPrevGain = null, musicPrevMES = null;
 
 // ── Library track loading ────────────────────────────────────────────────
 // How long a CBR MP3 must be, from its own bytes. Every track in the library is
@@ -1997,18 +2002,67 @@ function startMusicPreview(trackId){
   const url = leadIn>0 ? base + '#t=' + leadIn.toFixed(3) : base;
   const a = new Audio();
   a.preload = 'auto';
-  // Match the per-track loudness normalization used by the mix/gift so the audition
-  // isn't louder/quieter than the others. <audio>.volume caps at 1, so this can only
-  // attenuate (the louder tracks, which is where it matters); the few tracks that
-  // would be boosted just play at full volume.
-  a.volume = Math.min(1, MUSIC_NRM[trackId] || 1);
   a.src = url;
   a.loop = false; // looped manually below so each pass also skips the lead-in
+
+  // Route the streaming element through a GainNode. The per-track loudness match
+  // (MUSIC_NRM, same as the mix/gift) is applied as gain here instead of via
+  // <audio>.volume, because iOS Safari silently ignores .volume. The gain also starts
+  // at 0 so we can fade in exactly at the music downbeat (see fadeIn below). If the
+  // engine can't build the graph, fall back to .volume (a no-op on iOS, but it at
+  // least attenuates on desktop).
+  const target = MUSIC_NRM[trackId] || 1;
+  let gain = null, useGraph = false;
+  try{
+    ensureAC();
+    musicPrevMES = AC.createMediaElementSource(a);
+    gain = AC.createGain();
+    gain.gain.value = 0;
+    musicPrevMES.connect(gain).connect(AC.destination);
+    musicPrevGain = gain;
+    useGraph = true;
+  }catch(e){
+    try{ a.volume = Math.min(1, target); }catch(_){}
+  }
+
+  // Fade the gain up over ~100 ms the moment playback is actually parked at (or past)
+  // the lead-in offset. Starting silent means the initial from-zero instant and the
+  // #t= skip seek are inaudible, and the ramp removes the mid-waveform click, so the
+  // audition opens cleanly on the downbeat instead of a "buchi" or a cut-and-restart.
+  let faded = false;
+  const fadeIn = function(){
+    if(faded) return;
+    if(!(leadIn<=0 || a.currentTime >= leadIn-0.03)) return; // not at the downbeat yet
+    faded = true;
+    if(useGraph && gain){
+      const now=AC.currentTime;
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(target, now+0.10);
+    }
+  };
   a.addEventListener('loadedmetadata', function(){
     try{ if(leadIn>0 && a.duration && leadIn < a.duration-1 && a.currentTime < 0.5) a.currentTime = leadIn; }catch(e){}
   }, {once:true});
+  // 'seeked' covers the loadedmetadata skip; the timeupdate check covers engines that
+  // honour #t= and never fire a seek. timeupdate also fades OUT just before the end so
+  // the manual loop restart has no seam click.
+  a.addEventListener('seeked', fadeIn);
+  a.addEventListener('timeupdate', function(){
+    fadeIn();
+    if(useGraph && gain && a.duration && a.currentTime > a.duration-0.12){
+      const now=AC.currentTime;
+      gain.gain.cancelScheduledValues(now);
+      gain.gain.linearRampToValueAtTime(0, now+0.10);
+    }
+  });
   a.addEventListener('ended', function(){
-    try{ a.currentTime = (leadIn>0 && leadIn < a.duration-1) ? leadIn : 0; a.play(); }catch(e){}
+    try{
+      faded=false;
+      if(useGraph && gain) gain.gain.setValueAtTime(0, AC.currentTime);
+      a.currentTime = (leadIn>0 && leadIn < a.duration-1) ? leadIn : 0;
+      a.play();
+    }catch(e){}
   });
   // Switch the icon to "pause" as soon as playback is requested. iOS doesn't always
   // fire 'playing' promptly, which left the loader spinning even though sound was
@@ -2028,6 +2082,8 @@ function startMusicPreview(trackId){
 function stopMusicPreview(){
   clearTimeout(_variantPreloadT);
   if(musicPrevEl){ try{ musicPrevEl.pause(); musicPrevEl.removeAttribute('src'); musicPrevEl.load(); }catch(e){} musicPrevEl=null; }
+  if(musicPrevMES){ try{ musicPrevMES.disconnect(); }catch(e){} musicPrevMES=null; }
+  if(musicPrevGain){ try{ musicPrevGain.disconnect(); }catch(e){} musicPrevGain=null; }
   if(musicPrevSrc){try{musicPrevSrc.stop();}catch(e){} musicPrevSrc=null;}
   musicPrevTrackId=null;
   document.querySelectorAll('.track-play-ico').forEach(i=>{
