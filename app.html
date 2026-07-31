@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.7';
+window.APP_VERSION = '2026-07-31.8';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -2038,7 +2038,14 @@ function startMusicPreview(trackId){
       const now=AC.currentTime;
       gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(target, now+0.10);
+      // Raised-cosine (S-curve) fade instead of a straight line: its slope is zero at
+      // both ends, so it hides even a steep onset landing exactly on the downbeat —
+      // the residual click a few tracks still had with a 100 ms linear ramp. 220 ms is
+      // still musically tight against the ~3 s intro the audition already skips.
+      const FADE=0.22, N=48, curve=new Float32Array(N);
+      for(let i=0;i<N;i++){ curve[i]=target*(0.5-0.5*Math.cos(Math.PI*i/(N-1))); }
+      try{ gain.gain.setValueCurveAtTime(curve, now, FADE); }
+      catch(e){ gain.gain.linearRampToValueAtTime(target, now+FADE); }
     }
   };
   a.addEventListener('loadedmetadata', function(){
