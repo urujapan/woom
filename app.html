@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.9';
+window.APP_VERSION = '2026-07-31.10';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1018,12 +1018,20 @@ function pickMusic(btn,type){
       var over=_p.getBoundingClientRect().bottom-(window.innerHeight-110);
       if(over>0) window.scrollBy({top:over,behavior:'smooth'});
     },80);
-    // Auto-select the first track if none from this category is chosen — but only
-    // highlight it; don't eagerly download its variant. That background fetch would
-    // otherwise compete with the audition the user starts moments later. The
-    // variant loads when they audition it, or on entering the mix step (wizGoTo).
+    // Auto-select a track if none from this category is chosen — but only highlight
+    // it; don't eagerly download its variant. That background fetch would otherwise
+    // compete with the audition the user starts moments later. The variant loads when
+    // they audition it, or on entering the mix step (wizGoTo). With a heartbeat
+    // loaded, auto-select the TOP recommendation (same sort as the list) so the
+    // highlighted track matches the one pushed to the top, not the library-first one.
     const hasSelected=selectedTrack&&tracks.find(t=>t.id===selectedTrack.id);
-    if(!hasSelected) selectTrack(tracks[0].id, {defer:true});
+    if(!hasSelected){
+      let top=tracks[0];
+      if(cs==='uploaded'&&detectedBPM>0){
+        top=tracks.slice().sort((a,b)=>trackSortScore(a)-trackSortScore(b))[0];
+      }
+      selectTrack(top.id, {defer:true});
+    }
   } else {
     document.getElementById('trackPanel').style.display='none';
     if(type!=='file'){ selectedTrack=null; musicFileBuffer=null; }
@@ -1905,25 +1913,43 @@ function calcRateForTrackBpm(trackBpm){
 // Returns 'best' | 'good' | 'poor' for a whole track (needs original bpm + variants).
 // The tiers are deliberately tied to WHICH pre-produced file will actually play:
 //   👌 best  — the ORIGINAL production plays, at essentially its native tempo
-//              (within ±10 bpm of the original). The re-pitched ±20 variants never
+//              (within ±8 bpm of the original). The re-pitched ±20 variants never
 //              earn this: a song shifted 20 bpm from how it was written isn't its
 //              musical best, so it shouldn't claim "Best Match".
 //   👍 good  — a variant (incl. the ±20 ones) still lands on an acceptable tempo.
 //   (poor)   — no version aligns well; shows NO badge (only fits are called out).
+// Thresholds tightened 2026-07-31 (v.10): best ±10→±8 bpm, good ±18%→±12%. The old
+// good window flagged nearly every track at some heartbeats, so the badge stopped
+// meaning "recommended". Tighter tiers = fewer, truer recommendations; the heartbeat
+// BPMs left with no 👌 (roughly 110–130 and 158–175) are the gaps new tracks fill.
 function trackCompatLevel(track){
   if(!(cs==='uploaded' && detectedBPM > 0)) return 'good';
   const vb = trackEffectiveBpm(track);      // the variant that will actually play
   const rate = calcRateForTrackBpm(vb);
   const dev  = Math.abs(rate - 1.0);
-  if(vb === track.bpm && dev <= 10 / track.bpm) return 'best'; // original, ±10 bpm
-  if(dev <= 0.18) return 'good'; // an acceptable variant match
+  if(vb === track.bpm && dev <= 8 / track.bpm) return 'best'; // original, ±8 bpm
+  if(dev <= 0.12) return 'good'; // an acceptable variant match (±12%)
   return 'poor';                  // clearly mismatched
+}
+// Sort score for the track list: best (0) < good (1) < poor (2), and within a tier
+// the closer tempo match comes first. Used to float recommendations to the top when
+// a heartbeat is loaded. No heartbeat → all equal → original order preserved.
+function trackSortScore(track){
+  const rank = {best:0, good:1, poor:2}[trackCompatLevel(track)];
+  const dev  = Math.abs(calcRateForTrackBpm(trackEffectiveBpm(track)) - 1.0);
+  return rank*100 + dev;
 }
 
 function renderTrackPanel(type){
   const panel=document.getElementById('trackPanel');
-  const tracks=MUSIC_LIBRARY[type];
+  let tracks=MUSIC_LIBRARY[type];
   if(!tracks||tracks.length===0){panel.style.display='none';return;}
+  // With a heartbeat loaded, float the recommendations to the top: 👌 first, then 👍,
+  // then unbadged — closest tempo first within each tier. Sort a COPY so the library
+  // order is untouched. No heartbeat → scores tie → original order stays.
+  if(cs==='uploaded' && detectedBPM>0){
+    tracks = tracks.slice().sort((a,b)=>trackSortScore(a)-trackSortScore(b));
+  }
   panel.innerHTML=tracks.map(t=>{
     // Badge tiers reflect which pre-produced file actually plays. 👌 Best Match is
     // reserved for the ORIGINAL production playing near its native tempo (±10 bpm);
