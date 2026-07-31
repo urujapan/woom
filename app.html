@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.10';
+window.APP_VERSION = '2026-07-31.11';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -2010,117 +2010,119 @@ async function pickTrack(trackId){
 // file is independent of the heartbeat BPM, so re-auditioning the same song after a
 // heartbeat change reuses the browser's cache. The final mix still uses the precise
 // decoded BPM variant, unchanged.
-function startMusicPreview(trackId){
-  stopMusicPreview();
-  let track=null;
-  for(const cat of Object.values(MUSIC_LIBRARY)){ track=cat.find(t=>t.id===trackId); if(track) break; }
-  if(!track) return;
-  const ico=document.getElementById('ptico_'+trackId);
-  if(ico) ico.className='ti ti-loader spin track-play-ico';
-  const base = track.file.split('/').map(encodeURIComponent).join('/')
-            + '?v=' + encodeURIComponent(window.ASSET_VERSION||'0');
-  // Skip the authored ~2-bar lead-in so the audition opens on music, not silence.
-  // The lead-in is arithmetic: 8 beats (2 bars) at the track's own tempo. A media
-  // fragment (#t=) makes playback START at that offset — the initial play() begins
-  // on the music, without a from-zero silent moment before a seek can apply. The
-  // loadedmetadata seek is a fallback for engines that ignore the fragment.
-  const leadIn = track.bpm ? (8*60/track.bpm) : 0;
-  const url = leadIn>0 ? base + '#t=' + leadIn.toFixed(3) : base;
-  const a = new Audio();
-  a.preload = 'auto';
-  a.src = url;
-  a.loop = false; // looped manually below so each pass also skips the lead-in
-
-  // Route the streaming element through a GainNode. The per-track loudness match
-  // (MUSIC_NRM, same as the mix/gift) is applied as gain here instead of via
-  // <audio>.volume, because iOS Safari silently ignores .volume. The gain also starts
-  // at 0 so we can fade in exactly at the music downbeat (see fadeIn below). If the
-  // engine can't build the graph, fall back to .volume (a no-op on iOS, but it at
-  // least attenuates on desktop).
-  const target = MUSIC_NRM[trackId] || 1;
-  let gain = null, useGraph = false;
+// Persistent audition graph: ONE <audio> element → ONE MediaElementSource → ONE
+// GainNode, built once and reused for every track (only .src is swapped). iOS WebKit
+// mis-routes audio when you createMediaElementSource per audition and disconnect the
+// old one — playback gets stuck on the FIRST source created, so every track played
+// whatever was auditioned first. Reusing a single node avoids that entirely. The
+// shared listeners read the _prev* state, which startMusicPreview sets per track.
+var _prevLeadIn=0, _prevTarget=1, _prevFaded=false, _prevUseGraph=false;
+function ensurePreviewGraph(){
+  if(musicPrevEl) return;                    // already built
+  const a=new Audio();
+  a.preload='auto';
+  a.loop=false;                              // looped manually so each pass skips the lead-in
+  musicPrevEl=a;
   try{
     ensureAC();
     musicPrevMES = AC.createMediaElementSource(a);
-    gain = AC.createGain();
-    gain.gain.value = 0;
-    musicPrevMES.connect(gain).connect(AC.destination);
-    musicPrevGain = gain;
-    useGraph = true;
-  }catch(e){
-    try{ a.volume = Math.min(1, target); }catch(_){}
-  }
-
-  // Fade the gain up over ~100 ms the moment playback is actually parked at (or past)
-  // the lead-in offset. Starting silent means the initial from-zero instant and the
-  // #t= skip seek are inaudible, and the ramp removes the mid-waveform click, so the
-  // audition opens cleanly on the downbeat instead of a "buchi" or a cut-and-restart.
-  let faded = false;
-  const fadeIn = function(){
-    if(faded) return;
-    if(!(leadIn<=0 || a.currentTime >= leadIn-0.03)) return; // not at the downbeat yet
-    faded = true;
-    if(useGraph && gain){
-      const now=AC.currentTime;
-      gain.gain.cancelScheduledValues(now);
-      gain.gain.setValueAtTime(0, now);
-      // Raised-cosine (S-curve) fade instead of a straight line: its slope is zero at
-      // both ends, so it hides even a steep onset landing exactly on the downbeat. A
-      // few tracks (Dramatic Piano, Maternal Love, My Dear Island) have a very sharp
-      // attack right at the 2-bar mark — dead silence then a full-scale chord within
-      // ~15 ms — so 350 ms is needed: at +15 ms the S-curve is only ~0.3% gain (-50 dB),
-      // enough to make the transient inaudible. Still tight vs the ~3 s intro we skip.
+    musicPrevGain = AC.createGain();
+    musicPrevGain.gain.value = 0;
+    musicPrevMES.connect(musicPrevGain).connect(AC.destination);
+    _prevUseGraph = true;
+  }catch(e){ _prevUseGraph = false; }        // fallback: bare element, level via .volume
+  // Fade the gain up ~350 ms once playback sits at the current track's lead-in
+  // downbeat. Start-silent hides the from-zero instant and the #t= skip seek; the
+  // raised-cosine curve (zero slope at both ends) hides even a steep attack landing on
+  // the downbeat. Reads _prev* so this ONE handler serves whichever track is loaded.
+  const fadeIn=function(){
+    if(_prevFaded) return;
+    if(!(_prevLeadIn<=0 || a.currentTime >= _prevLeadIn-0.03)) return;
+    _prevFaded=true;
+    if(_prevUseGraph && musicPrevGain){
+      const now=AC.currentTime, tgt=_prevTarget;
+      musicPrevGain.gain.cancelScheduledValues(now);
+      musicPrevGain.gain.setValueAtTime(0, now);
       const FADE=0.35, N=64, curve=new Float32Array(N);
-      for(let i=0;i<N;i++){ curve[i]=target*(0.5-0.5*Math.cos(Math.PI*i/(N-1))); }
-      try{ gain.gain.setValueCurveAtTime(curve, now, FADE); }
-      catch(e){ gain.gain.linearRampToValueAtTime(target, now+FADE); }
+      for(let i=0;i<N;i++){ curve[i]=tgt*(0.5-0.5*Math.cos(Math.PI*i/(N-1))); }
+      try{ musicPrevGain.gain.setValueCurveAtTime(curve, now, FADE); }
+      catch(e){ musicPrevGain.gain.linearRampToValueAtTime(tgt, now+FADE); }
     }
   };
   a.addEventListener('loadedmetadata', function(){
-    try{ if(leadIn>0 && a.duration && leadIn < a.duration-1 && a.currentTime < 0.5) a.currentTime = leadIn; }catch(e){}
-  }, {once:true});
-  // 'seeked' covers the loadedmetadata skip; the timeupdate check covers engines that
-  // honour #t= and never fire a seek. timeupdate also fades OUT just before the end so
-  // the manual loop restart has no seam click.
+    try{ if(_prevLeadIn>0 && a.duration && _prevLeadIn < a.duration-1 && a.currentTime < 0.5) a.currentTime=_prevLeadIn; }catch(e){}
+  });
   a.addEventListener('seeked', fadeIn);
-  a.addEventListener('playing', fadeIn); // start the ramp the instant real playback begins
+  a.addEventListener('playing', fadeIn);
   a.addEventListener('timeupdate', function(){
     fadeIn();
-    if(useGraph && gain && a.duration && a.currentTime > a.duration-0.12){
+    if(_prevUseGraph && musicPrevGain && a.duration && a.currentTime > a.duration-0.12){
       const now=AC.currentTime;
-      gain.gain.cancelScheduledValues(now);
-      gain.gain.linearRampToValueAtTime(0, now+0.10);
+      musicPrevGain.gain.cancelScheduledValues(now);
+      musicPrevGain.gain.linearRampToValueAtTime(0, now+0.10);
     }
   });
   a.addEventListener('ended', function(){
     try{
-      faded=false;
-      if(useGraph && gain) gain.gain.setValueAtTime(0, AC.currentTime);
-      a.currentTime = (leadIn>0 && leadIn < a.duration-1) ? leadIn : 0;
+      _prevFaded=false;
+      if(_prevUseGraph && musicPrevGain) musicPrevGain.gain.setValueAtTime(0, AC.currentTime);
+      a.currentTime = (_prevLeadIn>0 && _prevLeadIn < a.duration-1) ? _prevLeadIn : 0;
       a.play();
     }catch(e){}
   });
-  // Switch the icon to "pause" as soon as playback is requested. iOS doesn't always
-  // fire 'playing' promptly, which left the loader spinning even though sound was
-  // coming out; 'play' fires synchronously on the play() call, so the spinner never
-  // sticks. 'playing' keeps it correct if playback was briefly re-buffering.
-  var toPause=function(){ if(musicPrevTrackId===trackId && ico) ico.className='ti ti-player-pause track-play-ico'; };
+  // Icon follows the CURRENT track. 'play' fires synchronously on play() so the loader
+  // spinner never sticks; 'playing' keeps it right after a re-buffer.
+  const toPause=function(){ const ic=musicPrevTrackId&&document.getElementById('ptico_'+musicPrevTrackId); if(ic) ic.className='ti ti-player-pause track-play-ico'; };
   a.addEventListener('play', toPause);
   a.addEventListener('playing', toPause);
   a.addEventListener('error', function(){
-    if(musicPrevTrackId===trackId){ toast('Preview error'); if(ico) ico.className='ti ti-player-play track-play-ico'; }
+    if(musicPrevTrackId){ const ic=document.getElementById('ptico_'+musicPrevTrackId); toast('Preview error'); if(ic) ic.className='ti ti-player-play track-play-ico'; }
   });
-  musicPrevEl = a; musicPrevTrackId = trackId;
+}
+
+// Stream the track's ORIGINAL file for audition on the shared element. Progressive
+// playback means sound starts as soon as a little has buffered — no full download, no
+// decode wait. The final mix still uses the precise decoded BPM variant, unchanged.
+function startMusicPreview(trackId){
+  let track=null;
+  for(const cat of Object.values(MUSIC_LIBRARY)){ track=cat.find(t=>t.id===trackId); if(track) break; }
+  if(!track) return;
+  ensurePreviewGraph();
+  const a=musicPrevEl;
+  try{ a.pause(); }catch(e){}
+  // Reset every row's icon, then mark this one loading.
+  document.querySelectorAll('.track-play-ico').forEach(i=>{ i.className='ti ti-player-play track-play-ico'; });
+  const ico=document.getElementById('ptico_'+trackId);
+  if(ico) ico.className='ti ti-loader spin track-play-ico';
+  // Per-track params the shared listeners read. Skip the authored ~2-bar lead-in
+  // (8 beats at the track's tempo) via a #t= media fragment so the audition opens on
+  // music; the loadedmetadata seek is the fallback for engines that ignore #t=.
+  _prevLeadIn = track.bpm ? (8*60/track.bpm) : 0;
+  _prevTarget = MUSIC_NRM[trackId] || 1;    // same loudness match as the mix/gift
+  _prevFaded  = false;
+  musicPrevTrackId = trackId;
+  // Silence immediately so swapping .src and the skip seek are inaudible.
+  if(_prevUseGraph && musicPrevGain){
+    try{ const now=AC.currentTime; musicPrevGain.gain.cancelScheduledValues(now); musicPrevGain.gain.setValueAtTime(0, now); }catch(e){}
+  }else{
+    try{ a.volume = Math.min(1, _prevTarget); }catch(e){}  // no-op on iOS, attenuates on desktop
+  }
+  const base = track.file.split('/').map(encodeURIComponent).join('/')
+            + '?v=' + encodeURIComponent(window.ASSET_VERSION||'0');
+  a.src = _prevLeadIn>0 ? base + '#t=' + _prevLeadIn.toFixed(3) : base;
+  try{ a.load(); }catch(e){}
   const p = a.play();
   if(p && p.catch) p.catch(function(){ if(ico) ico.className='ti ti-player-play track-play-ico'; });
 }
 
+// Pause the audition WITHOUT tearing down the shared graph (see ensurePreviewGraph:
+// destroying/recreating the MediaElementSource is exactly what broke iOS routing).
 function stopMusicPreview(){
   clearTimeout(_variantPreloadT);
-  if(musicPrevEl){ try{ musicPrevEl.pause(); musicPrevEl.removeAttribute('src'); musicPrevEl.load(); }catch(e){} musicPrevEl=null; }
-  if(musicPrevMES){ try{ musicPrevMES.disconnect(); }catch(e){} musicPrevMES=null; }
-  if(musicPrevGain){ try{ musicPrevGain.disconnect(); }catch(e){} musicPrevGain=null; }
+  if(musicPrevEl){ try{ musicPrevEl.pause(); }catch(e){} }
+  if(_prevUseGraph && musicPrevGain){ try{ const now=AC.currentTime; musicPrevGain.gain.cancelScheduledValues(now); musicPrevGain.gain.setValueAtTime(0, now); }catch(e){} }
   if(musicPrevSrc){try{musicPrevSrc.stop();}catch(e){} musicPrevSrc=null;}
+  _prevFaded=false;
   musicPrevTrackId=null;
   document.querySelectorAll('.track-play-ico').forEach(i=>{
     i.className='ti ti-player-play track-play-ico';
