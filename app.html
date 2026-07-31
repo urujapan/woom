@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.12';
+window.APP_VERSION = '2026-07-31.13';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1925,27 +1925,29 @@ function calcRateForTrackBpm(trackBpm){
 //              (within ±8 bpm of the original). The re-pitched ±20 variants never
 //              earn this: a song shifted 20 bpm from how it was written isn't its
 //              musical best, so it shouldn't claim "Best Match".
-//   👍 good  — a variant (incl. the ±20 ones) still lands on an acceptable tempo.
+//   👍 good  — the song's ORIGINAL tempo is within ±16% of the heartbeat.
 //   (poor)   — no version aligns well; shows NO badge (only fits are called out).
-// Thresholds tightened 2026-07-31 (v.10): best ±10→±8 bpm, good ±18%→±12%. The old
-// good window flagged nearly every track at some heartbeats, so the badge stopped
-// meaning "recommended". Tighter tiers = fewer, truer recommendations; the heartbeat
-// BPMs left with no 👌 (roughly 110–130 and 158–175) are the gaps new tracks fill.
+// Good is measured against the ORIGINAL bpm, not the variant that plays (v.13,
+// 2026-07-31). Measuring per-variant meant three ±12% windows (orig, ±20) that — at
+// ~140 bpm, ±12% ≈ ±17 bpm, wider than the 20 bpm variant spacing — overlapped into
+// one continuous band, so nearly every track read "good" across a wide range. Anchor
+// to the original at ±16% (harmonics still allowed, so a slow/2× heartbeat can match):
+// the centre band (heart ~130–160) stays rich while the far edges tighten honestly.
 function trackCompatLevel(track){
   if(!(cs==='uploaded' && detectedBPM > 0)) return 'good';
-  const vb = trackEffectiveBpm(track);      // the variant that will actually play
-  const rate = calcRateForTrackBpm(vb);
-  const dev  = Math.abs(rate - 1.0);
-  if(vb === track.bpm && dev <= 8 / track.bpm) return 'best'; // original, ±8 bpm
-  if(dev <= 0.12) return 'good'; // an acceptable variant match (±12%)
-  return 'poor';                  // clearly mismatched
+  const vb = trackEffectiveBpm(track);              // the variant that will actually play
+  const devVar = Math.abs(calcRateForTrackBpm(vb) - 1.0);
+  if(vb === track.bpm && devVar <= 8 / track.bpm) return 'best'; // original plays, ±8 bpm
+  const devOrig = Math.abs(calcRateForTrackBpm(track.bpm) - 1.0); // distance from the ORIGINAL tempo
+  if(devOrig <= 0.16) return 'good';                // original within ±16% of the heartbeat
+  return 'poor';                                    // clearly mismatched
 }
 // Sort score for the track list: best (0) < good (1) < poor (2), and within a tier
-// the closer tempo match comes first. Used to float recommendations to the top when
-// a heartbeat is loaded. No heartbeat → all equal → original order preserved.
+// the closer tempo match comes first (distance from the original tempo — matches the
+// good rule above). Floats recommendations to the top when a heartbeat is loaded.
 function trackSortScore(track){
   const rank = {best:0, good:1, poor:2}[trackCompatLevel(track)];
-  const dev  = Math.abs(calcRateForTrackBpm(trackEffectiveBpm(track)) - 1.0);
+  const dev  = Math.abs(calcRateForTrackBpm(track.bpm) - 1.0);
   return rank*100 + dev;
 }
 
