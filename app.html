@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.14';
+window.APP_VERSION = '2026-07-31.15';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -900,15 +900,21 @@ function setTab(tab,btn){
   if(btn) btn.classList.add('active');
   document.getElementById('uploadZoneWrap').style.display=tab==='u'?'flex':'none';
   document.getElementById('recordZoneWrap').style.display=tab==='r'?'flex':'none';
-  // Reveal the sample shortcut only once a method has been chosen
-  document.getElementById('sampleDetails').style.display='block';
-  // The revealed zone + "use a sample" can land under the phone's browser bar,
-  // making them hard to tap. Lift them into a comfortable position.
+  // The "use a sample" shortcut belongs to the upload flow — hide it while recording
+  // (recording your own heartbeat and picking a canned sample are different intents).
+  var sd=document.getElementById('sampleDetails');
+  if(tab==='r'){ sd.open=false; document.body.classList.remove('sample-open'); sd.style.display='none'; }
+  else { sd.style.display='block'; }
+  // The revealed zone can land under the phone's browser bar, making it hard to tap.
+  // Lift the newly shown content into a comfortable position.
   document.body.classList.add('tab-open');
   setTimeout(function(){
-    var el=document.getElementById('sampleDetails');
-    var over=el.getBoundingClientRect().bottom-(window.innerHeight-140);
-    if(over>0) window.scrollBy({top:over,behavior:'smooth'});
+    var el = (tab==='r') ? document.getElementById('recordZoneWrap')
+                         : document.getElementById('sampleDetails');
+    if(el){
+      var over=el.getBoundingClientRect().bottom-(window.innerHeight-140);
+      if(over>0) window.scrollBy({top:over,behavior:'smooth'});
+    }
   },80);
 }
 function setRecMethod(m,btn){
