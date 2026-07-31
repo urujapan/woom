@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.8';
+window.APP_VERSION = '2026-07-31.9';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -2039,10 +2039,12 @@ function startMusicPreview(trackId){
       gain.gain.cancelScheduledValues(now);
       gain.gain.setValueAtTime(0, now);
       // Raised-cosine (S-curve) fade instead of a straight line: its slope is zero at
-      // both ends, so it hides even a steep onset landing exactly on the downbeat —
-      // the residual click a few tracks still had with a 100 ms linear ramp. 220 ms is
-      // still musically tight against the ~3 s intro the audition already skips.
-      const FADE=0.22, N=48, curve=new Float32Array(N);
+      // both ends, so it hides even a steep onset landing exactly on the downbeat. A
+      // few tracks (Dramatic Piano, Maternal Love, My Dear Island) have a very sharp
+      // attack right at the 2-bar mark — dead silence then a full-scale chord within
+      // ~15 ms — so 350 ms is needed: at +15 ms the S-curve is only ~0.3% gain (-50 dB),
+      // enough to make the transient inaudible. Still tight vs the ~3 s intro we skip.
+      const FADE=0.35, N=64, curve=new Float32Array(N);
       for(let i=0;i<N;i++){ curve[i]=target*(0.5-0.5*Math.cos(Math.PI*i/(N-1))); }
       try{ gain.gain.setValueCurveAtTime(curve, now, FADE); }
       catch(e){ gain.gain.linearRampToValueAtTime(target, now+FADE); }
@@ -2055,6 +2057,7 @@ function startMusicPreview(trackId){
   // honour #t= and never fire a seek. timeupdate also fades OUT just before the end so
   // the manual loop restart has no seam click.
   a.addEventListener('seeked', fadeIn);
+  a.addEventListener('playing', fadeIn); // start the ramp the instant real playback begins
   a.addEventListener('timeupdate', function(){
     fadeIn();
     if(useGraph && gain && a.duration && a.currentTime > a.duration-0.12){
