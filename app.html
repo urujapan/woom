@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.11';
+window.APP_VERSION = '2026-07-31.12';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -740,6 +740,13 @@ var AC=null, wSrc=null, mSrc=null, wGain=null, mGain=null;
 var WOMB_LP_HZ=1500;
 var WOMB_HP_HZ=70; // gentle high-pass (Q0.5) on the heartbeat PLAYBACK buffer — see _wombPlaybackFilter
 var musicFileBuffer=null;
+// Which variant FILE is currently decoded into musicFileBuffer. The deferred loader
+// and the mix-step entry used to guard on `!musicFileBuffer`, which meant that once
+// ANY track's buffer was loaded, switching tracks never reloaded — the mix kept
+// playing the first-loaded song. Compare this against the selected track's needed
+// variant instead, so a switch always reloads the right file.
+var musicLoadedFile=null;
+function selectedVariantFile(){ return selectedTrack ? pickVariant(selectedTrack).file : null; }
 var musicLeadInSec=0; // the track's authored 2-bar lead-in. Always played (the
                       // source loops the whole buffer); used to know when the
                       // song itself enters, for the intro countdown.
@@ -1871,6 +1878,7 @@ async function loadSelectedVariant(){
     const buf = await loadMusicFile(variant.file, variant.file);
     if(selectedTrack !== track) return; // superseded by a newer tap — ignore
     musicFileBuffer = buf;
+    musicLoadedFile = variant.file;     // remember what's decoded, so a track switch reloads
     musicLeadInSec = musicStartOffsetFor(buf, musicFileBPM);
     // Work out how much of the file's HEAD this decoder dropped. A short buffer
     // alone cannot say which end went, and delaying playback for a loss that
@@ -1891,6 +1899,7 @@ async function loadSelectedVariant(){
       // the category auto-selects its top track, then the new pick failed to load
       // and the old buffer stayed. Clear it so nothing masquerades.
       musicFileBuffer = null;
+      musicLoadedFile = null;
       if(playing){ stopAll(); startAll(); }
       toast('Load error: '+e.message);
     }
@@ -1997,7 +2006,7 @@ async function pickTrack(trackId){
     // advances. The mix step (wizGoTo) also guarantees it if they skip ahead fast.
     clearTimeout(_variantPreloadT);
     _variantPreloadT = setTimeout(function(){
-      if(selectedTrack && selectedTrack.id===trackId && !musicFileBuffer) loadSelectedVariant();
+      if(selectedTrack && selectedTrack.id===trackId && musicLoadedFile!==selectedVariantFile()) loadSelectedVariant();
     }, 2500);
   } else {
     // Full mix already running → swap in the precise BPM variant now.
@@ -4857,7 +4866,7 @@ function wizGoTo(n){
   try{ if(rawBuffer && musicFileBuffer){ drawMusicGrid(); } }catch(e){}
   // Entering the mix/preview step (2+): the BPM variant download was deferred while
   // auditioning, so make sure it's loaded now that the grid + mix actually need it.
-  try{ if(n>=2 && selectedTrack && !musicFileBuffer){ loadSelectedVariant(); } }catch(e){}
+  try{ if(n>=2 && selectedTrack && musicLoadedFile!==selectedVariantFile()){ loadSelectedVariant(); } }catch(e){}
   // Entering the music step: its pre-selected track list (子守唄) is already
   // rendered but sits below the fold. Bring it into view instead of resetting to
   // the very top, so the lower tracks aren't hidden by the fixed bottom bar.
