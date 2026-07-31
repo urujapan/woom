@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.13';
+window.APP_VERSION = '2026-07-31.14';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -1631,7 +1631,7 @@ const MUSIC_LIBRARY = {
     {id:'lu3', vid:'Forest_sunlight_loop1.mp4', title:'Moms Echo',  file:'WMSL_Moms Echo_Org_bpm175.m4a',bpm:175,
       variants:[{bpm:135,file:'WMSL_Moms Echo_bpm135#.m4a'},{bpm:155,file:'WMSL_Moms Echo_bpm155#.m4a'},{bpm:175,file:'WMSL_Moms Echo_Org_bpm175.m4a'}]},
     // 2-bar lead-in versions (new convention: 8 beats of silence before beat 1)
-    {id:'lu2', vid:'Cute_animals_celebrating_loop1.mp4', title:'Twinkle',    file:'WMSL_Twinkle_Org_bpm152.m4a',  bpm:152,
+    {id:'lu2', vid:'Cute_animals_celebrating_loop1.mp4', title:'Twinkle',    file:'WMSL_Twinkle_Org_bpm152.m4a',  bpm:152, goodBpm:[165,190],
       variants:[{bpm:133,file:'WMSL_Twinkle_bpm133#.m4a'},{bpm:152,file:'WMSL_Twinkle_Org_bpm152.m4a'},{bpm:172,file:'WMSL_Twinkle_bpm172#.m4a'}]},
   ],
   ambient:[
@@ -1655,7 +1655,7 @@ const MUSIC_LIBRARY = {
       variants:[{bpm:128,file:'WMSL_A Tiny Grasp_bpm128#.m4a'},{bpm:148,file:'WMSL_A Tiny Grasp_Org_bpm148.m4a'},{bpm:168,file:'WMSL_A Tiny Grasp_bpm168#.m4a'}]},
     {id:'wo1', vid:'Sunrise_sea_loop1.mp4', title:'Auspicious Gamelan', file:'WMSL_Auspicious Gamelan_Org_bpm150.m4a',    bpm:150,
       variants:[{bpm:130,file:'WMSL_Auspicious Gamelan_bpm130#.m4a'},{bpm:150,file:'WMSL_Auspicious Gamelan_Org_bpm150.m4a'},{bpm:170,file:'WMSL_Auspicious Gamelan_bpm170#.m4a'}]},
-    {id:'wo5', vid:'Ocean_waves_loop1.mp4', title:'Bem-vindo ao mundo!',file:'WMSL_Bem-vindo ao mundo!_Org_bpm150.9.m4a',  bpm:151,
+    {id:'wo5', vid:'Ocean_waves_loop1.mp4', title:'Bem-vindo ao mundo!',file:'WMSL_Bem-vindo ao mundo!_Org_bpm150.9.m4a',  bpm:151, goodBpm:[165,190],
       variants:[{bpm:131,file:'WMSL_Bem-vindo ao mundo!_bpm130.9#.m4a'},{bpm:151,file:'WMSL_Bem-vindo ao mundo!_Org_bpm150.9.m4a'},{bpm:171,file:'WMSL_Bem-vindo ao mundo!_bpm170.9#.m4a'}]},
     {id:'wo2', vid:'Forest_sunlight_loop1.mp4', title:'Morning Glow',       file:'WMSL_Morning glow_Org_bpm150.m4a',           bpm:150,
       variants:[{bpm:130,file:'WMSL_Morning glow_bpm130#.m4a'},{bpm:150,file:'WMSL_Morning glow_Org_bpm150.m4a'},{bpm:170,file:'WMSL_Morning glow_bpm170#.m4a'}]},
@@ -1940,6 +1940,12 @@ function trackCompatLevel(track){
   if(vb === track.bpm && devVar <= 8 / track.bpm) return 'best'; // original plays, ±8 bpm
   const devOrig = Math.abs(calcRateForTrackBpm(track.bpm) - 1.0); // distance from the ORIGINAL tempo
   if(devOrig <= 0.16) return 'good';                // original within ±16% of the heartbeat
+  // Per-track manual Good extension: a track may declare goodBpm:[lo,hi] to also read
+  // 'good' for heartbeats in that raw-BPM range, on top of the ±16% rule. Used to give
+  // extra options where the library is thin (e.g. high BPM) until new tracks fill it.
+  // Never downgrades 'best' (checked above); never affects the badge without a heartbeat.
+  const gb = track.goodBpm;
+  if(gb && detectedBPM >= gb[0] && detectedBPM <= gb[1]) return 'good';
   return 'poor';                                    // clearly mismatched
 }
 // Sort score for the track list: best (0) < good (1) < poor (2), and within a tier
