@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-07-31.15';
+window.APP_VERSION = '2026-08-01.1';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -765,6 +765,7 @@ const TIP_BEAT_RESET={en:'Reset',ja:'リセット',zh:'重置','zh-TW':'重設',
 const TIP_HALF={en:'Half speed (tap again to undo)',ja:'音楽を半分の速さに（もう一度で解除）',zh:'半速播放（再次点击取消）','zh-TW':'半速播放（再次點擊取消）',ko:'절반 속도 (다시 누르면 해제)',es:'Mitad de velocidad (toca de nuevo para deshacer)',fr:'Vitesse réduite de moitié (retoucher pour annuler)',de:'Halbe Geschwindigkeit (nochmals tippen zum Aufheben)',pt:'Metade da velocidade (toque de novo para desfazer)',hi:'आधी गति (पूर्ववत करने के लिए फिर दबाएं)',id:'Setengah kecepatan (ketuk lagi untuk batal)',it:'Metà velocità (tocca di nuovo per annullare)',th:'ความเร็วครึ่งหนึ่ง (แตะอีกครั้งเพื่อยกเลิก)',vi:'Tốc độ một nửa (chạm lại để hoàn tác)',ru:'Половинная скорость (нажмите ещё раз для отмены)'};
 const TIP_DOUBLE={en:'Double speed (tap again to undo)',ja:'音楽を2倍の速さに（もう一度で解除）',zh:'双倍速播放（再次点击取消）','zh-TW':'雙倍速播放（再次點擊取消）',ko:'2배 속도 (다시 누르면 해제)',es:'Doble velocidad (toca de nuevo para deshacer)',fr:'Vitesse doublée (retoucher pour annuler)',de:'Doppelte Geschwindigkeit (nochmals tippen zum Aufheben)',pt:'Velocidade dobrada (toque de novo para desfazer)',hi:'दुगुनी गति (पूर्ववत करने के लिए फिर दबाएं)',id:'Kecepatan ganda (ketuk lagi untuk batal)',it:'Doppia velocità (tocca di nuovo per annullare)',th:'ความเร็วสองเท่า (แตะอีกครั้งเพื่อยกเลิก)',vi:'Tốc độ gấp đôi (chạm lại để hoàn tác)',ru:'Двойная скорость (нажмите ещё раз для отмены)'};
 var ptimer=null, playing=false, musicStartAt=0, progMusicDur=0;
+var _previewLimitTimer=null; // auto-stops the mix preview after PREVIEW_LIMIT_MS
 var detectedBPM=0, loopStart=0, loopDur=0;
 var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
 var _peakOffsetSec=0; // time from loop start to the heartbeat peak (for phase re-scaling)
@@ -776,8 +777,9 @@ const LOOP_BEATS=8;  // heartbeats per loop — see beatsNeeded in _runDetectCor
 // authored lead-in, so those two bars finish the wait. The song's beat 1 still
 // arrives four bars in, exactly as it did when the lead-in was skipped and the
 // intro was four bars — the difference is that the lead-in is now audible.
-const INTRO_BARS=2;
-const FADEIN_BARS=2; // first 2 bars = womb-sound fade-in
+const INTRO_BARS=4;   // heartbeat-only bars before the music enters (was 2; +2 bars)
+const FADEIN_BARS=4;  // womb-sound fade-in length in bars (was 2; doubled)
+const PREVIEW_LIMIT_MS=60000; // the mix PREVIEW auto-stops after 1 min; gift renders stay full-length
 var mIntroGain=null;
 var musicIntroTimer=null;
 var musicIntroKick=null; // delay before the count-in starts (see startAll)
@@ -4259,11 +4261,16 @@ function startAll(){
     const txt = (n > COUNT_IN) ? '♡' : '♩ '+Math.max(1, n);
     if(npEl.textContent !== txt) npEl.textContent = txt;   // only on change
   }, 60);
+  // Preview plays for a limited time only (testing spec): auto-stop after 1 min.
+  // The downloadable gift renders (dlAudio / gift build) are full-length and unaffected.
+  clearTimeout(_previewLimitTimer);
+  _previewLimitTimer=setTimeout(function(){ if(playing){ stopAll(); playing=false; } }, PREVIEW_LIMIT_MS);
   startProg();
 }
 
 function stopAll(){
   clearInterval(ptimer);
+  clearTimeout(_previewLimitTimer); _previewLimitTimer=null;
   clearInterval(musicIntroTimer); musicIntroTimer=null;
   clearTimeout(musicIntroKick); musicIntroKick=null;
   if(wSrc&&wSrc._x) wSrc._x();
