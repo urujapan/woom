@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-01.1';
+window.APP_VERSION = '2026-08-01.2';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -766,6 +766,8 @@ const TIP_HALF={en:'Half speed (tap again to undo)',ja:'音楽を半分の速さ
 const TIP_DOUBLE={en:'Double speed (tap again to undo)',ja:'音楽を2倍の速さに（もう一度で解除）',zh:'双倍速播放（再次点击取消）','zh-TW':'雙倍速播放（再次點擊取消）',ko:'2배 속도 (다시 누르면 해제)',es:'Doble velocidad (toca de nuevo para deshacer)',fr:'Vitesse doublée (retoucher pour annuler)',de:'Doppelte Geschwindigkeit (nochmals tippen zum Aufheben)',pt:'Velocidade dobrada (toque de novo para desfazer)',hi:'दुगुनी गति (पूर्ववत करने के लिए फिर दबाएं)',id:'Kecepatan ganda (ketuk lagi untuk batal)',it:'Doppia velocità (tocca di nuovo per annullare)',th:'ความเร็วสองเท่า (แตะอีกครั้งเพื่อยกเลิก)',vi:'Tốc độ gấp đôi (chạm lại để hoàn tác)',ru:'Двойная скорость (нажмите ещё раз для отмены)'};
 var ptimer=null, playing=false, musicStartAt=0, progMusicDur=0;
 var _previewLimitTimer=null; // auto-stops the mix preview after PREVIEW_LIMIT_MS
+var _playStartAt=0;          // ctx time when the preview started (progress bar = wall clock)
+var _musicEnterWall=0;       // seconds from play start until the music enters (intro length)
 var detectedBPM=0, loopStart=0, loopDur=0;
 var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
 var _peakOffsetSec=0; // time from loop start to the heartbeat peak (for phase re-scaling)
@@ -4226,6 +4228,11 @@ function startAll(){
     if(mSrc){mSrc.connect(mGain); mGain.connect(ctx.destination);}
   }
 
+  // Preview progress is a wall-clock timeline (0 → 1 min), so the bar fills fully and
+  // reaches the end exactly when the 1-min cap stops it — no "cut off mid-song" feel.
+  _playStartAt = ctx.currentTime;
+  _musicEnterWall = introSec + (cm!=='none' ? musicHeadTrimSec/Math.max(0.1,calcPlaybackRate()) : 0);
+
   document.getElementById('vizBox').classList.add('playing');
   document.getElementById('pico').className='ti ti-player-pause';
 
@@ -4261,10 +4268,19 @@ function startAll(){
     const txt = (n > COUNT_IN) ? '♡' : '♩ '+Math.max(1, n);
     if(npEl.textContent !== txt) npEl.textContent = txt;   // only on change
   }, 60);
-  // Preview plays for a limited time only (testing spec): auto-stop after 1 min.
+  // Preview plays for a limited time only (testing spec): at the 1-min cap, gently fade
+  // out over ~0.5 s and then stop, so it eases to an end instead of cutting abruptly.
   // The downloadable gift renders (dlAudio / gift build) are full-length and unaffected.
   clearTimeout(_previewLimitTimer);
-  _previewLimitTimer=setTimeout(function(){ if(playing){ stopAll(); playing=false; } }, PREVIEW_LIMIT_MS);
+  _previewLimitTimer=setTimeout(function(){
+    if(!playing) return;
+    var F=0.5;
+    try{
+      var t=ctx.currentTime;
+      [wGain,mGain].forEach(function(g){ if(g){ g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value,t); g.gain.linearRampToValueAtTime(0.0001,t+F); } });
+    }catch(e){}
+    setTimeout(function(){ if(playing){ stopAll(); playing=false; } }, F*1000+60);
+  }, PREVIEW_LIMIT_MS);
   startProg();
 }
 
@@ -4295,25 +4311,29 @@ function fmtTime(sec){
 
 function startProg(){
   clearInterval(ptimer);
-  document.getElementById('timeTotal').textContent = progMusicDur>0 ? fmtTime(progMusicDur) : '—';
+  // The preview is capped at 1 min, so the bar represents that 1-min window (wall
+  // clock from play start) rather than the full song length — otherwise it showed a
+  // 3-min song and stopped a third of the way in, which read as a sudden cut.
+  const previewSec = PREVIEW_LIMIT_MS/1000;
+  document.getElementById('timeTotal').textContent = fmtTime(previewSec);
   ptimer=setInterval(()=>{
     if(!playing||!AC) return;
-    const now=AC.currentTime;
-    let pct=0, elapsed=0;
-    if(progMusicDur>0 && now>=musicStartAt){
-      elapsed=(now-musicStartAt)%progMusicDur;
-      pct=elapsed/progMusicDur*100;
-    }
-    document.getElementById('pfill').style.width=pct+'%';
-    document.getElementById('timeNow').textContent=fmtTime(elapsed);
+    const e = Math.min(Math.max(0, AC.currentTime - _playStartAt), previewSec);
+    document.getElementById('pfill').style.width = (e/previewSec*100)+'%';
+    document.getElementById('timeNow').textContent = fmtTime(e);
   },80);
 }
 
 function seekMusic(e){
-  if(!playing||progMusicDur<=0||!musicFileBuffer||!AC||!mGain) return;
+  if(!playing||!musicFileBuffer||!AC||!mGain) return;
+  const previewSec = PREVIEW_LIMIT_MS/1000;
   const bar=document.getElementById('pbarWrap');
   const frac=Math.max(0,Math.min(1,(e.clientX-bar.getBoundingClientRect().left)/bar.clientWidth));
-  const newRealPos=frac*progMusicDur;
+  // The bar is the 1-min preview timeline; move both the wall-clock reference and the
+  // music so they stay in sync. Seeking into the intro region restarts music at 0.
+  const targetWall = frac*previewSec;
+  _playStartAt = AC.currentTime - targetWall;
+  const newRealPos = Math.max(0, targetWall - _musicEnterWall); // seconds of music elapsed
   const rate=calcPlaybackRate();
   const fileOffset=((calcMusicBufferStart()+(newRealPos+calcPhaseShiftSec())*rate)%musicFileBuffer.duration+musicFileBuffer.duration)%musicFileBuffer.duration;
   musicStartAt=AC.currentTime-newRealPos;
