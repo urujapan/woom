@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-01.3';
+window.APP_VERSION = '2026-08-02.1';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -4742,6 +4742,21 @@ async function uploadToCloudinary(blob, filename){
   const fd = new FormData();
   fd.append('file', blob, filename);
   fd.append('upload_preset', CLD_PRESET);
+  // Usage analytics (option A): tag each uploaded mix with the BGM track so usage can
+  // be counted in Cloudinary (Media Library / Admin API: search by tag). Aggregate,
+  // non-personal. The unsigned preset accepts tags/context (verified 2026-08-02).
+  //   tags:    woom_mix (all mixes) + track_<id> (per song)
+  //   context: track=<title>|track_id=<id>  (human-readable, queryable)
+  try{
+    let _tid='unknown', _ttl='unknown';
+    if(cm==='file'){ _tid='uploaded_music'; _ttl='Uploaded music'; }
+    else if(selectedTrack){ _tid=selectedTrack.id; _ttl=selectedTrack.title; }
+    else if(cm && cm!=='none'){ _tid=cm; _ttl=cm; }
+    const _tag=('track_'+_tid).replace(/[^A-Za-z0-9_]/g,'_');
+    const _cv=s=>String(s).replace(/[=|]/g,' ').slice(0,80);
+    fd.append('tags', 'woom_mix,'+_tag);
+    fd.append('context', 'track='+_cv(_ttl)+'|track_id='+_cv(_tid));
+  }catch(e){}
   // Use the video endpoint: Cloudinary treats audio as a "video" resource, whose
   // free-plan cap is 100MB (vs 10MB for /raw). Full-length WAV gifts can exceed
   // 10MB, so /raw/upload rejected them with "File size too large".
