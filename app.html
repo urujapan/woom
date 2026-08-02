@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-02.1';
+window.APP_VERSION = '2026-08-02.2';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -4687,6 +4687,7 @@ function doGift(){
       if(selectedTrack && selectedTrack.vid) params.set('vid', selectedTrack.vid);
       const giftPageUrl = giftBase + '?' + params.toString();
       _audioUrl = giftPageUrl; // primary share URL = the gift page
+      logGiftToLedger();       // record this completed gift's BGM for composer royalties
       // Show gift link
       document.getElementById('audioLink').textContent=giftPageUrl;
       document.getElementById('audioLinkBox').style.display='block';
@@ -4738,6 +4739,31 @@ const CLD_PRESET = 'baby_harmony_gift';
 var _audioUrl = ''; // Cloudinary audio URL
 var _cardUrl  = ''; // Cloudinary card image URL
 
+// ── Composer-royalty ledger ────────────────────────────────────────────────
+// One row is appended per COMPLETED gift (not previews — previews never upload).
+// Set this to the Google Apps Script Web App URL to enable it; empty = disabled.
+const GIFT_LEDGER_URL = 'https://script.google.com/macros/s/AKfycbzdYh74UTMPXQNMIo3XNakz8rVSDaC76vdZKBeb8KvMZpGWHu63APus6VWlKvofenipTA/exec';
+// Which BGM this gift used — shared by the Cloudinary tags and the ledger row.
+function _giftTrackMeta(){
+  let id='unknown', title='unknown', source='library';
+  if(cm==='file'){ id='uploaded_music'; title='Uploaded music'; source='uploaded'; }
+  else if(selectedTrack){ id=selectedTrack.id; title=selectedTrack.title; source='library'; }
+  else if(cm && cm!=='none'){ id=cm; title=cm; source='synth'; }
+  return {track_id:id, track_title:title, source:source};
+}
+// Fire-and-forget POST to the Sheet ledger. text/plain body avoids a CORS preflight;
+// the response is ignored, so a blocked/absent CORS header never breaks gift creation.
+function logGiftToLedger(){
+  if(!GIFT_LEDGER_URL) return;
+  try{
+    const m=_giftTrackMeta();
+    const gid=Math.random().toString(36).slice(2)+Date.now().toString(36); // dedupe id
+    fetch(GIFT_LEDGER_URL,{method:'POST',keepalive:true,
+      body:JSON.stringify({secret:'woom-ledger-2026',track_id:m.track_id,track_title:m.track_title,source:m.source,app_version:window.APP_VERSION,gift_id:gid})
+    }).catch(function(){});
+  }catch(e){}
+}
+
 async function uploadToCloudinary(blob, filename){
   const fd = new FormData();
   fd.append('file', blob, filename);
@@ -4748,12 +4774,10 @@ async function uploadToCloudinary(blob, filename){
   //   tags:    woom_mix (all mixes) + track_<id> (per song)
   //   context: track=<title>|track_id=<id>  (human-readable, queryable)
   try{
-    let _tid='unknown', _ttl='unknown';
-    if(cm==='file'){ _tid='uploaded_music'; _ttl='Uploaded music'; }
-    else if(selectedTrack){ _tid=selectedTrack.id; _ttl=selectedTrack.title; }
-    else if(cm && cm!=='none'){ _tid=cm; _ttl=cm; }
-    const _tag=('track_'+_tid).replace(/[^A-Za-z0-9_]/g,'_');
+    const _m=_giftTrackMeta();
+    const _tag=('track_'+_m.track_id).replace(/[^A-Za-z0-9_]/g,'_');
     const _cv=s=>String(s).replace(/[=|]/g,' ').slice(0,80);
+    const _ttl=_m.track_title, _tid=_m.track_id;
     fd.append('tags', 'woom_mix,'+_tag);
     fd.append('context', 'track='+_cv(_ttl)+'|track_id='+_cv(_tid));
   }catch(e){}
