@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-02.3';
+window.APP_VERSION = '2026-08-02.4';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -189,6 +189,11 @@ input[type=file]{display:none;}
 /* viz */
 .viz{width:100%;height:72px;border-radius:8px;background:#FBEAF0;position:relative;overflow:hidden;margin-bottom:1rem;display:flex;align-items:center;justify-content:center;gap:3px;}
 .viz-bar{width:3px;border-radius:2px;background:#F4C0D1;height:8px;}
+/* Loop-video preview: shown in place of the bar visualizer once a track's video is loaded. */
+.viz #previewVid{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.viz.hasvid{height:180px;background:#000;}
+.viz.hasvid #previewVid{display:block;}
+.viz.hasvid .viz-bar{display:none;}
 .viz-hint{display:none;}
 @keyframes barPulse{0%,100%{height:8px}50%{height:44px}}
 .viz.playing .viz-bar{animation:barPulse 0.6s ease-in-out infinite;background:#D4537E;}
@@ -563,6 +568,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
     </details>
   </div>
   <div class="viz" id="vizBox" style="margin-top:.75rem;margin-bottom:0;">
+    <video id="previewVid" loop muted playsinline preload="auto"></video>
     <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
     <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
     <div class="viz-bar"></div><div class="viz-bar"></div><div class="viz-bar"></div>
@@ -1870,6 +1876,8 @@ async function selectTrack(trackId, opts){
   if(btn){ btn.classList.add('active'); }
   updateNP(); updateMusicBpmLabel();
   if(cs==='uploaded') document.getElementById('phaseHint').classList.add('show');
+  // Swap the loop video if the preview step is already showing.
+  try{ if(wizStep>=2) updatePreviewVideo(); }catch(e){}
 
   if(opts && opts.defer) return;            // caller loads the variant later
   return loadSelectedVariant();
@@ -4203,10 +4211,34 @@ function buildMusicSrc(ctx, startAt){
   return out;
 }
 
+// Load the selected track's loop video into the preview box (muted, played in sync
+// with the mix). Per-track `vid`, or the default gift loop when there's no track
+// (e.g. uploaded music). Only reloads when the video actually changes.
+function updatePreviewVideo(){
+  const v=document.getElementById('previewVid'); if(!v) return;
+  const box=document.getElementById('vizBox');
+  const vid=(selectedTrack && selectedTrack.vid) ? selectedTrack.vid : 'gift_loop.mp4';
+  if(v.getAttribute('data-vid')!==vid){
+    v.setAttribute('data-vid', vid);
+    v.src=encodeURI(vid)+'?v='+encodeURIComponent(window.ASSET_VERSION||'0');
+    try{ v.load(); }catch(e){}
+    if(playing){ try{ v.currentTime=0; v.play().catch(function(){}); }catch(e){} }
+  }
+  if(box) box.classList.add('hasvid');
+}
+
 function startAll(){
   stopWombPreview();
   stopMusicPreview();
   const ctx=ensureAC();
+  try{
+    var _pv=document.getElementById('previewVid');
+    if(_pv && _pv.getAttribute('src')){
+      var _pp=_pv.play();
+      // If it isn't buffered enough yet, start as soon as it can play (still playing).
+      if(_pp && _pp.catch) _pp.catch(function(){ _pv.addEventListener('canplay', function(){ if(playing) _pv.play().catch(function(){}); }, {once:true}); });
+    }
+  }catch(e){}
   const bpm=getEffectiveBPM();
   const beatSec=60/bpm;
   const barSec=beatSec*4;          // 1小節 = 4拍
@@ -4293,6 +4325,7 @@ function startAll(){
 function stopAll(){
   clearInterval(ptimer);
   clearTimeout(_previewLimitTimer); _previewLimitTimer=null;
+  try{ var _pv=document.getElementById('previewVid'); if(_pv) _pv.pause(); }catch(e){}
   clearInterval(musicIntroTimer); musicIntroTimer=null;
   clearTimeout(musicIntroKick); musicIntroKick=null;
   if(wSrc&&wSrc._x) wSrc._x();
@@ -4953,6 +4986,8 @@ function wizGoTo(n){
   // Entering the mix/preview step (2+): the BPM variant download was deferred while
   // auditioning, so make sure it's loaded now that the grid + mix actually need it.
   try{ if(n>=2 && selectedTrack && musicLoadedFile!==selectedVariantFile()){ loadSelectedVariant(); } }catch(e){}
+  // Entering the preview step: load the loop video into the visualizer box.
+  try{ if(n>=2) updatePreviewVideo(); }catch(e){}
   // Entering the music step: its pre-selected track list (子守唄) is already
   // rendered but sits below the fold. Bring it into view instead of resetting to
   // the very top, so the lower tracks aren't hidden by the fixed bottom bar.
