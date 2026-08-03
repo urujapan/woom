@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-02.4';
+window.APP_VERSION = '2026-08-02.5';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -4341,7 +4341,14 @@ function stopAll(){
 
 function togglePlay(){
   ensureAC();
-  if(playing){stopAll();playing=false;}else{startAll();playing=true;}
+  if(playing){stopAll();playing=false;}
+  else{
+    startAll();playing=true;
+    // Bring the loop video into view so the user sees it the moment playback starts.
+    try{ var box=document.getElementById('vizBox');
+      if(box) setTimeout(function(){ box.scrollIntoView({behavior:'smooth',block:'center'}); },60);
+    }catch(e){}
+  }
 }
 
 function fmtTime(sec){
@@ -4965,11 +4972,12 @@ function wizGoTo(n){
   if(n<0||n>=_wizSteps.length) return;
   // Guard: a womb sound must be captured before leaving the first step.
   if(n>wizStep && wizStep===0 && !rawBuffer){ try{toast(WIZ_NEED[cl]||WIZ_NEED.en);}catch(e){} return; }
-  // Leaving a step must not leave its check/preview audio looping. Stop both the
-  // "心音を確認" heartbeat-loop preview and the music ▶ preview on any step change
-  // (Next / Back / dot) — the main mix (startAll) is separate and unaffected.
+  // Leaving a step must not leave its check/preview audio looping. Stop the "心音を確認"
+  // heartbeat-loop preview, the music ▶ audition, AND the main mix preview on any step
+  // change (Next / Back / dot) — navigating away ends playback (video included).
   try{ stopWombPreview(); }catch(e){}
   try{ stopMusicPreview(); }catch(e){}
+  if(playing){ try{ stopAll(); playing=false; }catch(e){} }
   wizStep=n;
   document.body.classList.toggle('wiz-adv', n>0);
   document.body.classList.remove('tab-open','sample-open','tracks-open','wave-open'); // clear per-step scroll room
