@@ -222,6 +222,13 @@ var vids=[document.getElementById('lvA'),document.getElementById('lvB')];
 // rendering at 44100 in app.html, so the crossfade can stay.) &onevid=1 forces a
 // single looping video (half the decode load) for very low-power devices.
 var ONE_VIDEO = new URLSearchParams(location.search).get('onevid')==='1';
+// Debug/escape hatch: skip the Web Audio graph and play the <audio> natively.
+// On iOS, routing a streaming cross-origin <audio> through createMediaElementSource
+// can make the sample clock drift under load → the audio pitch-wobbles like a
+// turntable changing RPM. With this on, playback is pure native <audio> (stable
+// pitch); the only cost is the end fade-out falls back to .volume (a no-op on iOS,
+// so the music just plays to its end instead of fading). Set &noweb=1 to test.
+var NOWEB = new URLSearchParams(location.search).get('noweb')==='1';
 var wrap=document.getElementById('loopvid');
 var _rafOn=false, _warm=false, _lastTs=0;
 var _wrapOp=0, _wrapTarget=0;   // wrapper opacity, hand-animated in rAF (not CSS)
@@ -239,6 +246,7 @@ function _smooth(x){ x=x<0?0:(x>1?1:x); return x*x*(3-2*x); } // smoothstep 0→
 // nothing) if Web Audio is unavailable, so playback is never broken.
 var _actx=null,_gain=null,_audioRouted=false;
 function _ensureAudioGraph(){
+  if(NOWEB) return;               // native <audio> only — no MediaElementSource routing
   if(_audioRouted){ if(_actx&&_actx.state==='suspended'){ try{_actx.resume();}catch(e){} } return; }
   try{
     var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
