@@ -48,8 +48,10 @@ body{font-family:Georgia,serif;background:#fbeef4;min-height:100vh;display:flex;
 .info{font-size:11px;color:#D4537E;margin-bottom:1.4rem;}
 .play-btn{background:#D4537E;color:white;border:none;border-radius:50px;padding:14px 40px;font-size:16px;cursor:pointer;font-family:Georgia,serif;font-style:italic;}
 .play-btn.on{background:#5DCAA5;}
-.prog{width:100%;height:4px;background:rgba(240,240,240,.7);border-radius:2px;margin-top:10px;}
-.bar{height:100%;width:0%;background:linear-gradient(90deg,#D4537E,#5DCAA5);border-radius:2px;transition:width .3s linear;}
+.prog{position:relative;width:100%;height:6px;background:rgba(240,240,240,.7);border-radius:3px;margin-top:14px;cursor:pointer;touch-action:none;}
+.bar{position:relative;height:100%;width:0%;background:linear-gradient(90deg,#D4537E,#5DCAA5);border-radius:3px;transition:width .3s linear;}
+.bar::after{content:'';position:absolute;right:-7px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#fff;border:1px solid #D4537E;box-shadow:0 1px 4px rgba(212,83,126,.5);}
+.prog.scrub .bar{transition:none;}
 .brand{margin-top:1.6rem;font-size:10px;color:#bfa9b3;letter-spacing:.06em;}
 /* ── Playing state ──────────────────────────────────────────────────────────
    Once playback starts the card steps aside so the Music Video is unobstructed;
@@ -69,8 +71,10 @@ body.playing .nowbar{opacity:1;pointer-events:auto;}
 .nowbar .nb-baby{font-size:15px;letter-spacing:.05em;opacity:.95;}
 .nowbar .nb-msg{font-size:13px;font-style:italic;margin-top:4px;opacity:.9;line-height:1.5;}
 .nowbar .nb-from{font-size:11px;margin-top:6px;opacity:.8;}
-.nowbar .nb-prog{max-width:320px;height:3px;margin:12px auto 0;background:rgba(255,255,255,.28);border-radius:2px;}
-.nowbar .nb-bar{height:100%;width:0%;background:rgba(255,255,255,.9);border-radius:2px;transition:width .3s linear;}
+.nowbar .nb-prog{position:relative;max-width:320px;height:6px;margin:14px auto 0;background:rgba(255,255,255,.28);border-radius:3px;cursor:pointer;touch-action:none;}
+.nowbar .nb-bar{position:relative;height:100%;width:0%;background:rgba(255,255,255,.95);border-radius:3px;transition:width .3s linear;}
+.nowbar .nb-bar::after{content:'';position:absolute;right:-7px;top:50%;transform:translateY(-50%);width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.45);}
+.nowbar .nb-prog.scrub .nb-bar{transition:none;}
 .pausebtn{position:fixed;z-index:7;right:16px;top:16px;width:44px;height:44px;border-radius:50%;
   border:1px solid rgba(255,255,255,.5);background:rgba(90,35,60,.35);color:#fff;font-size:16px;
   cursor:pointer;opacity:0;pointer-events:none;transition:opacity 1.1s ease;backdrop-filter:blur(6px);}
@@ -210,6 +214,34 @@ var au=document.getElementById('au');
 var pb=document.getElementById('pb');
 var br=document.getElementById('br');
 var nbBar=document.getElementById('nbBar');
+// ── Seek: tap or drag the progress bar to move the playback position ─────────
+// Works on both the card bar (.prog, under the Play button) and the now-playing
+// bar (.nb-prog) via Pointer Events (mouse + touch). Uses the native <audio>
+// currentTime, so it stays in sync with the same element that drives playback.
+function _seekTo(frac){
+  if(!au.duration || !isFinite(au.duration)) return;
+  frac = frac<0?0:(frac>1?1:frac);
+  try{ au.currentTime = frac*au.duration; }catch(e){}
+  // If we jump back out of the end-fade zone, restore full volume + bring the video back.
+  if(au.duration-au.currentTime > FADEOUT_SEC+0.5){
+    _endFading=false; _resetMusicGain();
+    if(!au.paused) _wrapTarget=1;
+  }
+  var pct=(au.currentTime/au.duration*100)+'%';
+  br.style.width=pct; nbBar.style.width=pct;
+}
+function _attachSeek(track){
+  if(!track) return;
+  var drag=false;
+  function fracOf(e){ var r=track.getBoundingClientRect(); var cx=(e.clientX!=null)?e.clientX:0; return r.width?((cx-r.left)/r.width):0; }
+  track.addEventListener('pointerdown',function(e){ drag=true; track.classList.add('scrub'); try{track.setPointerCapture(e.pointerId);}catch(_){} _seekTo(fracOf(e)); e.preventDefault(); e.stopPropagation(); });
+  track.addEventListener('pointermove',function(e){ if(drag){ _seekTo(fracOf(e)); e.preventDefault(); } });
+  function end(){ drag=false; track.classList.remove('scrub'); }
+  track.addEventListener('pointerup',end);
+  track.addEventListener('pointercancel',end);
+}
+_attachSeek(document.querySelector('.prog'));
+_attachSeek(document.querySelector('.nb-prog'));
 // ── Loop video with a seamless crossfade ───────────────────────────────────
 // Two copies of the clip, both looping forever and phase-offset by half its
 // length, so whenever one copy is near its loop seam the other is mid-clip and
@@ -417,7 +449,7 @@ document.getElementById('pauseBtn').addEventListener('click',function(e){
 // Tap the screen while playing to peek at the full card again; tap to hide.
 document.addEventListener('click',function(e){
   if(au.paused) return;
-  if(e.target.closest('.card')||e.target.closest('.pausebtn')) return;
+  if(e.target.closest('.card')||e.target.closest('.pausebtn')||e.target.closest('.prog')||e.target.closest('.nb-prog')) return;
   setPlayingView(!document.body.classList.contains('playing'));
 });
 </script>
