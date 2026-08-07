@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-06.3';
+window.APP_VERSION = '2026-08-06.4';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -792,6 +792,12 @@ const PREVIEW_LIMIT_MS=60000; // the mix PREVIEW auto-stops after 1 min; gift re
 // fraction of its target (not silence), so there's a pulse to anchor the rhythm from
 // the very first beat. (The music entrance is intentionally left un-faded.)
 const WOMB_FADE_FLOOR=0.15;
+// Heartbeat-vs-music default balance (user, 2026-08-06). The womb gain is
+// volToGain(vW)*WOMB_VOL; the music is volToGain(vM)*musicNorm(). At slider 0,
+// volToGain(0)=0.75, so WOMB_VOL=0.667 puts the heartbeat at ~0.50 by default —
+// the punchy heartbeat sat too loud over the (loudness-normalised, ~-16dB) music,
+// especially for fast recordings. Music sites are NOT scaled by this.
+const WOMB_VOL=0.667;
 var mIntroGain=null;
 var musicIntroTimer=null;
 var musicIntroKick=null; // delay before the count-in starts (see startAll)
@@ -1080,7 +1086,7 @@ function fmtVol(v){ const n=parseInt(v); return n>0?'+'+n:String(n); }
 function onVolSlider(id,outId){
   const v=document.getElementById(id).value;
   document.getElementById(outId).textContent=fmtVol(v);
-  if(id==='vW'&&wGain) wGain.gain.value=volToGain(v);
+  if(id==='vW'&&wGain) wGain.gain.value=volToGain(v)*WOMB_VOL;
   if(id==='vM'&&mGain) mGain.gain.value=volToGain(v)*musicNorm();
 }
 function onSlider(id,outId,sfx){
@@ -4248,7 +4254,7 @@ function startAll(){
   const barSec=beatSec*4;          // 1小節 = 4拍
   const introSec=INTRO_BARS*barSec+musicStartOffsetBeats*beatSec; // +offset
   const fadeInSec=FADEIN_BARS*barSec; // 4小節
-  const targetW=volToGain(document.getElementById('vW').value);
+  const targetW=volToGain(document.getElementById('vW').value)*WOMB_VOL;
 
   wGain=ctx.createGain();
   // Heartbeat fades in from an audible floor (not silence), so there's a pulse to
@@ -4414,7 +4420,7 @@ function dlAudio(){
 
   const off=new OfflineAudioContext(2, Math.ceil(sr*dur), sr);
 
-  const targetW = volToGain(document.getElementById('vW').value);
+  const targetW = volToGain(document.getElementById('vW').value)*WOMB_VOL;
   const targetM = volToGain(document.getElementById('vM').value)*musicNorm();
 
   // ── Womb sound: starts at 0, fades in over fadeInSec ─────────────────
@@ -4658,7 +4664,7 @@ function doGift(){
     : 60;
   const dur=introSec+musicContentSec;
   const off=new OfflineAudioContext(1,Math.ceil(sr*dur),sr);
-  const targetW=volToGain(document.getElementById('vW').value);
+  const targetW=volToGain(document.getElementById('vW').value)*WOMB_VOL;
   const targetM=volToGain(document.getElementById('vM').value)*musicNorm();
 
   // Master limiter so heartbeat + music can never sum past full scale. A loud
