@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-06.6';
+window.APP_VERSION = '2026-08-06.7';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -4740,7 +4740,14 @@ function doGift(){
     const ws=off.createBufferSource(); ws.buffer=wb; ws.connect(wg); ws.start(0);
   }
 
-  const mg=off.createGain(); mg.gain.value=targetM; mg.connect(master);
+  // Gentle compressor on the MUSIC bus ONLY (heartbeat wg goes straight to master,
+  // untouched — so it never pumps with the music). Evens out the song's louder
+  // passages / kicks so the mix doesn't surge, per user request 2026-08-06.
+  const musicComp=off.createDynamicsCompressor();
+  musicComp.threshold.value=-22; musicComp.knee.value=6; musicComp.ratio.value=3;
+  musicComp.attack.value=0.012; musicComp.release.value=0.25;
+  musicComp.connect(master);
+  const mg=off.createGain(); mg.gain.value=targetM; mg.connect(musicComp);
   if(musicFileBuffer){
     const ms=off.createBufferSource(); ms.buffer=musicFileBuffer; ms.loop=true;
     ms.playbackRate.value=calcPlaybackRate(); ms.connect(mg);
