@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-06.5';
+window.APP_VERSION = '2026-08-06.6';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -609,7 +609,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
     </div>
     <div class="divider"></div>
     <div class="arow">
-      <button class="abtn primary" onclick="doGift()"><i class="ti ti-gift"></i> <span id="T22">Complete Gift</span></button>
+      <button class="abtn primary" id="btnGift" onclick="doGift()"><i class="ti ti-gift"></i> <span id="T22">Complete Gift</span></button>
     </div>
     <!-- Gift result panel (shown after Complete Gift) -->
     <div class="gift-result" id="giftResult">
@@ -1012,6 +1012,7 @@ async function pickHeartbeatSample(btn, filename, knownBpm=0){
     const buf = await AC.decodeAudioData(arrayBuf);
     _normalizeBuffer(buf);
     rawBuffer = buf; cs = 'uploaded';
+    rearmGiftBtn();   // sample heartbeat chosen → let them make a new gift
     document.getElementById('upinfo').style.display = 'flex';
     document.getElementById('upname').textContent = filename.replace(/\.(mp3|wav|m4a)$/i,'');
     document.getElementById('waveformWrap').classList.add('show'); scrollWaveIntoView();
@@ -1241,6 +1242,7 @@ function loadWombBuffer(arrayBuffer, name){
     // safer default for junk-heavy uploads.
     const trimmed=_trimToActiveRegion(buf); const ti=_trimInfo;
     rawBuffer=buf; cs='uploaded';
+    rearmGiftBtn();   // new heartbeat uploaded → let them make a new gift
     document.querySelectorAll('.sbtn').forEach(b=>b.classList.remove('active'));
     document.getElementById('upinfo').style.display='flex';
     document.getElementById('upname').textContent=name;
@@ -1863,6 +1865,7 @@ async function selectTrack(trackId, opts){
     track=cat.find(t=>t.id===trackId); if(track) break;
   }
   if(!track) return;
+  rearmGiftBtn();   // picking a different song → let them make a new gift
 
   // Stop any OTHER track's ▶ audition still looping. Without this, auditioning
   // track A and then choosing track B left A's preview playing while the panel
@@ -4628,9 +4631,34 @@ function hideGiftAnim(){
   document.getElementById('giftAnim').classList.remove('show');
 }
 
+// Complete-Gift button state. It stays put after a gift is made, so a stray tap
+// used to fire a second render/upload. Disable it while rendering AND after the
+// gift is done; re-arm only when the user changes the gift (message, track,
+// heartbeat, volume, tempo) so making a genuinely new gift still works.
+function setGiftBtn(state){
+  var b=document.getElementById('btnGift'); if(!b) return;
+  if(state==='processing'){
+    b.disabled=true; b.dataset.done=''; b.style.opacity='0.5'; b.style.pointerEvents='none'; b.style.filter='grayscale(0.4)';
+  } else if(state==='done'){
+    b.disabled=true; b.dataset.done='1'; b.style.opacity='0.55'; b.style.pointerEvents='none'; b.style.filter='grayscale(0.4)';
+  } else { // 'ready'
+    b.disabled=false; b.dataset.done=''; b.style.opacity=''; b.style.pointerEvents=''; b.style.filter='';
+  }
+}
+// Re-enable the button ONLY after a completed gift (never mid-render), so a change
+// of mind can produce a new gift but a double-tap during processing cannot.
+function rearmGiftBtn(){ var b=document.getElementById('btnGift'); if(b&&b.dataset.done==='1') setGiftBtn('ready'); }
+(function(){
+  ['gBaby','gMsg','gFrom','gDate','vW','vM','vT'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.addEventListener('input', rearmGiftBtn);
+  });
+})();
+
 function doGift(){
   if(!document.getElementById('gMsg').value.trim()){toast(ts('msg'));return;}
   if(!AC){toast('Please press ▶ Play first.');return;}
+  var _gb=document.getElementById('btnGift'); if(_gb&&_gb.disabled) return; // already running / done
+  setGiftBtn('processing');
 
   // Show animation immediately (runs while audio renders in background)
   showGiftAnim();
@@ -4769,11 +4797,13 @@ function doGift(){
       // QR code
       document.getElementById('qrImg').src='https://api.qrserver.com/v1/create-qr-code/?size=140x140&data='+encodeURIComponent(giftPageUrl);
       document.getElementById('qrWrap').style.display='block';
+      setGiftBtn('done');   // gift finished — keep the button disabled so a stray tap can't re-render
     }catch(e){
       console.error('Upload error:',e);
       document.getElementById('uploadStatus').textContent='⚠️ '+e.message;
       document.getElementById('uploadStatus').className='upload-status error';
       document.getElementById('shareButtons').style.display='none';
+      setGiftBtn('ready');  // failed — let the user try again
     }
     _renderDone=true;
     _maybeReveal();
