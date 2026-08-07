@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-06.4';
+window.APP_VERSION = '2026-08-06.5';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -4672,15 +4672,21 @@ function doGift(){
   // clipped samples = the "ブチブチ". Peaks near/above full scale are tucked in;
   // everything quieter passes untouched, so overall loudness is kept. The
   // post-render normalize below is the hard guarantee.
-  const master=off.createDynamicsCompressor();
-  master.threshold.value=-1; master.knee.value=0; master.ratio.value=20;
-  master.attack.value=0.002; master.release.value=0.12;
-  // End fade-out BAKED INTO the render (heartbeat + music together). The gift page
-  // used to fade at playback via a Web Audio gain, but iOS playback now runs the
-  // <audio> natively (no Web Audio — it caused pitch wobble), where element.volume
-  // is a no-op, so the heartbeat cut off abruptly at the end. Baking the fade here
-  // makes the soft ending work on every platform, no playback-side gain needed.
-  const GIFT_FADEOUT_SEC=3.5;
+  // Master bus = a plain summing gain into the end-fade, straight to the output.
+  // NO master limiter here anymore. A DynamicsCompressor (threshold -1, ratio 20)
+  // used to sit on the sum, but it modulated the WHOLE mix by the music level:
+  // measured ~9 dB of level movement, so the constant heartbeat audibly pumped /
+  // swelled under loud passages (the chorus), and it clamped punchy heartbeats so
+  // the Womb-volume fader barely moved them. In practice the mix peaks well below
+  // full scale, and the post-render normalize below is the hard clip guarantee, so
+  // the limiter only added artefacts. Removed 2026-08-06 — the heartbeat now holds
+  // a steady level independent of the music.
+  const master=off.createGain();
+  // End fade-out BAKED INTO the render (heartbeat + music together). iOS plays the
+  // gift <audio> natively (no Web Audio — it caused pitch wobble), where
+  // element.volume is a no-op, so without a baked fade the ending cut off abruptly.
+  // Longer + earlier fade (6 s) per user request for a gentler close.
+  const GIFT_FADEOUT_SEC=6;
   const masterOut=off.createGain();
   master.connect(masterOut); masterOut.connect(off.destination);
   if(dur>GIFT_FADEOUT_SEC+1){
