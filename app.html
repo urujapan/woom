@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-06.10';
+window.APP_VERSION = '2026-08-11.5';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -546,9 +546,15 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <div style="flex:1;display:flex;gap:5px;align-items:center;">
         <button class="bpm-adj-btn tipbtn" id="btnBeatBack" onclick="nudgeBeat(-1)">◀</button>
         <button class="bpm-adj-btn tipbtn" id="btnBeatFwd" onclick="nudgeBeat(1)">▶</button>
-        <button class="bpm-adj-btn tipbtn" id="btnBeatReset" onclick="nudgeBeat(0)" style="font-size:11px;">⟲</button>
+        <button class="bpm-adj-btn tipbtn" id="btnBeatHalf" onclick="toggleHalfBeat()" style="font-size:12px;">½拍</button>
+        <button class="bpm-adj-btn tipbtn" id="btnBeatReset" onclick="resetAlign()" style="font-size:11px;">⟲</button>
       </div>
       <span class="sval" id="beatAlignVal">±0</span>
+    </div>
+    <div id="beatDirHint" style="font-size:11px;color:#b08a98;margin-top:2px;">◀ 音楽を遅く　▶ 早く　½拍＝半拍ずらす</div>
+    <div id="beatSuggest" style="display:none;margin-top:.5rem;padding:8px 10px;background:#FBEAF0;border:1px solid #E8A0B8;border-radius:8px;font-size:12px;color:#C03D6B;align-items:center;gap:8px;">
+      <span id="beatSuggestText" style="flex:1;line-height:1.35;">🎵 音楽が少し早く聞こえる場合はタップ</span>
+      <button class="bpm-adj-btn" id="btnBeatSuggest" onclick="applyBeatSuggest()" style="white-space:nowrap;">リズムを合わせる</button>
     </div>
     <details id="fineTuneBox" style="margin-top:.5rem;">
       <summary class="fine-tune-summary" id="fineToggleLbl">速さの微調整</summary>
@@ -778,6 +784,29 @@ var detectedBPM=0, loopStart=0, loopDur=0;
 var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
 var _peakOffsetSec=0; // time from loop start to the heartbeat peak (for phase re-scaling)
 var _bpmUnsure=false; // tempo not determinable from the audio — see _bpmAgreement
+// ── Lub attack-foot → lub PEAK alignment (2026-08-10, under test) ─────────────
+// The music downbeat has historically landed on the FOOT of the first lub's
+// attack (where the sound starts rising from silence), not on the PEAK the ear
+// actually hears as the beat ("シャ"). On swishy doppler recordings the foot→peak
+// gap is tens of ms, so the music feels a hair early. PEAK_ALIGN_BLEND slides the
+// music downbeat from the foot (0) toward the lub peak (1). The loop's cut point
+// (loopStart) is NOT moved — it stays in the inter-beat silence so the seam fade
+// still lands in silence; only the beat-grid HEAD the music locks to moves. The
+// peak used is bounded to the FIRST heart sound (the lub), so it can never reach
+// the dub → no backbeat. URL override for A/B: ?peakblend=0 / 0.5 / 1
+var PEAK_ALIGN_BLEND=1.0;
+try{ var _pb=new URLSearchParams(location.search).get('peakblend');
+     if(_pb!==null && isFinite(parseFloat(_pb))) PEAK_ALIGN_BLEND=Math.max(0,Math.min(1,parseFloat(_pb))); }catch(e){}
+var _dbgFootMs=0, _dbgPeakMs=0; // foot/peak offset from loopStart, ms (debug readout)
+// Auto-apply the "リズムを合わせる" suggestion on detection instead of only offering
+// it (see _computeBeatSuggest). Now ON by default: across every recording the user
+// listened to — real doppler uploads AND the built-in test hearts, including the one
+// I expected to regress (Morning glow) — applying the shift sounded better. The chip
+// stays visible as "✓ 拍を合わせました（⟲で戻せます）" so it is transparent and one-tap
+// reversible. Escape hatch for A/B: ?autoalign=0 disables it (falls back to opt-in).
+var AUTO_ALIGN=true;
+try{ var _aa=new URLSearchParams(location.search).get('autoalign');
+     if(_aa==='0') AUTO_ALIGN=false; else if(_aa==='1') AUTO_ALIGN=true; }catch(e){}
 const CROSSFADE_MS=80;
 const LOOP_BEATS=8;  // heartbeats per loop — see beatsNeeded in _runDetectCore
 // Bars of heart-only intro before the music file starts (1 bar = 4 beats).
@@ -901,6 +930,7 @@ function refreshPreview(){
   const fdText=[from?'— '+from:'', date].filter(Boolean).join('　');
   fd.textContent=fdText;
   fd.style.display=fdText?'block':'none';
+  try{ updateBeatSuggest(); }catch(e){}
 }
 
 var recMethod='echo'; // 'echo' = ultrasound-device audio, 'belly' = amplified belly recording
@@ -1249,14 +1279,25 @@ function loadWombBuffer(arrayBuffer, name){
     document.getElementById('waveformWrap').classList.add('show'); scrollWaveIntoView();
     drawWaveform(buf); initGridDrag(); runDetect();
     const uPk=_firstBeatPeakMs(), uScore=window._lastDetScore||0;
+    const uBpm=detectedBPM, uUnsure=_bpmUnsure;
     if(ti){
       rawBuffer=trimmed; drawWaveform(trimmed); initGridDrag(); runDetect();
       const tPk=_firstBeatPeakMs(), tScore=window._lastDetScore||0;
+      const tBpm=detectedBPM, tUnsure=_bpmUnsure;
+      // The trim exists to pick a cleaner LOOP REGION, not to change the TEMPO. On
+      // Moms Echo the trimmed window flips a confident, correct 174.6 bpm (= the
+      // true 175) into an UNSURE 101.6, and the first-beat tie-break below then
+      // keeps that wrong tempo. Guard it: when the two reads disagree on tempo by
+      // more than 12% and only the FULL-FILE read is confident, trust the full file.
+      // This triple gate (big tempo gap + untrimmed sure + trimmed unsure) is unique
+      // to Moms Echo across the whole test set — every other recording agrees on
+      // tempo, so their existing pick is untouched.
+      const tempoFlip = Math.abs(uBpm - tBpm) > 0.12 * Math.max(uBpm, tBpm) && !uUnsure && tUnsure;
       // Prefer the untrimmed pick only if its beat is clearly tighter AND it is a
       // real loop, not a near-zero-score junk region. On iOS the untrimmed detector
       // can latch onto a silent stretch (Chie → a ~0-score spot at 20s) that looks
       // "tight" but is garbage; the score check keeps those on the trimmed pick.
-      if(uPk < tPk - 20 && uScore > 0.004){
+      if((uPk < tPk - 20 && uScore > 0.004) || tempoFlip){
         rawBuffer=buf; drawWaveform(buf); initGridDrag(); runDetect();
       }
     }
@@ -1879,7 +1920,11 @@ async function selectTrack(trackId, opts){
   const variant = pickVariant(track);       // closest pre-produced BPM version
   musicFileBPM = variant.bpm||track.bpm||0;
   musicFineBPM=0; musicPhaseOffset=0; musicRateMult=1;
+  // Only the beat NUDGE resets on a track change; the auto-alignment now lives in
+  // musicStartOffsetBeats (the entry delay), which selectTrack does NOT touch, so it
+  // survives a BGM change on its own — no re-apply needed here.
   _beatNudgeSteps=0; try{ document.getElementById('beatAlignVal').textContent='±0'; }catch(e){}
+  try{ updateBeatSuggest(); }catch(e){}
   document.getElementById('musicFine').value=0;
   document.getElementById('musicFineVal').textContent='±0 bpm';
   document.getElementById('musicFineRow').style.display='flex';
@@ -3419,11 +3464,40 @@ function _runDetectCore(){
       // heartbeat and the accents read as displaced). A real heart's beats drift a
       // few ms from a metronomic grid no matter what, and that mid-loop drift is
       // not what the ear notices — the downbeat lining up is. So search only the
-      // FIRST heartbeat. Use the lub ONSET we already located (walking forward
-      // from inter-beat silence, so it is the lub, never the dub) rather than the
-      // envelope peak: a peak search inside the first beat can land on the louder
-      // dub, which would put the music's downbeat on the "kun" of "do-kun".
-      _peakOffsetSec = Math.max(0, lubOnsetTime - loopStart);   // first lub of the loop
+      // FIRST heartbeat.
+      //
+      // FOOT vs PEAK (2026-08-10): lubOnsetTime is the FOOT of the beat (where the
+      // sound starts rising from silence). The ear, though, locks onto the PEAK of
+      // "シャ". On swishy doppler recordings that peak is 80–180 ms after the foot —
+      // there is a small early valve-click, then a dip, then the loud whoosh the ear
+      // actually calls the beat — so anchoring on the foot made the music feel early.
+      // Measure the peak as the LOUDEST fine-RMS point within the first ~0.45 beat
+      // after loopStart (measured empirically, 2026-08-10, across the regression set
+      // + real recordings): sharp "ドクン" beats peak early (10–34 ms, so almost no
+      // shift), swishy beats peak late — and in every test file the loudest point in
+      // this window was the true beat, never the dub, so no backbeat is introduced.
+      // The 0.45-beat cap keeps the search short of the next beat. loopStart is NOT
+      // moved, so the seam fade still lands in inter-beat silence.
+      // PEAK_ALIGN_BLEND slides the music downbeat foot(0)→peak(1); URL ?peakblend=.
+      const footOff = Math.max(0, lubOnsetTime - loopStart);          // foot (legacy)
+      let peakOff = footOff;
+      {
+        const rmsWin = Math.max(1, Math.round(sr * 0.010));           // 10 ms RMS
+        const hopN   = Math.max(1, Math.round(sr * 0.002));           // 2 ms hop
+        const w0 = Math.round(loopStart * sr);
+        const w1 = Math.min(rawData.length, Math.round((loopStart + beatSecNow * 0.45) * sr));
+        let bestR = -1, bestI = w0;
+        for(let i = w0; i < w1; i += hopN){
+          let s = 0, c = 0;
+          const e = Math.min(i + rmsWin, w1);
+          for(let j = i; j < e; j++){ s += rawData[j] * rawData[j]; c++; }
+          const r = c ? Math.sqrt(s / c) : 0;
+          if(r > bestR){ bestR = r; bestI = i; }
+        }
+        peakOff = Math.max(0, bestI / sr - loopStart);
+      }
+      _dbgFootMs = footOff * 1000; _dbgPeakMs = peakOff * 1000;
+      _peakOffsetSec = footOff + PEAK_ALIGN_BLEND * (peakOff - footOff);
       let peakOffsetBeats = _peakOffsetSec / beatSecNow;         // full offset in beats
       peakOffsetBeats = Math.round(peakOffsetBeats * 32) / 32;
       BASE_MUSIC_OFFSET     = peakOffsetBeats;
@@ -3475,10 +3549,13 @@ function _runDetectCore(){
   di.className = 'detect-info';
   // Unstable recording → offer phase candidates the user auditions by ear.
   // Stable recording → hide the panel (auto alignment is trusted).
+  _computeBeatSuggest();  // decide whether to offer the "music feels early" one-tap fix
   try{
     const cr = document.getElementById('candidateRow');
     if(cr) cr.style.display = _bpmUnsure ? 'block' : 'none';
-    setBeatNudge(0);  // fresh recording → start from the auto alignment (candidates from ±0)
+    setBeatNudge(0);  // fresh recording → start from the auto alignment (candidates from ±0); also refreshes the suggest chip
+    // Auto-apply the suggestion up front (delays the entry onto the next bar's pulse).
+    if(AUTO_ALIGN && _suggestAvail){ _applySuggestOffset(); updateBeatSuggest(); }
   }catch(e){}
   document.getElementById('bpmAdjDisplay').textContent = detectedBPM + ' bpm';
   window._lastDetScore = bestScore; // exposed for the adaptive-trim guard in loadWombBuffer
@@ -3817,6 +3894,24 @@ function adjustMusicOffset(delta){
   if(playing){stopAll();startAll();}
 }
 
+// Debug/A-B helper: re-place the music downbeat between the beat FOOT (blend 0) and
+// the "シャ" PEAK (blend 1) using the offsets measured at detection time, then restart
+// so the change is audible immediately. Exposed as window.setPeakBlend for the debug
+// panel buttons. No-op unless a heartbeat has been detected this session.
+function setPeakBlend(v){
+  PEAK_ALIGN_BLEND=Math.max(0,Math.min(1,v));
+  if(detectedBPM>0 && _dbgFootMs>=0){
+    const footSec=_dbgFootMs/1000, peakSec=_dbgPeakMs/1000;
+    _peakOffsetSec=footSec+PEAK_ALIGN_BLEND*(peakSec-footSec);
+    let b=_peakOffsetSec/(60/detectedBPM); b=Math.round(b*32)/32;
+    BASE_MUSIC_OFFSET=b; musicStartOffsetBeats=b;
+    if(playing){stopAll();startAll();}
+  }
+  return {blend:PEAK_ALIGN_BLEND, footMs:+_dbgFootMs.toFixed(0), peakMs:+_dbgPeakMs.toFixed(0),
+          appliedMs:+(musicStartOffsetBeats*(60/detectedBPM)*1000).toFixed(0)};
+}
+window.setPeakBlend=setPeakBlend;
+
 function onMusicFine(val){
   musicFineBPM=parseInt(val);
   document.getElementById('musicFineVal').textContent=(musicFineBPM>=0?'+':'')+musicFineBPM+' bpm';
@@ -3870,8 +3965,113 @@ function setBeatNudge(steps){
   // NOT cm==='file': library tracks keep cm as their category, so the old check
   // skipped live update for every built-in track (only uploaded music worked).
   if(playing && musicFileBuffer){ try{ applyPhaseRestart(); }catch(e){} }
+  try{ updateBeatSuggest(); }catch(e){}
 }
 function nudgeBeat(dir){ setBeatNudge(dir===0 ? 0 : _beatNudgeSteps+dir); }
+
+// One-tap half-beat shift. Some recordings put the loop downbeat ~half a beat
+// before the pulse the ear actually counts (see _computeBeatSuggest); flipping the
+// music by half a beat is the quick fix. Toggles between ±0 and -8/16 (=½ beat).
+function toggleHalfBeat(){ setBeatNudge(_beatNudgeSteps===-8 ? 0 : -8); }
+
+// ── Auto-suggest: "the music feels early" one-tap fix ────────────────────────
+// _computeBeatSuggest (called at the end of detection) offers a one-tap shift when
+// a STRONG pulse sits in the [0.30,0.60]-beat "alternate downbeat" zone ahead of
+// the current music downbeat — the half-beat-phase case where the loop head landed
+// before the sound the ear actually counts (New Voyage, Kaito1, Moms Echo).
+//
+// This can NEVER be auto-decided: measured across the regression set, a genuine
+// late pulse (Kaito1: 0.47 beat, 12 ms wide) is metrically identical — position,
+// head strength AND width — to a sharp lub-dub's DUB (Morning glow: 0.57 beat,
+// 14 ms wide). So it only SUGGESTS: one tap, fully reversible with ⟲, hidden the
+// moment the user nudges manually, and it NEVER auto-applies. Firing on the odd
+// already-good file (Morning glow) is harmless — the user only taps it if the music
+// actually sounds early, and the ear is the judge. The zone gate keeps it off files
+// whose real beat is at the head (Across/Misty/ExtRec1: their strong sound is at the
+// head or near the next beat, not in [0.30,0.60]).
+// _suggestTargetOffset is the music-entry offset (in beats, 0.30–0.60) that lands the
+// music's downbeat on the zone pulse. It is applied as musicStartOffsetBeats — a
+// DELAY of the entry — NOT as a beat nudge. A nudge shifts the whole music timeline
+// EARLIER (up to ~1 beat), which pulled the entrance back into the previous bar's 4th
+// beat ("food-early"); delaying the entry instead lands the first music sound on the
+// FIRST pulse of the next bar (the perceived 小節頭). Both align the beats identically
+// (they differ by a whole beat); only the audible entrance differs.
+var _suggestTargetOffset=0, _suggestAvail=false;
+function _computeBeatSuggest(){
+  _suggestAvail=false; _suggestTargetOffset=0;
+  try{
+    if(!rawBuffer || !(detectedBPM>0)) return;
+    const d=rawBuffer.getChannelData(0), sr=rawBuffer.sampleRate, beatSec=60/detectedBPM;
+    const win=Math.round(sr*0.012), hop=Math.round(sr*0.002);
+    const s0=Math.round(loopStart*sr), s1=Math.min(d.length, Math.round((loopStart+beatSec)*sr));
+    const env=[]; let gmax=0;
+    for(let i=s0;i<s1;i+=hop){
+      let s=0,c=0; const e=Math.min(i+win,s1);
+      for(let j=i;j<e;j++){ s+=d[j]*d[j]; c++; }
+      const r=Math.sqrt(s/Math.max(1,c)); env.push(r); if(r>gmax) gmax=r;
+    }
+    // dominant pulse inside the "alternate downbeat" zone, 0.30–0.60 beat
+    const kAt=t=>Math.round((beatSec*t*sr)/hop);
+    const a=Math.max(0,kAt(0.30)), b=Math.min(env.length-1, kAt(0.60));
+    let pv=-1, pk=a; for(let k=a;k<=b;k++){ if(env[k]>pv){ pv=env[k]; pk=k; } }
+    const targetFrac=(pk*hop)/sr/beatSec;           // pulse position, in beats
+    const baseOff=musicStartOffsetBeats;            // current music downbeat, in beats
+    const dist=((targetFrac-baseOff)%1+1)%1;        // forward shift (music is early → move later)
+    // Offer only when that zone pulse is genuinely strong (≥70% of the beat's
+    // loudest point, so a minor bump never triggers it) and clearly ahead of the
+    // current downbeat.
+    if(pv >= 0.70*gmax && dist>0.22 && dist<0.62){
+      _suggestAvail=true; _suggestTargetOffset=targetFrac;  // delay the entry to here
+    }
+  }catch(e){}
+}
+// Applied ⇔ the entry offset is (near) the suggested pulse; offered ⇔ it is still the
+// peak-align default (BASE_MUSIC_OFFSET). Any manual nudge/offset change → get out of
+// the way.
+function _suggestState(){
+  if(!(_suggestAvail && cs==='uploaded' && cm!=='none') || _beatNudgeSteps!==0) return 'hidden';
+  if(Math.abs(musicStartOffsetBeats - _suggestTargetOffset) < 0.02) return 'applied';
+  if(Math.abs(musicStartOffsetBeats - BASE_MUSIC_OFFSET) < 0.02) return 'offered';
+  return 'hidden';
+}
+function updateBeatSuggest(){
+  var el=document.getElementById('beatSuggest'); if(!el) return;
+  var txt=document.getElementById('beatSuggestText');
+  var btn=document.getElementById('btnBeatSuggest');
+  var st=_suggestState(), ja=(cl==='ja');
+  if(st==='offered'){
+    // Only shown when NOT applied (e.g. after ⟲, or when auto-align is off) so the
+    // user can re-apply. The applied state shows nothing — the alignment just works.
+    if(txt) txt.textContent = ja?'🎵 音楽が少し早く聞こえる場合はタップ':'🎵 If the music feels a little early, tap';
+    if(btn) btn.style.display='';
+    el.style.display='flex';
+  } else {
+    el.style.display='none';   // applied / hidden → no chip
+  }
+}
+// Apply the suggestion by DELAYING the music entry onto the pulse (no nudge), then
+// restart so the new entrance is heard. Survives a BGM change on its own because
+// selectTrack does not reset musicStartOffsetBeats.
+function _applySuggestOffset(){
+  if(!_suggestAvail) return;
+  musicStartOffsetBeats=_suggestTargetOffset;
+  _beatNudgeSteps=0; musicPhaseOffset=0;
+  try{ document.getElementById('beatAlignVal').textContent='±0'; }catch(e){}
+}
+function applyBeatSuggest(){
+  _applySuggestOffset();
+  if(playing){ try{ stopAll(); startAll(); }catch(e){} }
+  updateBeatSuggest();
+  try{ toast((cl==='ja')?'リズムを合わせました（⟲で戻せます）':'Beat aligned (⟲ to undo)'); }catch(e){}
+}
+// ⟲ : reset alignment to the default (undo the suggestion + any manual nudge).
+function resetAlign(){
+  musicStartOffsetBeats=BASE_MUSIC_OFFSET;
+  _beatNudgeSteps=0; musicPhaseOffset=0;
+  try{ document.getElementById('beatAlignVal').textContent='±0'; }catch(e){}
+  if(playing){ try{ stopAll(); startAll(); }catch(e){} }
+  updateBeatSuggest();
+}
 
 // Unstable-group candidate picker: one tap jumps the beat-align to a preset phase
 // so the user auditions a few options by ear instead of blind-nudging. Individual
@@ -5113,6 +5313,7 @@ try{ wizInit(); }catch(e){}
         L.push('曲bpm   '+musicFileBPM+'   倍率 '+rate.toFixed(4));
         L.push('リードイン '+lead.toFixed(3)+'s → 実時間 '+leadHeard.toFixed(3)+'s ('+(barS>0?(leadHeard/barS).toFixed(2):'?')+'小節)');
         L.push('INTRO_BARS '+INTRO_BARS+'  心音のみ '+intro.toFixed(3)+'s');
+        L.push('拍頭合わせ blend='+PEAK_ALIGN_BLEND.toFixed(2)+'  足元 '+_dbgFootMs.toFixed(0)+'ms → ピーク '+_dbgPeakMs.toFixed(0)+'ms  (差 '+(_dbgPeakMs-_dbgFootMs).toFixed(0)+'ms)  適用 '+(musicStartOffsetBeats*beatS*1000).toFixed(0)+'ms');
         L.push('曲の1拍目 '+(intro+leadHeard).toFixed(3)+'s = '+(barS>0?((intro+leadHeard)/barS).toFixed(2):'?')+'小節');
         L.push('最後の再生指示 '+(sched?JSON.stringify(sched):'(未再生)'));
         // What the browser actually decoded. If the leading silence is missing
@@ -5149,6 +5350,29 @@ try{ wizInit(); }catch(e){}
       btn.style.cssText='margin-top:6px;color:#C03D6B;cursor:pointer;text-decoration:underline;';
       btn.onclick=function(ev){ ev.stopPropagation(); location.href=location.pathname+'?_r='+Date.now(); };
       panel.appendChild(btn);
+      // Live A/B: move the music entry between the beat FOOT and the "シャ" PEAK and
+      // restart, so the ~100ms shift can be heard on the SAME heartbeat without a reload.
+      try{
+        var abWrap=document.createElement('div');
+        abWrap.style.cssText='margin-top:8px;display:flex;gap:6px;align-items:center;';
+        var lab=document.createElement('span'); lab.textContent='拍頭A/B:'; abWrap.appendChild(lab);
+        [['足元',0],['中間',0.5],['ピーク',1]].forEach(function(p){
+          var b=document.createElement('span');
+          b.textContent=p[0];
+          var on=Math.abs(PEAK_ALIGN_BLEND-p[1])<0.01;
+          b.style.cssText='cursor:pointer;padding:3px 8px;border-radius:5px;border:1px solid #e8b8cc;'+
+            (on?'background:#D4537E;color:#fff;':'background:#fff;color:#C03D6B;');
+          b.onclick=function(ev){ ev.stopPropagation(); var r=setPeakBlend(p[1]);
+            if(panel){panel.remove();panel=null;} v.onclick(); // re-open to refresh numbers
+            try{ toast('拍頭 '+p[0]+' → 音楽 '+r.appliedMs+'ms'); }catch(e){} };
+          abWrap.appendChild(b);
+        });
+        panel.appendChild(abWrap);
+        var note=document.createElement('div');
+        note.textContent='※再生中に押すと頭から再スタートして比較できます';
+        note.style.cssText='margin-top:4px;color:#a07a88;font-size:9px;';
+        panel.appendChild(note);
+      }catch(e){}
       document.body.appendChild(panel);
     };
     document.body.appendChild(v);
