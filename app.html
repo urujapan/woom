@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-11.6';
+window.APP_VERSION = '2026-08-12.1';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -520,15 +520,10 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <span id="timeNow">0:00</span><span id="timeTotal">—</span>
     </div>
   </div>
-  <div id="candidateRow" style="display:none;margin-top:.75rem;padding:10px 12px;background:#fff7ee;border:1px solid #f0d3a6;border-radius:10px;">
-    <div style="font-size:12.5px;color:#9a5a12;margin-bottom:8px;line-height:1.55;" id="candidateHint">念のため：もしズレて聞こえたら、再生しながら下から一番しっくりくるものを選べます。</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-      <button class="bpm-adj-btn cand-btn" data-steps="0"  onclick="pickCandidate(0)"  style="flex:1;min-width:56px;">現状</button>
-      <button class="bpm-adj-btn cand-btn" data-steps="-2" onclick="pickCandidate(-2)" style="flex:1;min-width:56px;">A</button>
-      <button class="bpm-adj-btn cand-btn" data-steps="-4" onclick="pickCandidate(-4)" style="flex:1;min-width:56px;">B</button>
-      <button class="bpm-adj-btn cand-btn" data-steps="-6" onclick="pickCandidate(-6)" style="flex:1;min-width:56px;">C</button>
-    </div>
-  </div>
+  <!-- Candidate panel removed (2026-08-12): its A/B/C buttons were just
+       setBeatNudge(-2/-4/-6), fully covered by the 2/16-step ◀▶ nudge, and it only
+       appeared for UNSURE recordings — which caused a Mac-shows/iPhone-doesn't
+       inconsistency. The always-visible ◀▶ is now the single alignment tool. -->
   <div class="card" style="margin-top:.75rem;">
     <div class="srow"><span class="slbl" id="T15">Womb sound</span><input type="range" id="vW" min="-50" max="50" value="0" step="1" oninput="onVolSlider('vW','vWv')"><span class="sval" id="vWv">0</span></div>
     <div class="srow"><span class="slbl" id="T16">Music</span><input type="range" id="vM" min="-50" max="50" value="0" step="1" oninput="onVolSlider('vM','vMv')"><span class="sval" id="vMv">0</span></div>
@@ -730,8 +725,6 @@ const NOW={en:'Now playing...',ja:'再生中...',zh:'播放中...','zh-TW':'播�
 // ── Robustness UI strings (BPM adjust hint, fallbacks, file-format error) ──
 const FINEOPT={en:'Fine-tune speed',ja:'速さの微調整',zh:'微调速度','zh-TW':'微調速度',ko:'속도 미세 조정',es:'Ajuste fino de velocidad',fr:'Réglage fin du tempo',de:'Tempo feinjustieren',pt:'Ajuste fino da velocidade',hi:'गति को बारीकी से समायोजित करें',id:'Penyetelan halus tempo',it:'Regolazione fine velocità',th:'ปรับความเร็วละเอียด',vi:'Tinh chỉnh tốc độ',ru:'Точная настройка темпа'};
 const WAVEFORM_TOOLS={en:'Fine-tune waveform',ja:'波形の微調整',zh:'微调波形','zh-TW':'微調波形',ko:'파형 미세 조정',es:'Ajustar forma de onda',fr:"Ajuster la forme d'onde",de:'Wellenform feinjustieren',pt:'Ajustar forma de onda',hi:'तरंगरूप को समायोजित करें',id:'Setel halus gelombang',it:"Regola la forma d'onda",th:'ปรับรูปคลื่นละเอียด',vi:'Tinh chỉnh dạng sóng',ru:'Настройка формы волны'};
-const CAND_HINT={en:'Just in case — if it sounds a little off, play it and pick whichever option below fits best.',ja:'念のため：もしズレて聞こえたら、再生しながら下から一番しっくりくるものを選べます。',zh:'以防万一：若听起来有点不同步，可一边播放，一边从下方选择最合适的一个。','zh-TW':'以防萬一：若聽起來有點不同步，可一邊播放，一邊從下方選擇最合適的一個。',ko:'혹시 조금 어긋나게 들리면, 재생하면서 아래에서 가장 잘 맞는 것을 선택할 수 있어요.',es:'Por si acaso: si suena un poco desfasado, reprodúcelo y elige la opción que mejor encaje.',fr:"Au cas où : si ça sonne un peu décalé, lisez-le et choisissez ci-dessous l'option qui convient le mieux.",de:'Nur für den Fall: Falls es etwas versetzt klingt, spiele es ab und wähle unten die passendste Option.',pt:'Por via das dúvidas: se soar um pouco fora, reproduza e escolha a opção que encaixar melhor.',hi:'बस एहतियातन: अगर थोड़ा बेमेल लगे, तो इसे चलाकर नीचे से सबसे उपयुक्त विकल्प चुन सकते हैं।',id:'Untuk berjaga: jika terdengar sedikit meleset, putar dan pilih opsi di bawah yang paling pas.',it:"Per sicurezza: se suona un po' sfasato, riproducilo e scegli l'opzione che si adatta meglio.",th:'เผื่อไว้: หากฟังแล้วเพี้ยนเล็กน้อย เล่นแล้วเลือกตัวเลือกด้านล่างที่เข้ากันที่สุดได้',vi:'Phòng khi cần: nếu nghe hơi lệch, hãy phát và chọn tùy chọn bên dưới nghe hợp nhất.',ru:'На всякий случай: если звучит немного вразнобой, воспроизведите и выберите ниже наиболее подходящий вариант.'};
-const CAND_CURRENT={en:'Current',ja:'現状',zh:'当前','zh-TW':'目前',ko:'현재',es:'Actual',fr:'Actuel',de:'Aktuell',pt:'Atual',hi:'वर्तमान',id:'Saat ini',it:'Attuale',th:'ปัจจุบัน',vi:'Hiện tại',ru:'Текущий'};
 const FB_NODET={en:"Couldn't auto-detect. Adjust the BPM manually below.",ja:'自動解析できませんでした。下のBPMボタンで手動調整してください。',zh:'无法自动检测。请用下方按钮手动调整 BPM。','zh-TW':'無法自動偵測。請用下方按鈕手動調整 BPM。',ko:'자동 감지에 실패했습니다. 아래 BPM 버튼으로 수동 조정하세요.',es:'No se pudo detectar. Ajusta el BPM manualmente abajo.',fr:'Détection impossible. Ajustez le BPM manuellement ci-dessous.',de:'Erkennung fehlgeschlagen. BPM unten manuell anpassen.',pt:'Não foi possível detectar. Ajuste o BPM manualmente abaixo.',it:'Rilevamento non riuscito. Regola il BPM manualmente qui sotto.',hi:'स्वतः पहचान विफल। नीचे BPM मैन्युअल रूप से समायोजित करें।',id:'Deteksi otomatis gagal. Sesuaikan BPM secara manual di bawah.',th:'ตรวจจับอัตโนมัติไม่ได้ ปรับ BPM ด้วยตนเองด้านล่าง',vi:'Không thể tự nhận diện. Hãy chỉnh BPM thủ công bên dưới.',ru:'Не удалось определить. Настройте BPM вручную ниже.'};
 // Shown when the tempo is not determinable from the recording (see _bpmAgreement).
 // Not a failure — detection produced a loop and the app works — so this is advice,
@@ -848,8 +841,6 @@ function L(l){
   document.getElementById('phaseHint').textContent=DRAG[l]||DRAG.en;
   try{ document.getElementById('fineToggleLbl').textContent=FINEOPT[l]||FINEOPT.en; }catch(e){}
   try{ document.getElementById('waveformToolsLbl').textContent=WAVEFORM_TOOLS[l]||WAVEFORM_TOOLS.en; }catch(e){}
-  try{ document.getElementById('candidateHint').textContent=CAND_HINT[l]||CAND_HINT.en; }catch(e){}
-  try{ var _cc=document.querySelector('.cand-btn[data-steps="0"]'); if(_cc) _cc.textContent=CAND_CURRENT[l]||CAND_CURRENT.en; }catch(e){}
   document.getElementById('wombPrevLbl').textContent=PREV[l]||PREV.en;
   document.getElementById('recLbl').textContent=REC[l]||REC.en;
   try{
@@ -1290,7 +1281,13 @@ function loadWombBuffer(arrayBuffer, name){
       // This triple gate (big tempo gap + untrimmed sure + trimmed unsure) is unique
       // to Moms Echo across the whole test set — every other recording agrees on
       // tempo, so their existing pick is untouched.
-      const tempoFlip = Math.abs(uBpm - tBpm) > 0.12 * Math.max(uBpm, tBpm) && !uUnsure && tUnsure;
+      // The uScore>0.004 gate is essential: without it, tempoFlip reopens the exact
+      // junk-region hole the sibling clause below guards against. On iOS Safari the
+      // untrimmed Chie read is a confident-looking but empty stretch (loop 20.32s,
+      // score 0.0000, bpm 97) that satisfies !uUnsure and the tempo gap, so tempoFlip
+      // would override to that garbage. Moms Echo's untrimmed read is a real loop
+      // (score ~0.015) so it still passes — the gate only rejects zero-score picks.
+      const tempoFlip = uScore > 0.004 && Math.abs(uBpm - tBpm) > 0.12 * Math.max(uBpm, tBpm) && !uUnsure && tUnsure;
       // Prefer the untrimmed pick only if its beat is clearly tighter AND it is a
       // real loop, not a near-zero-score junk region. On iOS the untrimmed detector
       // can latch onto a silent stretch (Chie → a ~0-score spot at 20s) that looks
@@ -3540,18 +3537,14 @@ function _runDetectCore(){
 
   const info = `Detected: ${detectedBPM} bpm · Loop: ${loopStart.toFixed(2)}s – ${(loopStart+loopDur).toFixed(2)}s (${loopDur.toFixed(2)}s)`;
   const di = document.getElementById('detectInfo');
-  // Upload screen shows only the plain detection result — no "tempo unclear, adjust
-  // below" warning here, because there is nothing to adjust on this screen. The
-  // guidance + candidate picker live in the Preview step (candidateRow) instead.
+  // Upload screen shows only the plain detection result. Any residual phase mismatch
+  // (including on UNSURE recordings) is dialled out in the Preview step with the
+  // always-visible ◀▶ nudge — the old unsure-only candidate panel was removed.
   di.textContent = '✓ ' + info;
   di.className = 'detect-info';
-  // Unstable recording → offer phase candidates the user auditions by ear.
-  // Stable recording → hide the panel (auto alignment is trusted).
   _computeBeatSuggest();  // decide whether to offer the "music feels early" one-tap fix
   try{
-    const cr = document.getElementById('candidateRow');
-    if(cr) cr.style.display = _bpmUnsure ? 'block' : 'none';
-    setBeatNudge(0);  // fresh recording → start from the auto alignment (candidates from ±0); also refreshes the suggest chip
+    setBeatNudge(0);  // fresh recording → start from the auto alignment; also refreshes the suggest chip
     // Auto-apply the suggestion up front (delays the entry onto the next bar's pulse).
     if(AUTO_ALIGN && _suggestAvail){ _applySuggestOffset(); updateBeatSuggest(); }
   }catch(e){}
@@ -3958,14 +3951,20 @@ function setBeatNudge(steps){
   var el=document.getElementById('beatAlignVal');
   if(el) el.textContent=(_beatNudgeSteps>0?'+':'')+(_beatNudgeSteps===0?'±0':(_beatNudgeSteps+'/16'));
   try{ drawMusicGrid(); }catch(e){}
-  syncCandidateButtons();
   // apply immediately so it can be judged while listening. Gate on musicFileBuffer,
   // NOT cm==='file': library tracks keep cm as their category, so the old check
   // skipped live update for every built-in track (only uploaded music worked).
   if(playing && musicFileBuffer){ try{ applyPhaseRestart(); }catch(e){} }
   try{ updateBeatSuggest(); }catch(e){}
 }
-function nudgeBeat(dir){ setBeatNudge(dir===0 ? 0 : _beatNudgeSteps+dir); }
+// One tap = 2/16 (1/8 beat). In practice every useful manual alignment the user
+// reaches is an even 1/16 value (−2/−4/−6…), which is exactly what the old unsure
+// candidate buttons offered (A=−2,B=−4,C=−6). Stepping by 2 makes ◀ ◀ ◀ land on
+// A/B/C in single taps, so the separate candidate panel is redundant. The underlying
+// resolution stays 1/16 (setBeatNudge accepts any int); only the tap increment is 2.
+// (Historical note above: 1/8 was once "too coarse" — that predates AUTO_ALIGN, which
+// now removes the bulk offset automatically, leaving only the even-step residual.)
+function nudgeBeat(dir){ setBeatNudge(dir===0 ? 0 : _beatNudgeSteps+dir*2); }
 
 // ── Auto-suggest: "the music feels early" one-tap fix ────────────────────────
 // _computeBeatSuggest (called at the end of detection) offers a one-tap shift when
@@ -4064,19 +4063,6 @@ function resetAlign(){
   try{ document.getElementById('beatAlignVal').textContent='±0'; }catch(e){}
   if(playing){ try{ stopAll(); startAll(); }catch(e){} }
   updateBeatSuggest();
-}
-
-// Unstable-group candidate picker: one tap jumps the beat-align to a preset phase
-// so the user auditions a few options by ear instead of blind-nudging. Individual
-// per recording — the app can't determine the right phase for an unstable recording,
-// so it offers choices and the ear decides.
-function pickCandidate(steps){ setBeatNudge(steps); }
-function syncCandidateButtons(){
-  try{
-    document.querySelectorAll('.cand-btn').forEach(function(b){
-      b.classList.toggle('active', Number(b.getAttribute('data-steps'))===_beatNudgeSteps);
-    });
-  }catch(e){}
 }
 
 // Beat-align phase, expressed as a TIMELINE SHIFT (real seconds to start EARLIER).
