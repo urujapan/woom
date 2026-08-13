@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-13.1';
+window.APP_VERSION = '2026-08-13.2';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -5320,7 +5320,11 @@ try{ wizInit(); }catch(e){}
       'color:#c9a8b6;font-family:monospace;letter-spacing:.02em;cursor:pointer;'+
       'padding:3px 5px;border-radius:4px;background:rgba(255,255,255,.55);';
     var panel=null;
+    var _DBG=(function(){try{return new URLSearchParams(location.search).has('debug');}catch(e){return false;}})();
     v.onclick=function(){
+      // Normal users: a tap just force-reloads the latest build (cache-bust).
+      // The full diagnostic panel is dev-only, behind ?debug.
+      if(!_DBG){ location.href=location.pathname+'?_r='+Date.now(); return; }
       if(panel){ panel.remove(); panel=null; return; }
       var L=[];
       try{
@@ -5376,29 +5380,6 @@ try{ wizInit(); }catch(e){}
       btn.style.cssText='margin-top:6px;color:#C03D6B;cursor:pointer;text-decoration:underline;';
       btn.onclick=function(ev){ ev.stopPropagation(); location.href=location.pathname+'?_r='+Date.now(); };
       panel.appendChild(btn);
-      // Live A/B: move the music entry between the beat FOOT and the "シャ" PEAK and
-      // restart, so the ~100ms shift can be heard on the SAME heartbeat without a reload.
-      try{
-        var abWrap=document.createElement('div');
-        abWrap.style.cssText='margin-top:8px;display:flex;gap:6px;align-items:center;';
-        var lab=document.createElement('span'); lab.textContent='拍頭A/B:'; abWrap.appendChild(lab);
-        [['足元',0],['中間',0.5],['ピーク',1]].forEach(function(p){
-          var b=document.createElement('span');
-          b.textContent=p[0];
-          var on=Math.abs(PEAK_ALIGN_BLEND-p[1])<0.01;
-          b.style.cssText='cursor:pointer;padding:3px 8px;border-radius:5px;border:1px solid #e8b8cc;'+
-            (on?'background:#D4537E;color:#fff;':'background:#fff;color:#C03D6B;');
-          b.onclick=function(ev){ ev.stopPropagation(); var r=setPeakBlend(p[1]);
-            if(panel){panel.remove();panel=null;} v.onclick(); // re-open to refresh numbers
-            try{ toast('拍頭 '+p[0]+' → 音楽 '+r.appliedMs+'ms'); }catch(e){} };
-          abWrap.appendChild(b);
-        });
-        panel.appendChild(abWrap);
-        var note=document.createElement('div');
-        note.textContent='※再生中に押すと頭から再スタートして比較できます';
-        note.style.cssText='margin-top:4px;color:#a07a88;font-size:9px;';
-        panel.appendChild(note);
-      }catch(e){}
       document.body.appendChild(panel);
     };
     document.body.appendChild(v);
