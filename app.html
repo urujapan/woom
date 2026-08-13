@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-13.4';
+window.APP_VERSION = '2026-08-13.6';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -350,6 +350,10 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 /* Highlight a required field the user left blank (e.g. the gift message). */
 .field-error{border-color:#e0396b !important;box-shadow:0 0 0 3px rgba(224,57,107,.16);animation:fieldShake .3s ease;}
 @keyframes fieldShake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+/* Inline "required" hint shown next to the message label — stays visible on mobile
+   even when the on-screen keyboard covers the bottom toast. */
+.field-hint-inline{display:none;color:#e0396b;font-size:12.5px;font-weight:600;}
+.field-hint-inline.show{display:block;margin:1px 0 7px;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
@@ -588,7 +592,8 @@ input[type=range]{flex:1;accent-color:#D4537E;}
     </div>
     <div class="ginput-group">
       <label class="ginput-label">💬 メッセージ</label>
-      <textarea class="ginput gtextarea" id="gMsg" placeholder="例：生まれてきてくれてありがとう ♡" oninput="refreshPreview()"></textarea>
+      <div class="field-hint-inline" id="gMsgErr"></div>
+      <textarea class="ginput gtextarea" id="gMsg" placeholder="例：生まれてきてくれてありがとう ♡" oninput="refreshPreview();hideMsgErr()"></textarea>
     </div>
     <div class="gpreview">
       <div class="ghost"><i class="ti ti-heart"></i></div>
@@ -4848,20 +4853,25 @@ function rearmGiftBtn(){ var b=document.getElementById('btnGift'); if(b&&b.datas
   });
 })();
 
+function hideMsgErr(){
+  var e=document.getElementById('gMsgErr'); if(e) e.classList.remove('show');
+  var m=document.getElementById('gMsg'); if(m) m.classList.remove('field-error');
+}
 function doGift(){
   var _gmsg=document.getElementById('gMsg');
   if(!_gmsg.value.trim()){
-    // Make the missing field obvious: toast (now above the bottom nav) + scroll to,
-    // highlight, and focus the message box so it's clear WHAT was forgotten.
-    toast(ts('msg'));
+    // Show an INLINE hint next to the label — on mobile the keyboard (opened by the
+    // focus below) covers the bottom toast, so a bottom toast alone isn't seen. The
+    // label hint sits at the top of the field and scrolls into view with it.
+    var _err=document.getElementById('gMsgErr');
+    if(_err){ _err.textContent=ts('msg'); _err.classList.add('show'); }
+    toast(ts('msg')); // still useful on desktop
     try{ _gmsg.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
     _gmsg.classList.add('field-error');
     try{ _gmsg.focus({preventScroll:true}); }catch(e){ try{ _gmsg.focus(); }catch(_){} }
-    clearTimeout(window._fieldErrTimer);
-    window._fieldErrTimer=setTimeout(function(){ _gmsg.classList.remove('field-error'); },2600);
     return;
   }
-  _gmsg.classList.remove('field-error');
+  hideMsgErr();
   if(!AC){toast('Please press ▶ Play first.');return;}
   var _gb=document.getElementById('btnGift'); if(_gb&&_gb.disabled) return; // already running / done
   setGiftBtn('processing');
