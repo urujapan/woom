@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-13.2';
+window.APP_VERSION = '2026-08-13.3';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -5074,6 +5074,21 @@ function _geoMeta(){
   }catch(e){}
   return {country:country, timezone:tz, locale:loc};
 }
+// Music CATEGORY of the gift (Lullaby/Ambient/Classical/World/Electro/Other). Logged in
+// the "Source" column — more useful than library/synth now that user uploads don't exist.
+// Derived from the actually-selected track (falls back to the current category `cm`).
+var _CAT_LABEL={lullaby:'Lullaby',ambient:'Ambient',classical:'Classical',world:'World',electro:'Electro',other:'Other'};
+function _giftCategory(){
+  try{
+    if(typeof selectedTrack!=='undefined' && selectedTrack && typeof MUSIC_LIBRARY!=='undefined'){
+      for(var k in MUSIC_LIBRARY){
+        if(MUSIC_LIBRARY[k].some(function(t){return t.id===selectedTrack.id;})) return _CAT_LABEL[k]||k;
+      }
+    }
+  }catch(e){}
+  var c=(typeof cm!=='undefined')?cm:'';
+  return (c && c!=='none' && c!=='file') ? (_CAT_LABEL[c]||c) : '';
+}
 // Fire-and-forget POST to the Sheet ledger. text/plain body avoids a CORS preflight;
 // the response is ignored, so a blocked/absent CORS header never breaks gift creation.
 function logGiftToLedger(){
@@ -5089,7 +5104,7 @@ function logGiftToLedger(){
     const gift_id='WMGS_'+slug+'_'+bpmStr+'_'+_yymmdd()+'_'+ctry+'_'+rand;    // WMGS_曲名_BPM_日付_国_一意
     fetch(GIFT_LEDGER_URL,{method:'POST',keepalive:true,
       body:JSON.stringify({secret:'woom-ledger-2026',
-        track_id:track_id, track_title:m.track_title, source:m.source,
+        track_id:track_id, track_title:m.track_title, source:_giftCategory(),
         heart_bpm:h.heart_bpm, heart_source:h.heart_source,
         country:g.country, timezone:g.timezone, locale:g.locale,
         app_version:window.APP_VERSION, gift_id:gift_id})
