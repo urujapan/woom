@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-13.3';
+window.APP_VERSION = '2026-08-13.4';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -346,7 +346,10 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 .sp2{top:15px; right:25px;animation-delay:2.7s;}
 .sp3{top:5px;  left:50%;  animation-delay:2.9s;}
 
-.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);background:white;border:1px solid #eee;border-radius:12px;padding:12px 24px;font-size:14px;color:#333;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.08);}
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);background:white;border:1px solid #eee;border-radius:12px;padding:12px 24px;font-size:14px;color:#333;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.08);z-index:9999;}
+/* Highlight a required field the user left blank (e.g. the gift message). */
+.field-error{border-color:#e0396b !important;box-shadow:0 0 0 3px rgba(224,57,107,.16);animation:fieldShake .3s ease;}
+@keyframes fieldShake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
@@ -4826,9 +4829,19 @@ function setGiftBtn(state){
     b.disabled=false; b.dataset.done=''; b.style.opacity=''; b.style.pointerEvents=''; b.style.filter='';
   }
 }
+// Hide the previous gift's link/QR/share panel so a stale link isn't mistaken for a
+// fresh one when the user starts making another gift (change song, edit a field…).
+function clearGiftResult(){
+  var gr=document.getElementById('giftResult'); if(gr) gr.classList.remove('show');
+  ['audioLinkBox','shareButtons','qrWrap'].forEach(function(id){ var e=document.getElementById(id); if(e) e.style.display='none'; });
+  var al=document.getElementById('audioLink'); if(al) al.textContent='—';
+  var us=document.getElementById('uploadStatus'); if(us){ us.textContent=''; us.className='upload-status'; }
+  _audioUrl='';
+}
 // Re-enable the button ONLY after a completed gift (never mid-render), so a change
-// of mind can produce a new gift but a double-tap during processing cannot.
-function rearmGiftBtn(){ var b=document.getElementById('btnGift'); if(b&&b.dataset.done==='1') setGiftBtn('ready'); }
+// of mind can produce a new gift but a double-tap during processing cannot. Re-arming
+// also clears the finished link, so the old one can't be mistaken for the new gift.
+function rearmGiftBtn(){ var b=document.getElementById('btnGift'); if(b&&b.dataset.done==='1'){ setGiftBtn('ready'); clearGiftResult(); } }
 (function(){
   ['gBaby','gMsg','gFrom','gDate','vW','vM','vT'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.addEventListener('input', rearmGiftBtn);
@@ -4836,7 +4849,19 @@ function rearmGiftBtn(){ var b=document.getElementById('btnGift'); if(b&&b.datas
 })();
 
 function doGift(){
-  if(!document.getElementById('gMsg').value.trim()){toast(ts('msg'));return;}
+  var _gmsg=document.getElementById('gMsg');
+  if(!_gmsg.value.trim()){
+    // Make the missing field obvious: toast (now above the bottom nav) + scroll to,
+    // highlight, and focus the message box so it's clear WHAT was forgotten.
+    toast(ts('msg'));
+    try{ _gmsg.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
+    _gmsg.classList.add('field-error');
+    try{ _gmsg.focus({preventScroll:true}); }catch(e){ try{ _gmsg.focus(); }catch(_){} }
+    clearTimeout(window._fieldErrTimer);
+    window._fieldErrTimer=setTimeout(function(){ _gmsg.classList.remove('field-error'); },2600);
+    return;
+  }
+  _gmsg.classList.remove('field-error');
   if(!AC){toast('Please press ▶ Play first.');return;}
   var _gb=document.getElementById('btnGift'); if(_gb&&_gb.disabled) return; // already running / done
   setGiftBtn('processing');
