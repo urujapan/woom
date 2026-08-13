@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-12.1';
+window.APP_VERSION = '2026-08-13.1';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -773,6 +773,7 @@ var _playStartAt=0;          // ctx time when the preview started (progress bar 
 var _musicEnterWall=0;       // seconds from play start until the music enters (intro length)
 var detectedBPM=0, loopStart=0, loopDur=0;
 var _knownBPM=0; // authoritative BPM for samples (label); forces runDetect to use it
+var _hbKind=''; // how the womb heartbeat was chosen: 'sample' | 'upload' | 'record' (for the Gift Log)
 var _peakOffsetSec=0; // time from loop start to the heartbeat peak (for phase re-scaling)
 var _bpmUnsure=false; // tempo not determinable from the audio — see _bpmAgreement
 // ── Lub attack-foot → lub PEAK alignment (2026-08-10, under test) ─────────────
@@ -1030,7 +1031,7 @@ async function pickHeartbeatSample(btn, filename, knownBpm=0){
     const arrayBuf = await res.arrayBuffer();
     const buf = await AC.decodeAudioData(arrayBuf);
     _normalizeBuffer(buf);
-    rawBuffer = buf; cs = 'uploaded';
+    rawBuffer = buf; cs = 'uploaded'; _hbKind='sample';
     rearmGiftBtn();   // sample heartbeat chosen → let them make a new gift
     document.getElementById('upinfo').style.display = 'flex';
     document.getElementById('upname').textContent = filename.replace(/\.(mp3|wav|m4a)$/i,'');
@@ -1247,9 +1248,10 @@ function _firstBeatPeakMs(){
   }catch(e){ return 9999; }
 }
 
-function loadWombBuffer(arrayBuffer, name){
+function loadWombBuffer(arrayBuffer, name, kind){
   if(!AC) AC=new(window.AudioContext||window.webkitAudioContext)();
   _knownBPM=0; // uploads/recordings have no authoritative BPM
+  _hbKind = kind || 'upload'; // 'upload' (file) or 'record' (mic) — for the Gift Log
   AC.decodeAudioData(arrayBuffer, function(buf){
     _normalizeBuffer(buf);
     // Adaptive trim. The active-region trim rescues messy recordings whose best loop
@@ -1309,7 +1311,7 @@ function loadWombBuffer(arrayBuffer, name){
 document.getElementById('fi').addEventListener('change',function(){
   const file=this.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=function(e){ loadWombBuffer(e.target.result, file.name); };
+  reader.onload=function(e){ loadWombBuffer(e.target.result, file.name, 'upload'); };
   reader.readAsArrayBuffer(file);
 });
 
@@ -1364,7 +1366,7 @@ function _clearRecHistory(){
 function _useRec(id){
   var recs=_loadRecs();
   var rec=recs.find(function(r){ return r.id===id; });
-  if(rec) loadWombBuffer(_b642ab(rec.b64), rec.name);
+  if(rec) loadWombBuffer(_b642ab(rec.b64), rec.name, 'record');
 }
 // Sniff the real container (iOS records mp4/m4a, others webm) so the shared
 // file has the correct type/extension regardless of how it was labelled.
@@ -1463,7 +1465,7 @@ async function toggleRec(){
         const ab=e.target.result;
         const ab1=ab.slice(0);
         const ab2=ab.slice(0);
-        loadWombBuffer(ab1,'Recording');
+        loadWombBuffer(ab1,'Recording','record');
         _saveRec(ab2, _recSec);
       }catch(err){alert('reader.onload error: '+err);}
     };
@@ -5037,15 +5039,60 @@ function _giftTrackMeta(){
   else if(cm && cm!=='none'){ id=cm; title=cm; source='synth'; }
   return {track_id:id, track_title:title, source:source};
 }
+// ── Gift Log field helpers ─────────────────────────────────────────────────
+// Readable, manageable IDs for the sheet. Prefix WMGS_ ("WooM Gift Song") +
+// slugged song title; the gift id adds date + a short random tail for uniqueness.
+// NOTE: these are LOG-ONLY ids. _giftTrackMeta()'s internal id (ot4 …) still
+// drives the Cloudinary usage tags, so those queries are unaffected.
+function _slugTitle(t){
+  return String(t||'unknown').trim().replace(/[^A-Za-z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'unknown';
+}
+function _yymmdd(){
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return p(d.getFullYear()%100)+p(d.getMonth()+1)+p(d.getDate());
+}
+// Heartbeat tempo + how the womb sound was chosen. detectedBPM is authoritative
+// for both samples and uploads/recordings; synth womb sounds have no real BPM.
+function _heartMeta(){
+  let bpm=0, src=cs||'unknown';
+  if(cs==='uploaded'){ bpm=detectedBPM>0?detectedBPM:0; src=_hbKind||'upload'; } // sample|upload|record
+  else if(cs==='beat'){ src='synth_beat'; bpm=parseInt(document.getElementById('vT').value)||80; }
+  else if(cs==='flow'){ src='blood_flow'; }
+  else if(cs==='breath'){ src='breathing'; }
+  return {heart_bpm:bpm, heart_source:src};
+}
+// Coarse country / region from the device — no network, no permission prompt,
+// privacy-safe. locale "ja-JP" → country JP; timezone "Asia/Tokyo" is the region.
+function _geoMeta(){
+  let tz='', loc='', country='';
+  try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(e){}
+  try{ loc=navigator.language||''; }catch(e){}
+  try{
+    const mm=(loc||'').match(/[-_]([A-Za-z]{2})(?:$|[-_])/);
+    if(mm) country=mm[1].toUpperCase();                                   // "ja-JP" → JP
+    else if(loc && window.Intl && Intl.Locale){ country=(new Intl.Locale(loc).maximize().region)||''; } // "ja" → JP (best guess; timezone is the accurate signal)
+  }catch(e){}
+  return {country:country, timezone:tz, locale:loc};
+}
 // Fire-and-forget POST to the Sheet ledger. text/plain body avoids a CORS preflight;
 // the response is ignored, so a blocked/absent CORS header never breaks gift creation.
 function logGiftToLedger(){
   if(!GIFT_LEDGER_URL) return;
   try{
     const m=_giftTrackMeta();
-    const gid=Math.random().toString(36).slice(2)+Date.now().toString(36); // dedupe id
+    const slug=_slugTitle(m.track_title);
+    const h=_heartMeta(), g=_geoMeta();
+    const bpmStr=(h.heart_bpm>0 ? Math.round(h.heart_bpm)+'bpm' : 'na');       // 心音BPM（シンセ/血流等は na）
+    const ctry=g.country||'XX';                                               // 国（推定不能は XX）
+    const rand=Math.random().toString(36).slice(2,5);                         // 一意にする短い尾
+    const track_id='WMSL_'+slug;                                              // 使用した曲のID（WMSL_+曲名）
+    const gift_id='WMGS_'+slug+'_'+bpmStr+'_'+_yymmdd()+'_'+ctry+'_'+rand;    // WMGS_曲名_BPM_日付_国_一意
     fetch(GIFT_LEDGER_URL,{method:'POST',keepalive:true,
-      body:JSON.stringify({secret:'woom-ledger-2026',track_id:m.track_id,track_title:m.track_title,source:m.source,app_version:window.APP_VERSION,gift_id:gid})
+      body:JSON.stringify({secret:'woom-ledger-2026',
+        track_id:track_id, track_title:m.track_title, source:m.source,
+        heart_bpm:h.heart_bpm, heart_source:h.heart_source,
+        country:g.country, timezone:g.timezone, locale:g.locale,
+        app_version:window.APP_VERSION, gift_id:gift_id})
     }).catch(function(){});
   }catch(e){}
 }
