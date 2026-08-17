@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-13.6';
+window.APP_VERSION = '2026-08-17.1';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -275,6 +275,15 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 .hb-sample-btn{position:relative;padding-bottom:28px !important;}
 .track-panel{margin-top:8px;display:none;}
 .track-panel.show{display:block;}
+/* Custom-commission entry point. Dashed border marks it as a different kind of
+   action from the track list above it (leaves the app, opens the order page). */
+.custom-order{display:flex;align-items:center;gap:11px;margin-top:14px;padding:12px 14px;border:1px dashed #E89BB4;border-radius:12px;background:#FFF8FA;text-decoration:none;color:#C03D6B;font-family:'Baloo 2','DM Sans',sans-serif;transition:background .15s ease;}
+.custom-order:hover{background:#FBEAF0;}
+.custom-order .co-ico{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:#FBEAF0;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.custom-order .co-txt{flex:1 1 auto;min-width:0;line-height:1.35;}
+.custom-order .co-txt b{display:block;font-size:13.5px;font-weight:600;}
+.custom-order .co-txt span{display:block;font-size:11.5px;color:#B08A9A;margin-top:1px;}
+.custom-order .co-arrow{flex:0 0 auto;font-size:16px;color:#E89BB4;}
 .track-item{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;border-radius:8px;border:1px solid #eee;background:#f9f9f9;font-size:13px;color:#333;cursor:pointer;margin-bottom:6px;font-family:'Baloo 2','DM Sans',sans-serif;text-align:left;}
 .track-item:hover{background:#f0f0f0;}
 .track-item.active{background:#FBEAF0;border-color:#E89BB4;color:#C03D6B;}
@@ -513,6 +522,11 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <button class="mbtn" onclick="pickMusic(this,'other')"><span class="micon"><i class="ti ti-dots"></i></span><span class="mn" data-k="none">その他</span></button>
     </div>
     <div class="track-panel" id="trackPanel"></div>
+    <a class="custom-order" id="customOrderBtn" href="order.html" target="_blank" rel="noopener">
+      <span class="co-ico"><i class="ti ti-music"></i></span>
+      <span class="co-txt"><b id="customOrderTitle">楽曲のオーダーメイド</b><span id="customOrderSub">心音に合わせた書き下ろし · $300〜</span></span>
+      <i class="ti ti-chevron-right co-arrow"></i>
+    </a>
   </div>
 </div>
 
@@ -836,6 +850,27 @@ function getEffectiveBPM(){
   return parseInt(document.getElementById('vT').value)||80;
 }
 
+// Custom-commission entry point under the track list (links to order.html).
+// The subtitle stays deliberately broad: the order page offers both an original
+// composition and a performance of a classical piece, so it must cover both.
+const CUSTOM_ORDER={
+  en:{t:'Custom-Made Music',s:'Made for your heartbeat · from $300'},
+  ja:{t:'楽曲のオーダーメイド',s:'心音に合わせた一曲を · $300〜'},
+  zh:{t:'定制专属乐曲',s:'为心跳量身打造 · $300起'},
+  'zh-TW':{t:'訂製專屬樂曲',s:'為心跳量身打造 · $300起'},
+  ko:{t:'맞춤 음악 제작',s:'심장 소리에 맞춘 한 곡 · $300부터'},
+  es:{t:'Música a medida',s:'Hecha para tu latido · desde $300'},
+  fr:{t:'Musique sur mesure',s:'Créée pour votre battement · dès 300 $'},
+  de:{t:'Musik nach Maß',s:'Für euren Herzschlag · ab 300 $'},
+  pt:{t:'Música sob medida',s:'Feita para o seu batimento · a partir de $300'},
+  hi:{t:'कस्टम संगीत',s:'आपकी धड़कन के लिए · $300 से'},
+  id:{t:'Musik Custom',s:'Dibuat untuk detak jantungmu · mulai $300'},
+  it:{t:'Musica su misura',s:'Creata sul vostro battito · da 300 $'},
+  th:{t:'เพลงสั่งทำพิเศษ',s:'สร้างให้เข้ากับเสียงหัวใจ · เริ่มต้น $300'},
+  vi:{t:'Nhạc đặt riêng',s:'Dành riêng cho nhịp tim · từ $300'},
+  ru:{t:'Музыка на заказ',s:'Под ваше сердцебиение · от $300'}
+};
+
 function t(i){return TX[cl][i]||TX.en[i]||'';}
 function ts(k){return TOAST[cl][k]||TOAST.en[k]||'';}
 function mn(k){return MN[cl][k]||k;}
@@ -864,6 +899,12 @@ function L(l){
   try{ var h=_helpI18n[l]||_helpI18n.en; document.getElementById('helpOpenBtn').textContent='？ '+h.title; }catch(e){}
   try{ var hn=_helpI18n[l]||_helpI18n.en; document.getElementById('wizBack').textContent=hn.prev; document.getElementById('wizNext').textContent=hn.next; }catch(e){}
   try{ document.getElementById('beatAlignLbl').textContent=BEAT_ALIGN[l]||BEAT_ALIGN.en; }catch(e){}
+  try{
+    const co=CUSTOM_ORDER[l]||CUSTOM_ORDER.en;
+    document.getElementById('customOrderTitle').textContent=co.t;
+    document.getElementById('customOrderSub').textContent=co.s;
+    document.getElementById('customOrderBtn').href='order.html?lang='+encodeURIComponent(l);
+  }catch(e){}
   // Fine-tune button tooltips (fast .tipbtn tooltip, per-language via data-tip).
   try{
     const _tip=(id,d)=>{const el=document.getElementById(id); if(el) el.setAttribute('data-tip',d[l]||d.en);};

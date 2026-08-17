@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>楽曲のオーダーメイド — WooM</title>
+<meta name="description" content="赤ちゃんの心音に合わせた書き下ろし楽曲。ピアノソロ・ギターソロは $300 から。">
+<meta property="og:title" content="WooM — 楽曲のオーダーメイド">
+<meta property="og:description" content="心音に合わせた書き下ろし楽曲。$300〜">
+<meta property="og:type" content="website">
+<meta property="og:image" content="woom_icon3.png">
+<link rel="icon" type="image/png" href="woom_icon3.png">
+<link rel="apple-touch-icon" href="woom_icon3.png">
+<meta name="apple-mobile-web-app-title" content="WooM">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{font-family:'Baloo 2','DM Sans',sans-serif;color:#5A4650;background:linear-gradient(165deg,#fff5f8 0%,#FBEAF0 100%);min-height:100vh;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:560px;margin:0 auto;padding:1.5rem 1.25rem 3rem;}
+
+/* top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:1.5rem;}
+.back{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #F1DCE4;border-radius:20px;padding:5px 14px;font-size:12.5px;color:#9C7E8B;text-decoration:none;font-weight:500;}
+.back:hover{border-color:#E89BB4;color:#C03D6B;}
+.langbar{display:flex;gap:6px;}
+.langbar button{background:#fff;border:1.5px solid #F1DCE4;border-radius:20px;padding:4px 13px;font-size:12px;color:#9C7E8B;cursor:pointer;font-family:inherit;font-weight:500;}
+.langbar button.on{background:#D4537E;border-color:#D4537E;color:#fff;}
+
+/* hero */
+.hero{text-align:center;}
+.wm{height:34px;margin:0 auto .9rem;}
+.wm svg{display:block;height:100%;margin:0 auto;}
+.wm text{font-family:'Baloo 2',sans-serif;font-weight:500;font-size:100px;fill:#D4537E;}
+h1{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:2rem;color:#C03D6B;line-height:1.25;letter-spacing:.01em;}
+.sub{font-size:.95rem;line-height:1.85;color:#6E5660;margin-top:.9rem;}
+.sub b{color:#C03D6B;font-weight:600;}
+
+/* section */
+.sec{margin-top:2.4rem;}
+.sec-lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#B08A9A;margin-bottom:.75rem;font-weight:600;}
+
+/* price tiers */
+.tiers{display:flex;flex-direction:column;gap:10px;}
+.tier{background:#fff;border:1px solid #F1DCE4;border-radius:14px;padding:15px 17px;}
+.tier.lead-tier{border-color:#E89BB4;box-shadow:0 4px 14px rgba(212,83,126,.10);}
+.tier-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+.tier-name{font-size:1rem;font-weight:600;color:#5A4650;}
+.tier.lead-tier .tier-name{color:#C03D6B;}
+.tier-price{font-size:1.15rem;font-weight:700;color:#D4537E;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.tier-price small{font-size:.72em;font-weight:600;color:#C99BB0;margin-left:2px;}
+.tier-sub{font-size:12.5px;font-weight:600;color:#C99BB0;margin-top:3px;}
+.tier-note{font-size:12.5px;line-height:1.6;color:#8B7480;margin-top:5px;}
+/* a priced group: one heading, several ensembles under it */
+.group{background:#fff;border:1px solid #F1DCE4;border-radius:14px;padding:15px 17px;}
+.group.lead-tier{border-color:#E89BB4;box-shadow:0 4px 14px rgba(212,83,126,.10);}
+.group-head{font-size:1rem;font-weight:600;color:#C03D6B;}
+.group-note{font-size:12.5px;line-height:1.6;color:#8B7480;margin-top:4px;}
+.rows{margin-top:11px;border-top:1px solid #F6E7EC;}
+.row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #F6E7EC;}
+.row:last-child{border-bottom:0;padding-bottom:0;}
+.row-name{font-size:.92rem;color:#5A4650;}
+.row-price{font-size:1.02rem;font-weight:700;color:#D4537E;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.row-price small{font-size:.75em;font-weight:600;color:#C99BB0;margin-left:1px;}
+/* public-domain notice + example opener */
+.pd-line{margin-top:11px;font-size:12px;line-height:1.6;color:#A98C99;background:#FFF8FA;border-radius:9px;padding:9px 11px;}
+.pd-open{display:inline-block;margin-top:7px;background:#FBEAF0;border:1px solid #F1DCE4;border-radius:16px;padding:5px 13px;font-size:12px;font-weight:600;color:#C03D6B;cursor:pointer;font-family:inherit;}
+.pd-open:hover{border-color:#E89BB4;}
+/* example-pieces window */
+.modal[hidden]{display:none;}
+.modal{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:1.1rem;}
+.modal-back{position:absolute;inset:0;background:rgba(90,70,80,.42);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+.modal-box{position:relative;background:#fff;border-radius:16px;padding:1.4rem 1.3rem 1.2rem;max-width:430px;width:100%;max-height:82vh;overflow-y:auto;box-shadow:0 18px 44px rgba(120,70,90,.3);}
+.modal-x{position:absolute;top:9px;right:11px;background:none;border:none;font-size:23px;line-height:1;color:#C99BB0;cursor:pointer;font-family:inherit;padding:4px 6px;}
+.modal-x:hover{color:#C03D6B;}
+.modal-box h3{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:1.4rem;color:#C03D6B;padding-right:24px;}
+.modal-lead{font-size:12.5px;line-height:1.7;color:#8B7480;margin-top:.5rem;}
+.pd-list{list-style:none;margin:1rem 0 0;display:flex;flex-direction:column;gap:9px;}
+.pd-list li{font-size:.87rem;line-height:1.55;color:#6E5660;padding-bottom:9px;border-bottom:1px solid #F6E7EC;}
+.pd-list li:last-child{border-bottom:0;padding-bottom:0;}
+.pd-list b{display:block;color:#C03D6B;font-weight:600;font-size:.83rem;}
+.modal-foot{margin-top:1rem;font-size:12px;line-height:1.7;color:#A98C99;}
+.tier-tag{display:inline-block;background:#FBEAF0;color:#C03D6B;border-radius:10px;font-size:10.5px;font-weight:600;padding:2px 8px;margin-left:7px;vertical-align:2px;letter-spacing:.04em;}
+
+/* steps */
+.steps{display:flex;flex-direction:column;gap:9px;}
+.step{display:flex;align-items:flex-start;gap:12px;background:rgba(255,255,255,.72);border:1px solid #F1DCE4;border-radius:14px;padding:13px 16px;}
+.step .n{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:#FBEAF0;color:#C03D6B;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;}
+.step .txt{font-size:.88rem;line-height:1.6;color:#6E5660;}
+.step .txt b{color:#C03D6B;font-weight:600;display:block;margin-bottom:1px;}
+
+/* form */
+form{background:#fff;border:1px solid #F1DCE4;border-radius:16px;padding:1.35rem 1.25rem;display:flex;flex-direction:column;gap:15px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+label{font-size:12.5px;font-weight:600;color:#8B7480;}
+label .req{color:#D4537E;margin-left:3px;}
+input,select,textarea{width:100%;border:1.5px solid #F1DCE4;border-radius:10px;padding:11px 12px;font-size:15px;font-family:inherit;color:#5A4650;background:#FFFDFE;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#E89BB4;background:#fff;}
+textarea{resize:vertical;min-height:110px;line-height:1.7;}
+select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%23C99BB0' stroke-width='1.6' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 13px center;background-size:12px;padding-right:34px;}
+.hint{font-size:11.5px;color:#B08A9A;line-height:1.6;}
+.budget-row{display:flex;align-items:center;gap:9px;}
+.budget-row .cur{font-size:15px;font-weight:600;color:#C99BB0;flex:0 0 auto;}
+.field.err input,.field.err select,.field.err textarea{border-color:#E0567F;background:#FFF7F9;}
+.err-msg{display:none;font-size:12px;color:#D4537E;font-weight:600;}
+.field.err .err-msg{display:block;}
+.submit{border:none;border-radius:26px;background:#D4537E;color:#fff;font-family:inherit;font-size:1.02rem;font-weight:600;padding:15px 20px;cursor:pointer;box-shadow:0 6px 18px rgba(212,83,126,.3);transition:transform .15s ease,box-shadow .15s ease;}
+.submit:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(212,83,126,.36);}
+.submit:disabled{opacity:.55;cursor:default;transform:none;box-shadow:none;}
+.privacy{font-size:11.5px;color:#B08A9A;line-height:1.7;text-align:center;}
+
+/* sent */
+.sent{display:none;background:#fff;border:1px solid #E89BB4;border-radius:16px;padding:1.8rem 1.35rem;text-align:center;}
+.sent.show{display:block;}
+.sent .ic{font-size:38px;line-height:1;}
+.sent h2{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:1.5rem;color:#C03D6B;margin:.6rem 0 .5rem;}
+.sent p{font-size:.9rem;line-height:1.8;color:#6E5660;}
+.sent .mailfall{margin-top:1rem;font-size:12.5px;color:#B08A9A;line-height:1.7;}
+.sent .mailfall a{color:#C03D6B;font-weight:600;}
+
+footer{margin-top:2.6rem;text-align:center;font-size:11px;color:#C2A7B3;line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="back" href="app.html" id="backLink">← アプリに戻る</a>
+    <div class="langbar">
+      <button data-l="ja" class="on" onclick="setL('ja')">日本語</button>
+      <button data-l="en" onclick="setL('en')">English</button>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="wm" role="img" aria-label="WooM">
+      <svg viewBox="0 -2 272 58" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><text x="80" y="52">oom</text><text x="192" y="52" transform="rotate(180 135.5 27.5)">m</text></svg>
+    </div>
+    <h1 id="h1">楽曲のオーダーメイド</h1>
+    <p class="sub" id="lead">赤ちゃんの心音のテンポに合わせて、<b>あなたのためだけの一曲</b>を書き下ろします。既製のBGMではなく、その子の鼓動から生まれる音楽です。</p>
+  </div>
+
+  <div class="sec">
+    <p class="sec-lbl" id="lblPrice">料金</p>
+    <div class="tiers">
+
+      <div class="group lead-tier">
+        <div class="tier-top">
+          <span class="group-head" id="gAh">書き下ろし（オリジナル）<span class="tier-tag" id="gAtag">人気</span></span>
+        </div>
+        <p class="group-note" id="gAd">その子の心音のテンポから、新しい一曲を書き下ろします。曲調のご希望も承ります。</p>
+        <div class="rows">
+          <div class="row"><span class="row-name" id="gAr1">ピアノソロ / ギターソロ</span><span class="row-price">$300<small>〜</small></span></div>
+        </div>
+      </div>
+
+      <div class="group lead-tier">
+        <div class="tier-top">
+          <span class="group-head" id="gBh">クラシック楽曲の演奏</span>
+        </div>
+        <p class="group-note" id="gBd">お好きなクラシックの名曲を、心音のテンポに合わせて演奏・録音します。</p>
+        <div class="rows">
+          <div class="row"><span class="row-name" id="gBr1">ピアノソロ / ギターソロ</span><span class="row-price">$300<small>〜</small></span></div>
+          <div class="row"><span class="row-name" id="gBr2">弦楽四重奏</span><span class="row-price">$2,000<small>〜</small></span></div>
+          <div class="row"><span class="row-name" id="gBr3">オーケストラ</span><span class="row-price">$10,000<small>〜</small></span></div>
+        </div>
+        <p class="pd-line" id="pdLine">著作権の切れた楽曲からお選びいただきます。</p>
+        <button type="button" class="pd-open" id="pdOpen" onclick="openPD()">使用できる楽曲の例を見る</button>
+      </div>
+
+      <div class="group">
+        <div class="tier-top">
+          <span class="group-head" id="gCh">その他</span>
+          <span class="row-price" id="gCp">応相談</span>
+        </div>
+        <p class="group-note" id="gCd">歌もの、他の楽器のアンサンブル、作曲家のご指名など。ご希望を書いてお送りください。</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="sec-lbl" id="lblFlow">ご依頼の流れ</p>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="txt" id="f1"><b>ご希望を送信</b>下のフォームに、編成・曲調・ご予算をお書きください。</span></div>
+      <div class="step"><span class="n">2</span><span class="txt" id="f2"><b>お見積りとご相談</b>いただいた内容をもとに、メールでお返事します。</span></div>
+      <div class="step"><span class="n">3</span><span class="txt" id="f3"><b>制作・デモのご確認</b>デモをお聴きいただき、ご要望を反映して仕上げます。</span></div>
+      <div class="step"><span class="n">4</span><span class="txt" id="f4"><b>納品</b>音源ファイルと、WooMのギフトリンクの両方でお渡しします。</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="sec-lbl" id="lblForm">ご依頼フォーム</p>
+
+    <form id="orderForm" novalidate>
+      <div class="field" id="fName">
+        <label for="oName" id="lName">お名前<span class="req">*</span></label>
+        <input type="text" id="oName" name="name" autocomplete="name">
+        <span class="err-msg" id="eName">お名前をご記入ください</span>
+      </div>
+
+      <div class="field" id="fMail">
+        <label for="oMail" id="lMail">メールアドレス<span class="req">*</span></label>
+        <input type="email" id="oMail" name="email" autocomplete="email" inputmode="email">
+        <span class="hint" id="hMail">こちらのアドレスにお見積りをお送りします。</span>
+        <span class="err-msg" id="eMail">メールアドレスをご確認ください</span>
+      </div>
+
+      <div class="field">
+        <label for="oType" id="lType">ご依頼の種類</label>
+        <select id="oType" name="type" onchange="syncType()">
+          <option value="original" id="oty1">書き下ろし（オリジナル）</option>
+          <option value="classical" id="oty2">クラシック楽曲の演奏</option>
+          <option value="undecided" id="oty3">まだ決めていない</option>
+        </select>
+      </div>
+
+      <div class="field" id="fPiece" style="display:none;">
+        <label for="oPiece" id="lPiece">ご希望のクラシック曲（任意）</label>
+        <input type="text" id="oPiece" name="piece" placeholder="例：ドビュッシー「月の光」">
+        <span class="hint" id="hPiece">お決まりでなければ空欄で大丈夫です。ご相談しながら選べます。</span>
+      </div>
+
+      <div class="field">
+        <label for="oEns" id="lEns">ご希望の編成</label>
+        <select id="oEns" name="ensemble"></select>
+      </div>
+
+      <div class="field" id="fReq">
+        <label for="oReq" id="lReq">楽器・曲調のご希望<span class="req">*</span></label>
+        <textarea id="oReq" name="request" placeholder="例：やさしいピアノで、静かな夜に聴ける曲。ヴァイオリンを少しだけ重ねたいです。"></textarea>
+        <span class="err-msg" id="eReq">ご希望をお書きください</span>
+      </div>
+
+      <div class="field">
+        <label for="oHb" id="lHb">心音について</label>
+        <select id="oHb" name="heartbeat">
+          <option value="have" id="oh1">すでにWooMで心音を使っている</option>
+          <option value="soon" id="oh2">これから録音する予定</option>
+          <option value="none" id="oh3">まだ決めていない</option>
+        </select>
+      </div>
+
+      <div class="field" id="fBudget">
+        <label for="oBudget" id="lBudget">ご希望金額（USD）<span class="req">*</span></label>
+        <div class="budget-row">
+          <span class="cur">$</span>
+          <input type="number" id="oBudget" name="budget" min="300" step="50" inputmode="numeric" placeholder="300">
+        </div>
+        <span class="hint" id="hBudget">最低 $300 から承ります。編成によっては上のお見積りが必要になる場合があります。</span>
+        <span class="err-msg" id="eBudget">$300 以上でご記入ください</span>
+      </div>
+
+      <div class="field">
+        <label for="oDue" id="lDue">ご希望の納期（任意）</label>
+        <input type="text" id="oDue" name="due" placeholder="例：出産予定日の2週間前まで">
+      </div>
+
+      <button type="submit" class="submit" id="btnSend">この内容で送信する</button>
+      <p class="privacy" id="privacy">いただいた情報は、ご依頼へのお返事にのみ使用します。</p>
+    </form>
+
+    <div class="sent" id="sentBox">
+      <div class="ic">💌</div>
+      <h2 id="sentH">送信しました</h2>
+      <p id="sentP">ご依頼ありがとうございます。<br>3営業日以内に、ご記入のメールアドレスへお返事します。</p>
+      <p class="mailfall" id="sentFall"></p>
+    </div>
+  </div>
+
+  <footer id="foot">© 2026 WooM · All rights reserved.</footer>
+</div>
+
+<div class="modal" id="pdModal" hidden>
+  <div class="modal-back" onclick="closePD()"></div>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="pdTitle">
+    <button class="modal-x" id="pdClose" onclick="closePD()" aria-label="close">×</button>
+    <h3 id="pdTitle">使用できる楽曲の例</h3>
+    <p class="modal-lead" id="pdLead">作曲者の没後70年以上が経ち、著作権が切れている楽曲が対象です。下記は一例です。</p>
+    <ul class="pd-list" id="pdList"></ul>
+    <p class="modal-foot" id="pdFoot">ここにない曲もお気軽にご相談ください。使用できるかお調べします。</p>
+  </div>
+</div>
+
+<script>
+/* ── Where the form goes ────────────────────────────────────────────────────
+   ORDER_ENDPOINT : Apps Script Web App URL (same pattern as the gift ledger).
+                    It writes a row to the order sheet and emails you.
+   ORDER_MAIL     : fallback address. If the endpoint is not set yet (or the
+                    POST fails), the form opens the visitor's mail app with the
+                    whole order pre-filled, so nothing is ever lost.
+   Set either one — or both. Both empty = the form cannot be sent.          */
+const ORDER_ENDPOINT = '';
+const ORDER_MAIL     = 'info@bizm.jp';
+const ORDER_SECRET   = 'woom-order-2026';
+
+var STR={
+  ja:{
+    title:'楽曲のオーダーメイド — WooM',
+    back:'← アプリに戻る', h1:'楽曲のオーダーメイド',
+    lead:'赤ちゃんの心音のテンポに合わせて、<b>あなたのためだけの一曲</b>を書き下ろします。既製のBGMではなく、その子の鼓動から生まれる音楽です。',
+    lblPrice:'料金', lblFlow:'ご依頼の流れ', lblForm:'ご依頼フォーム',
+    gAh:'書き下ろし（オリジナル）', gAtag:'人気',
+    gAd:'その子の心音のテンポから、新しい一曲を書き下ろします。曲調のご希望も承ります。',
+    gAr1:'ピアノソロ / ギターソロ',
+    gBh:'クラシック楽曲の演奏',
+    gBd:'お好きなクラシックの名曲を、心音のテンポに合わせて演奏・録音します。',
+    gBr1:'ピアノソロ / ギターソロ', gBr2:'弦楽四重奏', gBr3:'オーケストラ',
+    pdLine:'著作権の切れた楽曲からお選びいただきます。', pdOpen:'使用できる楽曲の例を見る',
+    gCh:'その他', gCp:'応相談',
+    gCd:'歌もの、他の楽器のアンサンブル、作曲家のご指名など。ご希望を書いてお送りください。',
+    pdTitle:'使用できる楽曲の例',
+    pdLead:'作曲者の没後70年以上が経ち、著作権が切れている楽曲が対象です。下記は一例です。',
+    pdFoot:'ここにない曲もお気軽にご相談ください。使用できるかお調べします。',
+    pdList:[
+      ['J.S.バッハ','G線上のアリア／主よ、人の望みの喜びよ'],
+      ['パッヘルベル','カノン'],
+      ['モーツァルト','アイネ・クライネ・ナハトムジーク／きらきら星変奏曲'],
+      ['ベートーヴェン','月光／エリーゼのために'],
+      ['シューベルト','アヴェ・マリア／子守唄'],
+      ['ショパン','ノクターン第2番／別れの曲'],
+      ['シューマン','トロイメライ'],
+      ['ブラームス','子守唄'],
+      ['フォーレ','シチリアーノ／夢のあとに'],
+      ['ドビュッシー','月の光／亜麻色の髪の乙女'],
+      ['サティ','ジムノペディ第1番'],
+      ['エルガー','愛の挨拶'],
+      ['ヴィヴァルディ','「四季」より'],
+      ['アイルランド民謡ほか','ダニー・ボーイ など各国の民謡']
+    ],
+    f1:'<b>ご希望を送信</b>下のフォームに、編成・曲調・ご予算をお書きください。',
+    f2:'<b>お見積りとご相談</b>いただいた内容をもとに、メールでお返事します。',
+    f3:'<b>制作・デモのご確認</b>デモをお聴きいただき、ご要望を反映して仕上げます。',
+    f4:'<b>納品</b>音源ファイルと、WooMのギフトリンクの両方でお渡しします。',
+    lName:'お名前', lMail:'メールアドレス', hMail:'こちらのアドレスにお見積りをお送りします。',
+    lType:'ご依頼の種類', oty:['書き下ろし（オリジナル）','クラシック楽曲の演奏','その他・未定'],
+    ens:{
+      original:[['piano','ピアノソロ（$300〜）'],['guitar','ギターソロ（$300〜）']],
+      classical:[['piano','ピアノソロ（$300〜）'],['guitar','ギターソロ（$300〜）'],
+                 ['quartet','弦楽四重奏（$2,000〜）'],['orchestra','オーケストラ（$10,000〜）']],
+      other:[['other','応相談（下の欄にご希望をお書きください）']]
+    },
+    lPiece:'ご希望のクラシック曲（任意）', piecePh:'例：ドビュッシー「月の光」',
+    hPiece:'お決まりでなければ空欄で大丈夫です。ご相談しながら選べます。',
+    lEns:'ご希望の編成', lReq:'楽器・曲調のご希望',
+    reqPh:'例：やさしいピアノで、静かな夜に聴ける曲。ヴァイオリンを少しだけ重ねたいです。',
+    lHb:'心音について', lBudget:'ご希望金額（USD）',
+    hBudget:'最低 $300 から承ります。編成によっては上のお見積りが必要になる場合があります。',
+    lDue:'ご希望の納期（任意）', duePh:'例：出産予定日の2週間前まで',
+    oe:['ピアノソロ（$300〜）','ギターソロ（$300〜）','弦楽四重奏（$2,000〜）','オーケストラ（$10,000〜）','その他・未定（応相談）'],
+    oh:['すでにWooMで心音を使っている','これから録音する予定','まだ決めていない'],
+    eName:'お名前をご記入ください', eMail:'メールアドレスをご確認ください',
+    eReq:'ご希望をお書きください', eBudget:'$300 以上でご記入ください',
+    send:'この内容で送信する', sending:'送信中…',
+    privacy:'いただいた情報は、ご依頼へのお返事にのみ使用します。',
+    sentH:'送信しました', sentP:'ご依頼ありがとうございます。<br>3営業日以内に、ご記入のメールアドレスへお返事します。',
+    mailOpened:'メールソフトが開かない場合は、<a href="{m}">{m}</a> 宛にお送りください。',
+    noRoute:'ただいま送信先を準備中です。お手数ですが、しばらくしてからもう一度お試しください。',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  en:{
+    title:'Custom-Made Music — WooM',
+    back:'← Back to the app', h1:'Custom-Made Music',
+    lead:'A piece written for your baby’s heartbeat — <b>composed for you alone</b>. Not a stock track, but music born from that little pulse.',
+    lblPrice:'Pricing', lblFlow:'How it works', lblForm:'Request form',
+    gAh:'Original composition', gAtag:'popular',
+    gAd:'A new piece, written from your baby’s heartbeat tempo. Tell us the mood you’d like.',
+    gAr1:'Piano solo / Guitar solo',
+    gBh:'A classical piece, performed',
+    gBd:'A classical favourite of yours, performed and recorded at your heartbeat’s tempo.',
+    gBr1:'Piano solo / Guitar solo', gBr2:'String quartet', gBr3:'Orchestra',
+    pdLine:'Chosen from works whose copyright has expired.', pdOpen:'See example pieces',
+    gCh:'Anything else', gCp:'On request',
+    gCd:'Vocals, other instrument ensembles, a specific composer — write what you have in mind.',
+    pdTitle:'Example pieces',
+    pdLead:'Works whose composer died more than 70 years ago, so the copyright has expired. These are a few examples.',
+    pdFoot:'Ask us about any piece not listed — we’ll check whether it can be used.',
+    pdList:[
+      ['J.S. Bach','Air on the G String / Jesu, Joy of Man’s Desiring'],
+      ['Pachelbel','Canon in D'],
+      ['Mozart','Eine kleine Nachtmusik / Twinkle Variations'],
+      ['Beethoven','Moonlight Sonata / Für Elise'],
+      ['Schubert','Ave Maria / Wiegenlied'],
+      ['Chopin','Nocturne No. 2 / Étude “Tristesse”'],
+      ['Schumann','Träumerei'],
+      ['Brahms','Lullaby'],
+      ['Fauré','Sicilienne / Après un rêve'],
+      ['Debussy','Clair de Lune / La fille aux cheveux de lin'],
+      ['Satie','Gymnopédie No. 1'],
+      ['Elgar','Salut d’Amour'],
+      ['Vivaldi','from “The Four Seasons”'],
+      ['Folk songs','Danny Boy and other traditional melodies']
+    ],
+    f1:'<b>Send your request</b>Tell us the ensemble, the mood, and your budget.',
+    f2:'<b>Quote and conversation</b>We reply by email with a quote based on your notes.',
+    f3:'<b>Composition and demo</b>You hear a demo, and we refine it to your notes.',
+    f4:'<b>Delivery</b>You receive the audio file and a WooM gift link.',
+    lName:'Your name', lMail:'Email address', hMail:'We send the quote to this address.',
+    lType:'What would you like?', oty:['An original composition','A classical piece, performed','Something else / undecided'],
+    ens:{
+      original:[['piano','Piano solo (from $300)'],['guitar','Guitar solo (from $300)']],
+      classical:[['piano','Piano solo (from $300)'],['guitar','Guitar solo (from $300)'],
+                 ['quartet','String quartet (from $2,000)'],['orchestra','Orchestra (from $10,000)']],
+      other:[['other','On request — describe it below']]
+    },
+    lPiece:'Which classical piece (optional)', piecePh:'e.g. Debussy, Clair de Lune',
+    hPiece:'Leave it blank if you are unsure — we can choose one together.',
+    lEns:'Ensemble', lReq:'Instruments and mood',
+    reqPh:'e.g. A gentle piano piece for quiet nights, with a little violin underneath.',
+    lHb:'About the heartbeat', lBudget:'Your budget (USD)',
+    hBudget:'From $300. Larger ensembles may need a higher quote.',
+    lDue:'Preferred delivery date (optional)', duePh:'e.g. two weeks before the due date',
+    oe:['Piano solo (from $300)','Guitar solo (from $300)','String quartet (from $2,000)','Orchestra (from $10,000)','Other / undecided (on request)'],
+    oh:['Already using a heartbeat in WooM','Planning to record one','Not decided yet'],
+    eName:'Please enter your name', eMail:'Please check your email address',
+    eReq:'Please tell us what you have in mind', eBudget:'Please enter $300 or more',
+    send:'Send request', sending:'Sending…',
+    privacy:'We use your details only to reply to this request.',
+    sentH:'Request sent', sentP:'Thank you.<br>We’ll reply to your email address within 3 business days.',
+    mailOpened:'If your mail app did not open, please write to <a href="{m}">{m}</a>.',
+    noRoute:'The request line is being set up. Please try again shortly.',
+    foot:'© 2026 WooM · All rights reserved.'
+  }
+};
+
+var cl='ja';
+function $(id){return document.getElementById(id);}
+function setL(l){
+  if(!STR[l]) l='en';
+  cl=l;
+  var s=STR[l];
+  document.documentElement.lang=l;
+  document.title=s.title;
+  $('backLink').textContent=s.back;
+  $('h1').textContent=s.h1;
+  $('lead').innerHTML=s.lead;
+  ['lblPrice','lblFlow','lblForm','gAd','gAr1','gBh','gBd','gBr1','gBr2','gBr3','pdLine','pdOpen',
+   'gCh','gCp','gCd','pdTitle','pdLead','pdFoot',
+   'lName','hMail','lType','lPiece','hPiece','lEns','lReq','lHb','hBudget','lDue',
+   'eName','eMail','eReq','eBudget','privacy','sentH','foot']
+    .forEach(function(k){ var el=$(k); if(el&&s[k]!==undefined) el.textContent=s[k]; });
+  ['f1','f2','f3','f4','sentP'].forEach(function(k){ var el=$(k); if(el) el.innerHTML=s[k]; });
+  // labels carry a required marker, so rebuild them rather than overwrite
+  $('lName').innerHTML=s.lName+'<span class="req">*</span>';
+  $('lMail').innerHTML=s.lMail+'<span class="req">*</span>';
+  $('lReq').innerHTML=s.lReq+'<span class="req">*</span>';
+  $('lBudget').innerHTML=s.lBudget+'<span class="req">*</span>';
+  $('gAh').innerHTML=s.gAh+'<span class="tier-tag">'+s.gAtag+'</span>';
+  $('pdList').innerHTML=s.pdList.map(function(p){
+    return '<li><b>'+p[0]+'</b>'+p[1]+'</li>';
+  }).join('');
+  s.oh.forEach(function(txt,i){ var o=$('oh'+(i+1)); if(o) o.textContent=txt; });
+  s.oty.forEach(function(txt,i){ var o=$('oty'+(i+1)); if(o) o.textContent=txt; });
+  buildEns();
+  $('oReq').placeholder=s.reqPh;
+  $('oDue').placeholder=s.duePh;
+  $('oPiece').placeholder=s.piecePh;
+  $('btnSend').textContent=s.send;
+  var btns=document.querySelectorAll('.langbar button');
+  for(var i=0;i<btns.length;i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-l')===l);
+}
+
+// Language: ?lang= from the app, else the browser. Only ja/en exist here, so
+// every other app language lands on English.
+(function(){
+  var q=new URLSearchParams(location.search).get('lang')||'';
+  var nav=(q||navigator.language||'en').toLowerCase();
+  setL(nav.indexOf('ja')===0?'ja':'en');
+  syncType();
+})();
+
+/* Quartet and orchestra are offered for classical performances only, so the
+   ensemble list is rebuilt from the chosen type instead of letting people pick
+   a combination we don't sell. The current choice is kept when it still fits. */
+function buildEns(){
+  var s=STR[cl], sel=$('oEns'), prev=sel.value;
+  var list=s.ens[$('oType').value]||s.ens.other;
+  sel.innerHTML='';
+  list.forEach(function(p){
+    var o=document.createElement('option');
+    o.value=p[0]; o.textContent=p[1];
+    sel.appendChild(o);
+  });
+  for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===prev){ sel.value=prev; break; } }
+}
+
+/* The "which classical piece" field only makes sense for the classical option,
+   so it appears with it rather than sitting in the form unexplained. */
+function syncType(){
+  $('fPiece').style.display = ($('oType').value==='classical') ? 'flex' : 'none';
+  buildEns();
+}
+
+/* Example-pieces window */
+function openPD(){ $('pdModal').hidden=false; document.body.style.overflow='hidden'; $('pdClose').focus(); }
+function closePD(){ $('pdModal').hidden=true; document.body.style.overflow=''; $('pdOpen').focus(); }
+document.addEventListener('keydown',function(e){ if(e.key==='Escape' && !$('pdModal').hidden) closePD(); });
+
+/* ── validation ──────────────────────────────────────────────────────────── */
+function mark(id,bad){ var f=$(id); if(f) f.classList.toggle('err',!!bad); return !bad; }
+function validate(){
+  var s=STR[cl], ok=true;
+  ok = mark('fName', !$('oName').value.trim()) && ok;
+  var mail=$('oMail').value.trim();
+  ok = mark('fMail', !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) && ok;
+  ok = mark('fReq', !$('oReq').value.trim()) && ok;
+  var b=parseFloat($('oBudget').value);
+  ok = mark('fBudget', !(b>=300)) && ok;
+  if(!ok){ var first=document.querySelector('.field.err'); if(first) first.scrollIntoView({behavior:'smooth',block:'center'}); }
+  return ok;
+}
+
+function collect(){
+  var ensSel=$('oEns'), hbSel=$('oHb'), tySel=$('oType');
+  return {
+    secret:ORDER_SECRET,
+    name:$('oName').value.trim(),
+    email:$('oMail').value.trim(),
+    type:tySel.value,
+    type_label:tySel.options[tySel.selectedIndex].textContent,
+    piece:(tySel.value==='classical' ? $('oPiece').value.trim() : ''),
+    ensemble:ensSel.value,
+    ensemble_label:ensSel.options[ensSel.selectedIndex].textContent,
+    request:$('oReq').value.trim(),
+    heartbeat:hbSel.value,
+    heartbeat_label:hbSel.options[hbSel.selectedIndex].textContent,
+    budget_usd:parseFloat($('oBudget').value)||0,
+    due:$('oDue').value.trim(),
+    page_lang:cl,
+    locale:(navigator.language||''),
+    timezone:(function(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){return '';}})()
+  };
+}
+
+function mailtoFor(d){
+  var body=[
+    'Name: '+d.name,
+    'Email: '+d.email,
+    'Type: '+d.type_label+(d.piece?(' — '+d.piece):''),
+    'Ensemble: '+d.ensemble_label,
+    'Budget: $'+d.budget_usd,
+    'Heartbeat: '+d.heartbeat_label,
+    'Due: '+(d.due||'-'),
+    '',
+    'Request:',
+    d.request,
+    '',
+    '— sent from the WooM custom-order page ('+d.page_lang+' / '+d.timezone+')'
+  ].join('\n');
+  return 'mailto:'+ORDER_MAIL+'?subject='+encodeURIComponent('WooM custom music request — '+d.name)+'&body='+encodeURIComponent(body);
+}
+
+function showSent(usedMail){
+  $('orderForm').style.display='none';
+  var box=$('sentBox'); box.classList.add('show');
+  var fall=$('sentFall');
+  fall.innerHTML = (usedMail && ORDER_MAIL) ? STR[cl].mailOpened.split('{m}').join(ORDER_MAIL) : '';
+  box.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+$('orderForm').addEventListener('submit',function(ev){
+  ev.preventDefault();
+  if(!validate()) return;
+  var d=collect(), btn=$('btnSend');
+  btn.disabled=true; btn.textContent=STR[cl].sending;
+
+  if(!ORDER_ENDPOINT){
+    if(ORDER_MAIL){ location.href=mailtoFor(d); showSent(true); }
+    else { alert(STR[cl].noRoute); btn.disabled=false; btn.textContent=STR[cl].send; }
+    return;
+  }
+  // text/plain keeps this a "simple request" (no CORS preflight). Apps Script
+  // replies without CORS headers, so the response is unreadable either way —
+  // the confirmation the visitor can trust is the auto-reply email.
+  fetch(ORDER_ENDPOINT,{method:'POST',mode:'no-cors',keepalive:true,body:JSON.stringify(d)})
+    .then(function(){ showSent(false); })
+    .catch(function(){
+      if(ORDER_MAIL){ location.href=mailtoFor(d); showSent(true); }
+      else { alert(STR[cl].noRoute); btn.disabled=false; btn.textContent=STR[cl].send; }
+    });
+});
+</script>
+</body>
+</html>
