@@ -49,6 +49,11 @@ body{font-family:'Baloo 2','DM Sans',sans-serif;color:#5A4650;background:linear-
 /* meta */
 .meta{margin-top:2.2rem;text-align:center;font-size:12px;color:#B08A9A;line-height:1.7;}
 .meta .pill{display:inline-block;background:#fff;border:1px solid #F1DCE4;border-radius:14px;padding:3px 11px;margin:3px;color:#9C7E8B;}
+/* custom-order entry */
+.order-block{margin-top:2.4rem;padding-top:1.9rem;border-top:1px solid #F1DCE4;text-align:center;}
+.order-cta{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #E89BB4;color:#C03D6B;text-decoration:none;border-radius:34px;padding:12px 26px;font-size:.97rem;font-weight:600;transition:background .15s ease,border-color .15s ease;}
+.order-cta:hover{background:#FBEAF0;border-color:#D4537E;}
+.order-note{margin-top:.6rem;font-size:12px;color:#B08A9A;line-height:1.6;}
 footer{margin-top:2.6rem;text-align:center;font-size:11px;color:#C2A7B3;line-height:1.7;}
 @keyframes pop{0%{transform:scale(.75);opacity:0}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
 </style>
@@ -94,6 +99,13 @@ footer{margin-top:2.6rem;text-align:center;font-size:11px;color:#C2A7B3;line-hei
     <span class="pill">⬇️ インストール不要</span>
   </div>
 
+  <!-- Secondary path, kept visually quieter than "open the app" so it never
+       competes with the main call to action. -->
+  <div class="order-block">
+    <a class="order-cta" href="order.html" id="orderCta">🎼 楽曲のオーダーメイドはこちら</a>
+    <div class="order-note" id="orderNote">心音に合わせた書き下ろし／クラシックの演奏 — $300〜</div>
+  </div>
+
   <footer id="foot">
     © 2026 WooM · All rights reserved.
   </footer>
@@ -113,6 +125,8 @@ var STR={
     s2:'<b>BGMとミックス</b>心音のテンポに自動で合う音楽を重ねる',
     s3:'<b>リンクでプレゼント</b>名前とメッセージを添えて、リンクで贈る',
     meta:'<span class="pill">🌐 15言語対応</span><span class="pill">📱 スマホ・PC対応</span><span class="pill">⬇️ インストール不要</span>',
+    orderCta:'🎼 楽曲のオーダーメイドはこちら',
+    orderNote:'心音に合わせた書き下ろし／クラシックの演奏 — $300〜',
     foot:'© 2026 WooM · All rights reserved.'
   },
   en:{
@@ -126,6 +140,8 @@ var STR={
     s2:'<b>Blend with music</b>Add a track that auto-matches the heartbeat tempo',
     s3:'<b>Gift it as a link</b>Add a name & message, and share the link',
     meta:'<span class="pill">🌐 15 languages</span><span class="pill">📱 Phone & desktop</span><span class="pill">⬇️ No install</span>',
+    orderCta:'🎼 Commission a piece of music',
+    orderNote:'Written for your heartbeat, or a classical piece performed — from $300',
     foot:'© 2026 WooM · All rights reserved.'
   }
 };
@@ -142,6 +158,10 @@ function setL(l){
   document.getElementById('s2').innerHTML=s.s2;
   document.getElementById('s3').innerHTML=s.s3;
   document.getElementById('meta').innerHTML=s.meta;
+  document.getElementById('orderCta').textContent=s.orderCta;
+  // carry the chosen language over, the same way the app does
+  document.getElementById('orderCta').href='order.html?lang='+l;
+  document.getElementById('orderNote').textContent=s.orderNote;
   document.getElementById('foot').innerHTML=s.foot;
   var btns=document.querySelectorAll('.langbar button');
   for(var i=0;i<btns.length;i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-l')===l);

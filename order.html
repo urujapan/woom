@@ -32,7 +32,10 @@ body.script-cyrillic,body.script-cyrillic input,body.script-cyrillic select,body
 
 /* hero */
 .hero{text-align:center;}
-.wm{height:34px;margin:0 auto .9rem;}
+/* the wordmark doubles as the way back to the WooM site */
+.wm{display:block;height:34px;margin:0 auto .9rem;cursor:pointer;transition:opacity .15s ease;}
+.wm:hover{opacity:.72;}
+.wm:focus-visible{outline:2px solid #E89BB4;outline-offset:6px;border-radius:6px;}
 .wm svg{display:block;height:100%;margin:0 auto;}
 .wm text{font-family:'Baloo 2',sans-serif;font-weight:500;font-size:100px;fill:#D4537E;}
 h1{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:2rem;color:#C03D6B;line-height:1.25;letter-spacing:.01em;}
@@ -156,9 +159,9 @@ footer{margin-top:2.6rem;text-align:center;font-size:11px;color:#C2A7B3;line-hei
   </div>
 
   <div class="hero">
-    <div class="wm" role="img" aria-label="WooM">
+    <a class="wm" href="index.html" id="wmLink" aria-label="WooM">
       <svg viewBox="0 -2 272 58" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><text x="80" y="52">oom</text><text x="192" y="52" transform="rotate(180 135.5 27.5)">m</text></svg>
-    </div>
+    </a>
     <h1 id="h1">楽曲のオーダーメイド</h1>
     <p class="sub" id="lead">赤ちゃんの心音のテンポに合わせて、<b>あなたのためだけの一曲</b>を書き下ろします。既製のBGMではなく、その子の鼓動から生まれる音楽です。</p>
   </div>
