@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-17.5';
+window.APP_VERSION = '2026-08-17.6';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -284,6 +284,10 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 .custom-order .co-txt b{display:block;font-size:13.5px;font-weight:600;}
 .custom-order .co-txt span{display:block;font-size:11.5px;color:#B08A9A;margin-top:1px;}
 .custom-order .co-arrow{flex:0 0 auto;font-size:16px;color:#E89BB4;}
+/* Footer copyright, used as the link to the WooM site. */
+.site-link{color:inherit;text-decoration:none;border-bottom:1px solid rgba(201,168,182,.45);padding-bottom:1px;transition:color .15s ease,border-color .15s ease;}
+.site-link:hover{color:#C03D6B;border-bottom-color:#E89BB4;}
+.site-link:focus-visible{outline:2px solid #E89BB4;outline-offset:3px;border-radius:3px;}
 .track-item{display:flex;align-items:center;gap:8px;width:100%;padding:9px 12px;border-radius:8px;border:1px solid #eee;background:#f9f9f9;font-size:13px;color:#333;cursor:pointer;margin-bottom:6px;font-family:'Baloo 2','DM Sans',sans-serif;text-align:left;}
 .track-item:hover{background:#f0f0f0;}
 .track-item.active{background:#FBEAF0;border-color:#E89BB4;color:#C03D6B;}
@@ -664,8 +668,11 @@ input[type=range]{flex:1;accent-color:#D4537E;}
 </div>
 </div>
 
+<!-- The copyright line doubles as the way to the WooM site. It opens in a new
+     tab on purpose: a stray tap here must not throw away a heartbeat the
+     visitor has already loaded, since nothing in the mix is saved. -->
 <footer style="text-align:center;font-size:11px;color:#c9a8b6;line-height:1.7;margin:2.2rem 0 1rem;">
-  © 2026 WooM · All rights reserved.
+  <a href="index.html" target="_blank" rel="noopener" class="site-link">© 2026 WooM · All rights reserved.</a>
 </footer>
 
 <!-- Step wizard bottom navigation -->
