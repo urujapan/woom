@@ -17,15 +17,18 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
 body{font-family:'Baloo 2','DM Sans',sans-serif;color:#5A4650;background:linear-gradient(165deg,#fff5f8 0%,#FBEAF0 100%);min-height:100vh;-webkit-font-smoothing:antialiased;}
+/* Baloo 2 carries no Cyrillic. Mixing it with a fallback face draws the spaces
+   from one font and the letters from another, which wrecks word spacing — so
+   Russian gets a system stack instead. Other scripts fall back cleanly. */
+body.script-cyrillic,body.script-cyrillic input,body.script-cyrillic select,body.script-cyrillic textarea,body.script-cyrillic button{font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;}
 .wrap{max-width:560px;margin:0 auto;padding:1.5rem 1.25rem 3rem;}
 
 /* top bar */
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:1.5rem;}
 .back{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1.5px solid #F1DCE4;border-radius:20px;padding:5px 14px;font-size:12.5px;color:#9C7E8B;text-decoration:none;font-weight:500;}
 .back:hover{border-color:#E89BB4;color:#C03D6B;}
-.langbar{display:flex;gap:6px;}
-.langbar button{background:#fff;border:1.5px solid #F1DCE4;border-radius:20px;padding:4px 13px;font-size:12px;color:#9C7E8B;cursor:pointer;font-family:inherit;font-weight:500;}
-.langbar button.on{background:#D4537E;border-color:#D4537E;color:#fff;}
+.langsel{width:auto;background:#fff;border:1.5px solid #F1DCE4;border-radius:20px;padding:5px 30px 5px 14px;font-size:12.5px;color:#9C7E8B;cursor:pointer;font-family:inherit;font-weight:500;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%23C99BB0' stroke-width='1.6' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 12px center;background-size:11px;}
+.langsel:focus{outline:none;border-color:#E89BB4;}
 
 /* hero */
 .hero{text-align:center;}
@@ -133,10 +136,23 @@ footer{margin-top:2.6rem;text-align:center;font-size:11px;color:#C2A7B3;line-hei
 
   <div class="topbar">
     <a class="back" href="app.html" id="backLink">← アプリに戻る</a>
-    <div class="langbar">
-      <button data-l="ja" class="on" onclick="setL('ja')">日本語</button>
-      <button data-l="en" onclick="setL('en')">English</button>
-    </div>
+    <select class="langsel" id="langSel" aria-label="Language" onchange="setL(this.value)">
+      <option value="ja">日本語</option>
+      <option value="en">English</option>
+      <option value="zh">简体中文</option>
+      <option value="zh-TW">繁體中文</option>
+      <option value="ko">한국어</option>
+      <option value="es">Español</option>
+      <option value="fr">Français</option>
+      <option value="de">Deutsch</option>
+      <option value="pt">Português</option>
+      <option value="it">Italiano</option>
+      <option value="id">Bahasa Indonesia</option>
+      <option value="vi">Tiếng Việt</option>
+      <option value="th">ไทย</option>
+      <option value="hi">हिन्दी</option>
+      <option value="ru">Русский</option>
+    </select>
   </div>
 
   <div class="hero">
@@ -210,6 +226,7 @@ footer{margin-top:2.6rem;text-align:center;font-size:11px;color:#C2A7B3;line-hei
         <label for="oMail" id="lMail">メールアドレス<span class="req">*</span></label>
         <input type="email" id="oMail" name="email" autocomplete="email" inputmode="email">
         <span class="hint" id="hMail">こちらのアドレスにお見積りをお送りします。</span>
+        <span class="hint" id="hReply"></span>
         <span class="err-msg" id="eMail">メールアドレスをご確認ください</span>
       </div>
 
@@ -312,48 +329,29 @@ const ORDER_SECRET   = 'woom-order-2026';
 
 var STR={
   ja:{
-    title:'楽曲のオーダーメイド — WooM',
-    back:'← アプリに戻る', h1:'楽曲のオーダーメイド',
+    title:'楽曲のオーダーメイド — WooM', back:'← アプリに戻る', h1:'楽曲のオーダーメイド',
     lead:'赤ちゃんの心音のテンポに合わせて、<b>あなたのためだけの一曲</b>を書き下ろします。既製のBGMではなく、その子の鼓動から生まれる音楽です。',
     lblPrice:'料金', lblFlow:'ご依頼の流れ', lblForm:'ご依頼フォーム',
-    gAh:'書き下ろし（オリジナル）', gAtag:'人気',
+    gAh:'書き下ろし（オリジナル）', gAtag:'人気', gAr1:'ピアノソロ / ギターソロ',
     gAd:'その子の心音のテンポから、新しい一曲を書き下ろします。曲調のご希望も承ります。',
-    gAr1:'ピアノソロ / ギターソロ',
-    gBh:'クラシック楽曲の演奏',
+    gBh:'クラシック楽曲の演奏', gBr1:'ピアノソロ / ギターソロ', gBr2:'弦楽四重奏', gBr3:'オーケストラ',
     gBd:'お好きなクラシックの名曲を、心音のテンポに合わせて演奏・録音します。',
-    gBr1:'ピアノソロ / ギターソロ', gBr2:'弦楽四重奏', gBr3:'オーケストラ',
     pdLine:'著作権の切れた楽曲からお選びいただきます。', pdOpen:'使用できる楽曲の例を見る',
-    gCh:'その他', gCp:'応相談',
-    gCd:'歌もの、他の楽器のアンサンブル、作曲家のご指名など。ご希望を書いてお送りください。',
+    gCh:'その他', gCp:'応相談', gCd:'歌もの、他の楽器のアンサンブル、作曲家のご指名など。ご希望を書いてお送りください。',
     pdTitle:'使用できる楽曲の例',
     pdLead:'作曲者の没後70年以上が経ち、著作権が切れている楽曲が対象です。下記は一例です。',
     pdFoot:'ここにない曲もお気軽にご相談ください。使用できるかお調べします。',
-    pdList:[
-      ['J.S.バッハ','G線上のアリア／主よ、人の望みの喜びよ'],
-      ['パッヘルベル','カノン'],
-      ['モーツァルト','アイネ・クライネ・ナハトムジーク／きらきら星変奏曲'],
-      ['ベートーヴェン','月光／エリーゼのために'],
-      ['シューベルト','アヴェ・マリア／子守唄'],
-      ['ショパン','ノクターン第2番／別れの曲'],
-      ['シューマン','トロイメライ'],
-      ['ブラームス','子守唄'],
-      ['フォーレ','シチリアーノ／夢のあとに'],
-      ['ドビュッシー','月の光／亜麻色の髪の乙女'],
-      ['サティ','ジムノペディ第1番'],
-      ['エルガー','愛の挨拶'],
-      ['ヴィヴァルディ','「四季」より'],
-      ['アイルランド民謡ほか','ダニー・ボーイ など各国の民謡']
-    ],
+    pdList:[['J.S.バッハ','G線上のアリア／主よ、人の望みの喜びよ'],['パッヘルベル','カノン'],['モーツァルト','アイネ・クライネ・ナハトムジーク／きらきら星変奏曲'],['ベートーヴェン','月光／エリーゼのために'],['シューベルト','アヴェ・マリア／子守唄'],['ショパン','ノクターン第2番／別れの曲'],['シューマン','トロイメライ'],['ブラームス','子守唄'],['フォーレ','シチリアーノ／夢のあとに'],['ドビュッシー','月の光／亜麻色の髪の乙女'],['サティ','ジムノペディ第1番'],['エルガー','愛の挨拶'],['ヴィヴァルディ','「四季」より'],['各国の民謡','ダニー・ボーイ など']],
     f1:'<b>ご希望を送信</b>下のフォームに、編成・曲調・ご予算をお書きください。',
     f2:'<b>お見積りとご相談</b>いただいた内容をもとに、メールでお返事します。',
     f3:'<b>制作・デモのご確認</b>デモをお聴きいただき、ご要望を反映して仕上げます。',
     f4:'<b>納品</b>音源ファイルと、WooMのギフトリンクの両方でお渡しします。',
     lName:'お名前', lMail:'メールアドレス', hMail:'こちらのアドレスにお見積りをお送りします。',
+    replyNote:'',
     lType:'ご依頼の種類', oty:['書き下ろし（オリジナル）','クラシック楽曲の演奏','その他・未定'],
     ens:{
       original:[['piano','ピアノソロ（$300〜）'],['guitar','ギターソロ（$300〜）']],
-      classical:[['piano','ピアノソロ（$300〜）'],['guitar','ギターソロ（$300〜）'],
-                 ['quartet','弦楽四重奏（$2,000〜）'],['orchestra','オーケストラ（$10,000〜）']],
+      classical:[['piano','ピアノソロ（$300〜）'],['guitar','ギターソロ（$300〜）'],['quartet','弦楽四重奏（$2,000〜）'],['orchestra','オーケストラ（$10,000〜）']],
       other:[['other','応相談（下の欄にご希望をお書きください）']]
     },
     lPiece:'ご希望のクラシック曲（任意）', piecePh:'例：ドビュッシー「月の光」',
@@ -362,14 +360,13 @@ var STR={
     reqPh:'例：やさしいピアノで、静かな夜に聴ける曲。ヴァイオリンを少しだけ重ねたいです。',
     lAttach:'心音（ループ）を添付して送る',
     hbNote:'作曲のテンポ合わせに使います。添付しない場合はチェックを外してください。',
-    hbMeta:'アプリから引き継ぎました：{bpm}{kind}',
+    hbMeta:'アプリから引き継ぎました：{bpm}（{kind}）',
     hbKind:{upload:'アップロードした心音',record:'録音した心音',sample:'サンプルの心音'},
     sendingUp:'心音を送信中…',
-    lHb:'心音について', lBudget:'ご希望金額（USD）',
+    lHb:'心音について', oh:['すでにWooMで心音を使っている','これから録音する予定','まだ決めていない'],
+    lBudget:'ご希望金額（USD）',
     hBudget:'最低 $300 から承ります。編成によっては上のお見積りが必要になる場合があります。',
     lDue:'ご希望の納期（任意）', duePh:'例：出産予定日の2週間前まで',
-    oe:['ピアノソロ（$300〜）','ギターソロ（$300〜）','弦楽四重奏（$2,000〜）','オーケストラ（$10,000〜）','その他・未定（応相談）'],
-    oh:['すでにWooMで心音を使っている','これから録音する予定','まだ決めていない'],
     eName:'お名前をご記入ください', eMail:'メールアドレスをご確認ください',
     eReq:'ご希望をお書きください', eBudget:'$300 以上でご記入ください',
     send:'この内容で送信する', sending:'送信中…',
@@ -380,48 +377,29 @@ var STR={
     foot:'© 2026 WooM · All rights reserved.'
   },
   en:{
-    title:'Custom-Made Music — WooM',
-    back:'← Back to the app', h1:'Custom-Made Music',
+    title:'Custom-Made Music — WooM', back:'← Back to the app', h1:'Custom-Made Music',
     lead:'A piece written for your baby’s heartbeat — <b>composed for you alone</b>. Not a stock track, but music born from that little pulse.',
     lblPrice:'Pricing', lblFlow:'How it works', lblForm:'Request form',
-    gAh:'Original composition', gAtag:'popular',
+    gAh:'Original composition', gAtag:'popular', gAr1:'Piano solo / Guitar solo',
     gAd:'A new piece, written from your baby’s heartbeat tempo. Tell us the mood you’d like.',
-    gAr1:'Piano solo / Guitar solo',
-    gBh:'A classical piece, performed',
+    gBh:'A classical piece, performed', gBr1:'Piano solo / Guitar solo', gBr2:'String quartet', gBr3:'Orchestra',
     gBd:'A classical favourite of yours, performed and recorded at your heartbeat’s tempo.',
-    gBr1:'Piano solo / Guitar solo', gBr2:'String quartet', gBr3:'Orchestra',
     pdLine:'Chosen from works whose copyright has expired.', pdOpen:'See example pieces',
-    gCh:'Anything else', gCp:'On request',
-    gCd:'Vocals, other instrument ensembles, a specific composer — write what you have in mind.',
+    gCh:'Anything else', gCp:'On request', gCd:'Vocals, other instrument ensembles, a specific composer — write what you have in mind.',
     pdTitle:'Example pieces',
     pdLead:'Works whose composer died more than 70 years ago, so the copyright has expired. These are a few examples.',
     pdFoot:'Ask us about any piece not listed — we’ll check whether it can be used.',
-    pdList:[
-      ['J.S. Bach','Air on the G String / Jesu, Joy of Man’s Desiring'],
-      ['Pachelbel','Canon in D'],
-      ['Mozart','Eine kleine Nachtmusik / Twinkle Variations'],
-      ['Beethoven','Moonlight Sonata / Für Elise'],
-      ['Schubert','Ave Maria / Wiegenlied'],
-      ['Chopin','Nocturne No. 2 / Étude “Tristesse”'],
-      ['Schumann','Träumerei'],
-      ['Brahms','Lullaby'],
-      ['Fauré','Sicilienne / Après un rêve'],
-      ['Debussy','Clair de Lune / La fille aux cheveux de lin'],
-      ['Satie','Gymnopédie No. 1'],
-      ['Elgar','Salut d’Amour'],
-      ['Vivaldi','from “The Four Seasons”'],
-      ['Folk songs','Danny Boy and other traditional melodies']
-    ],
+    pdList:[['J.S. Bach','Air on the G String / Jesu, Joy of Man’s Desiring'],['Pachelbel','Canon in D'],['Mozart','Eine kleine Nachtmusik / Twinkle Variations'],['Beethoven','Moonlight Sonata / Für Elise'],['Schubert','Ave Maria / Wiegenlied'],['Chopin','Nocturne No. 2 / Étude “Tristesse”'],['Schumann','Träumerei'],['Brahms','Lullaby'],['Fauré','Sicilienne / Après un rêve'],['Debussy','Clair de Lune / La fille aux cheveux de lin'],['Satie','Gymnopédie No. 1'],['Elgar','Salut d’Amour'],['Vivaldi','from “The Four Seasons”'],['Folk songs','Danny Boy and other traditional melodies']],
     f1:'<b>Send your request</b>Tell us the ensemble, the mood, and your budget.',
     f2:'<b>Quote and conversation</b>We reply by email with a quote based on your notes.',
     f3:'<b>Composition and demo</b>You hear a demo, and we refine it to your notes.',
     f4:'<b>Delivery</b>You receive the audio file and a WooM gift link.',
     lName:'Your name', lMail:'Email address', hMail:'We send the quote to this address.',
+    replyNote:'We reply in English or Japanese.',
     lType:'What would you like?', oty:['An original composition','A classical piece, performed','Something else / undecided'],
     ens:{
       original:[['piano','Piano solo (from $300)'],['guitar','Guitar solo (from $300)']],
-      classical:[['piano','Piano solo (from $300)'],['guitar','Guitar solo (from $300)'],
-                 ['quartet','String quartet (from $2,000)'],['orchestra','Orchestra (from $10,000)']],
+      classical:[['piano','Piano solo (from $300)'],['guitar','Guitar solo (from $300)'],['quartet','String quartet (from $2,000)'],['orchestra','Orchestra (from $10,000)']],
       other:[['other','On request — describe it below']]
     },
     lPiece:'Which classical piece (optional)', piecePh:'e.g. Debussy, Clair de Lune',
@@ -430,14 +408,13 @@ var STR={
     reqPh:'e.g. A gentle piano piece for quiet nights, with a little violin underneath.',
     lAttach:'Attach my heartbeat loop',
     hbNote:'We use it to match the tempo. Untick if you’d rather not send it.',
-    hbMeta:'Carried over from the app: {bpm}{kind}',
+    hbMeta:'Carried over from the app: {bpm} ({kind})',
     hbKind:{upload:'uploaded heartbeat',record:'recorded heartbeat',sample:'sample heartbeat'},
     sendingUp:'Sending your heartbeat…',
-    lHb:'About the heartbeat', lBudget:'Your budget (USD)',
+    lHb:'About the heartbeat', oh:['Already using a heartbeat in WooM','Planning to record one','Not decided yet'],
+    lBudget:'Your budget (USD)',
     hBudget:'From $300. Larger ensembles may need a higher quote.',
     lDue:'Preferred delivery date (optional)', duePh:'e.g. two weeks before the due date',
-    oe:['Piano solo (from $300)','Guitar solo (from $300)','String quartet (from $2,000)','Orchestra (from $10,000)','Other / undecided (on request)'],
-    oh:['Already using a heartbeat in WooM','Planning to record one','Not decided yet'],
     eName:'Please enter your name', eMail:'Please check your email address',
     eReq:'Please tell us what you have in mind', eBudget:'Please enter $300 or more',
     send:'Send request', sending:'Sending…',
@@ -446,9 +423,632 @@ var STR={
     mailOpened:'If your mail app did not open, please write to <a href="{m}">{m}</a>.',
     noRoute:'The request line is being set up. Please try again shortly.',
     foot:'© 2026 WooM · All rights reserved.'
+  },
+  zh:{
+    title:'定制专属乐曲 — WooM', back:'← 返回应用', h1:'定制专属乐曲',
+    lead:'依照宝宝心跳的速度，<b>为你创作独一无二的一首曲子</b>。不是现成的背景音乐，而是从那份心跳中诞生的音乐。',
+    lblPrice:'价格', lblFlow:'委托流程', lblForm:'委托表单',
+    gAh:'原创作曲', gAtag:'热门', gAr1:'钢琴独奏 / 吉他独奏',
+    gAd:'依照宝宝心跳的速度创作全新曲目。也欢迎告诉我们想要的曲风。',
+    gBh:'古典乐曲演奏', gBr1:'钢琴独奏 / 吉他独奏', gBr2:'弦乐四重奏', gBr3:'管弦乐团',
+    gBd:'将你喜爱的古典名曲，以心跳的速度演奏并录制。',
+    pdLine:'仅限著作权已过期的乐曲。', pdOpen:'查看可选曲目示例',
+    gCh:'其他', gCp:'另行商议', gCd:'人声、其他乐器组合、指定作曲家等。请写下你的想法。',
+    pdTitle:'可选曲目示例',
+    pdLead:'作曲家逝世超过70年、著作权已过期的乐曲。以下为部分示例。',
+    pdFoot:'清单以外的曲目也欢迎咨询，我们会为你确认是否可用。',
+    pdList:[['巴赫','G弦上的咏叹调／耶稣，人类渴望的喜悦'],['帕赫贝尔','卡农'],['莫扎特','小夜曲／小星星变奏曲'],['贝多芬','月光奏鸣曲／致爱丽丝'],['舒伯特','圣母颂／摇篮曲'],['肖邦','夜曲第2号／离别曲'],['舒曼','梦幻曲'],['勃拉姆斯','摇篮曲'],['福雷','西西里舞曲／梦后'],['德彪西','月光／亚麻色头发的少女'],['萨蒂','裸体歌舞第1号'],['埃尔加','爱的致意'],['维瓦尔第','《四季》选段'],['各国民谣','《丹尼男孩》等']],
+    f1:'<b>提交需求</b>请在下方表单填写编制、曲风与预算。',
+    f2:'<b>报价与沟通</b>我们会根据你的内容，以电子邮件回复报价。',
+    f3:'<b>创作与试听</b>你先听样曲，我们再依你的意见完成。',
+    f4:'<b>交付</b>提供音频文件，以及WooM的礼物链接。',
+    lName:'姓名', lMail:'电子邮箱', hMail:'我们会将报价发送到这个邮箱。',
+    replyNote:'回复将以英语或日语进行。',
+    lType:'委托类型', oty:['原创作曲','古典乐曲演奏','其他 / 未定'],
+    ens:{
+      original:[['piano','钢琴独奏（$300起）'],['guitar','吉他独奏（$300起）']],
+      classical:[['piano','钢琴独奏（$300起）'],['guitar','吉他独奏（$300起）'],['quartet','弦乐四重奏（$2,000起）'],['orchestra','管弦乐团（$10,000起）']],
+      other:[['other','另行商议（请在下方说明）']]
+    },
+    lPiece:'希望演奏的古典曲目（选填）', piecePh:'例：德彪西《月光》',
+    hPiece:'尚未决定也可以留空，我们可以一起挑选。',
+    lEns:'希望的编制', lReq:'乐器与曲风的想法',
+    reqPh:'例：温柔的钢琴曲，适合安静的夜晚。想加入一点小提琴。',
+    lAttach:'附上心跳声（循环片段）',
+    hbNote:'用于配合乐曲速度。不想附上请取消勾选。',
+    hbMeta:'已从应用带入：{bpm}（{kind}）',
+    hbKind:{upload:'上传的心跳声',record:'录制的心跳声',sample:'示例心跳声'},
+    sendingUp:'正在发送心跳声…',
+    lHb:'关于心跳声', oh:['已在WooM中使用心跳声','打算之后录制','尚未决定'],
+    lBudget:'预算（美元）',
+    hBudget:'最低 $300 起。较大编制可能需要更高的报价。',
+    lDue:'希望交付日期（选填）', duePh:'例：预产期前两周',
+    eName:'请填写姓名', eMail:'请检查邮箱地址',
+    eReq:'请写下你的想法', eBudget:'请填写 $300 以上',
+    send:'提交委托', sending:'发送中…',
+    privacy:'我们仅将你的信息用于回复此次委托。',
+    sentH:'已提交', sentP:'感谢你的委托。<br>我们会在3个工作日内回复你填写的邮箱。',
+    mailOpened:'如果邮件程序没有打开，请发送至 <a href="{m}">{m}</a>。',
+    noRoute:'提交通道正在准备中，请稍后再试。',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  'zh-TW':{
+    title:'訂製專屬樂曲 — WooM', back:'← 返回應用程式', h1:'訂製專屬樂曲',
+    lead:'依照寶寶心跳的速度，<b>為你創作獨一無二的一首曲子</b>。不是現成的背景音樂，而是從那份心跳中誕生的音樂。',
+    lblPrice:'價格', lblFlow:'委託流程', lblForm:'委託表單',
+    gAh:'原創作曲', gAtag:'熱門', gAr1:'鋼琴獨奏 / 吉他獨奏',
+    gAd:'依照寶寶心跳的速度創作全新曲目。也歡迎告訴我們想要的曲風。',
+    gBh:'古典樂曲演奏', gBr1:'鋼琴獨奏 / 吉他獨奏', gBr2:'弦樂四重奏', gBr3:'管弦樂團',
+    gBd:'將你喜愛的古典名曲，以心跳的速度演奏並錄製。',
+    pdLine:'僅限著作權已過期的樂曲。', pdOpen:'查看可選曲目範例',
+    gCh:'其他', gCp:'另行洽談', gCd:'人聲、其他樂器組合、指定作曲家等。請寫下你的想法。',
+    pdTitle:'可選曲目範例',
+    pdLead:'作曲家逝世超過70年、著作權已過期的樂曲。以下為部分範例。',
+    pdFoot:'清單以外的曲目也歡迎詢問，我們會為你確認是否可用。',
+    pdList:[['巴哈','G弦之歌／耶穌，世人仰望的喜悅'],['帕海貝爾','卡農'],['莫札特','小夜曲／小星星變奏曲'],['貝多芬','月光奏鳴曲／給愛麗絲'],['舒伯特','聖母頌／搖籃曲'],['蕭邦','夜曲第2號／離別曲'],['舒曼','夢幻曲'],['布拉姆斯','搖籃曲'],['佛瑞','西西里舞曲／夢後'],['德布西','月光／棕髮少女'],['薩提','吉諾佩第1號'],['艾爾加','愛的禮讚'],['韋瓦第','《四季》選段'],['各國民謠','《丹尼男孩》等']],
+    f1:'<b>送出需求</b>請在下方表單填寫編制、曲風與預算。',
+    f2:'<b>報價與溝通</b>我們會根據你的內容，以電子郵件回覆報價。',
+    f3:'<b>創作與試聽</b>你先聽樣曲，我們再依你的意見完成。',
+    f4:'<b>交付</b>提供音訊檔案，以及WooM的禮物連結。',
+    lName:'姓名', lMail:'電子郵件', hMail:'我們會將報價寄到這個信箱。',
+    replyNote:'回覆將以英語或日語進行。',
+    lType:'委託類型', oty:['原創作曲','古典樂曲演奏','其他 / 未定'],
+    ens:{
+      original:[['piano','鋼琴獨奏（$300起）'],['guitar','吉他獨奏（$300起）']],
+      classical:[['piano','鋼琴獨奏（$300起）'],['guitar','吉他獨奏（$300起）'],['quartet','弦樂四重奏（$2,000起）'],['orchestra','管弦樂團（$10,000起）']],
+      other:[['other','另行洽談（請在下方說明）']]
+    },
+    lPiece:'希望演奏的古典曲目（選填）', piecePh:'例：德布西《月光》',
+    hPiece:'尚未決定也可以留空，我們可以一起挑選。',
+    lEns:'希望的編制', lReq:'樂器與曲風的想法',
+    reqPh:'例：溫柔的鋼琴曲，適合安靜的夜晚。想加入一點小提琴。',
+    lAttach:'附上心跳聲（循環片段）',
+    hbNote:'用於配合樂曲速度。不想附上請取消勾選。',
+    hbMeta:'已從應用程式帶入：{bpm}（{kind}）',
+    hbKind:{upload:'上傳的心跳聲',record:'錄製的心跳聲',sample:'範例心跳聲'},
+    sendingUp:'正在傳送心跳聲…',
+    lHb:'關於心跳聲', oh:['已在WooM中使用心跳聲','打算之後錄製','尚未決定'],
+    lBudget:'預算（美元）',
+    hBudget:'最低 $300 起。較大編制可能需要更高的報價。',
+    lDue:'希望交付日期（選填）', duePh:'例：預產期前兩週',
+    eName:'請填寫姓名', eMail:'請檢查電子郵件地址',
+    eReq:'請寫下你的想法', eBudget:'請填寫 $300 以上',
+    send:'送出委託', sending:'傳送中…',
+    privacy:'我們僅將你的資訊用於回覆此次委託。',
+    sentH:'已送出', sentP:'感謝你的委託。<br>我們會在3個工作天內回覆你填寫的信箱。',
+    mailOpened:'如果郵件程式沒有開啟，請寄至 <a href="{m}">{m}</a>。',
+    noRoute:'送出管道正在準備中，請稍後再試。',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  ko:{
+    title:'맞춤 음악 제작 — WooM', back:'← 앱으로 돌아가기', h1:'맞춤 음악 제작',
+    lead:'아기의 심장 소리 템포에 맞춰 <b>당신만을 위한 한 곡</b>을 씁니다. 기성 배경음악이 아니라, 그 작은 박동에서 태어나는 음악입니다.',
+    lblPrice:'요금', lblFlow:'의뢰 절차', lblForm:'의뢰 양식',
+    gAh:'창작곡(오리지널)', gAtag:'인기', gAr1:'피아노 솔로 / 기타 솔로',
+    gAd:'아기의 심장 소리 템포로 새로운 곡을 씁니다. 원하시는 분위기도 말씀해 주세요.',
+    gBh:'클래식 연주', gBr1:'피아노 솔로 / 기타 솔로', gBr2:'현악 사중주', gBr3:'오케스트라',
+    gBd:'좋아하시는 클래식 명곡을 심장 소리의 템포로 연주하고 녹음합니다.',
+    pdLine:'저작권이 만료된 곡 중에서 선택하실 수 있습니다.', pdOpen:'사용 가능한 곡 예시 보기',
+    gCh:'그 외', gCp:'별도 협의', gCd:'보컬, 다른 악기 편성, 작곡가 지정 등. 원하시는 내용을 적어 보내주세요.',
+    pdTitle:'사용 가능한 곡 예시',
+    pdLead:'작곡가 사후 70년이 지나 저작권이 만료된 곡이 대상입니다. 아래는 일부 예시입니다.',
+    pdFoot:'목록에 없는 곡도 편하게 문의해 주세요. 사용 가능한지 확인해 드립니다.',
+    pdList:[['J.S. 바흐','G선상의 아리아 / 예수, 인류 소망의 기쁨'],['파헬벨','캐논'],['모차르트','아이네 클라이네 나흐트무지크 / 반짝반짝 작은 별 변주곡'],['베토벤','월광 / 엘리제를 위하여'],['슈베르트','아베 마리아 / 자장가'],['쇼팽','녹턴 2번 / 이별의 곡'],['슈만','트로이메라이'],['브람스','자장가'],['포레','시칠리안 / 꿈을 꾼 후에'],['드뷔시','달빛 / 아마빛 머리의 소녀'],['사티','짐노페디 1번'],['엘가','사랑의 인사'],['비발디','「사계」 중에서'],['각국 민요','대니 보이 등']],
+    f1:'<b>의뢰 보내기</b>아래 양식에 편성·분위기·예산을 적어 주세요.',
+    f2:'<b>견적과 상담</b>보내주신 내용을 바탕으로 이메일로 답장드립니다.',
+    f3:'<b>제작과 데모 확인</b>데모를 들어보시고, 의견을 반영해 완성합니다.',
+    f4:'<b>납품</b>음원 파일과 WooM 선물 링크로 전해드립니다.',
+    lName:'성함', lMail:'이메일 주소', hMail:'이 주소로 견적을 보내드립니다.',
+    replyNote:'답장은 영어 또는 일본어로 드립니다.',
+    lType:'의뢰 종류', oty:['창작곡(오리지널)','클래식 연주','그 외 / 미정'],
+    ens:{
+      original:[['piano','피아노 솔로($300~)'],['guitar','기타 솔로($300~)']],
+      classical:[['piano','피아노 솔로($300~)'],['guitar','기타 솔로($300~)'],['quartet','현악 사중주($2,000~)'],['orchestra','오케스트라($10,000~)']],
+      other:[['other','별도 협의(아래에 적어 주세요)']]
+    },
+    lPiece:'원하시는 클래식 곡(선택)', piecePh:'예: 드뷔시 「달빛」',
+    hPiece:'정하지 않으셨다면 비워두셔도 됩니다. 함께 고를 수 있습니다.',
+    lEns:'원하시는 편성', lReq:'악기와 분위기에 대한 희망',
+    reqPh:'예: 부드러운 피아노로, 조용한 밤에 들을 수 있는 곡. 바이올린을 살짝 더하고 싶습니다.',
+    lAttach:'심장 소리(루프)를 첨부해 보내기',
+    hbNote:'작곡의 템포를 맞추는 데 사용합니다. 보내지 않으시려면 체크를 해제하세요.',
+    hbMeta:'앱에서 가져왔습니다: {bpm} ({kind})',
+    hbKind:{upload:'업로드한 심장 소리',record:'녹음한 심장 소리',sample:'샘플 심장 소리'},
+    sendingUp:'심장 소리를 보내는 중…',
+    lHb:'심장 소리에 대해', oh:['이미 WooM에서 심장 소리를 사용 중','앞으로 녹음할 예정','아직 정하지 않음'],
+    lBudget:'희망 금액(USD)',
+    hBudget:'최소 $300부터 받습니다. 편성에 따라 더 높은 견적이 필요할 수 있습니다.',
+    lDue:'희망 납기(선택)', duePh:'예: 출산 예정일 2주 전까지',
+    eName:'성함을 입력해 주세요', eMail:'이메일 주소를 확인해 주세요',
+    eReq:'원하시는 내용을 적어 주세요', eBudget:'$300 이상으로 입력해 주세요',
+    send:'이 내용으로 보내기', sending:'보내는 중…',
+    privacy:'보내주신 정보는 이 의뢰에 대한 답장에만 사용합니다.',
+    sentH:'보냈습니다', sentP:'의뢰해 주셔서 감사합니다.<br>영업일 기준 3일 이내에 적어주신 이메일로 답장드립니다.',
+    mailOpened:'메일 앱이 열리지 않으면 <a href="{m}">{m}</a> 로 보내주세요.',
+    noRoute:'접수처를 준비 중입니다. 잠시 후 다시 시도해 주세요.',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  es:{
+    title:'Música a medida — WooM', back:'← Volver a la app', h1:'Música a medida',
+    lead:'Una pieza escrita al ritmo del latido de tu bebé, <b>compuesta solo para ti</b>. No es música de archivo: nace de ese pequeño pulso.',
+    lblPrice:'Precios', lblFlow:'Cómo funciona', lblForm:'Formulario de solicitud',
+    gAh:'Composición original', gAtag:'popular', gAr1:'Piano solo / Guitarra sola',
+    gAd:'Una pieza nueva, escrita al tempo del latido. Cuéntanos el carácter que buscas.',
+    gBh:'Una obra clásica, interpretada', gBr1:'Piano solo / Guitarra sola', gBr2:'Cuarteto de cuerda', gBr3:'Orquesta',
+    gBd:'Tu obra clásica favorita, interpretada y grabada al tempo del latido.',
+    pdLine:'Solo obras cuyos derechos de autor han expirado.', pdOpen:'Ver ejemplos de obras',
+    gCh:'Otras opciones', gCp:'A consultar', gCd:'Voz, otros conjuntos instrumentales, un compositor concreto: cuéntanos qué tienes en mente.',
+    pdTitle:'Ejemplos de obras',
+    pdLead:'Obras cuyo compositor falleció hace más de 70 años, por lo que los derechos han expirado. Estos son algunos ejemplos.',
+    pdFoot:'Pregúntanos por cualquier obra que no esté en la lista: comprobaremos si se puede usar.',
+    pdList:[['J.S. Bach','Aria en la cuerda de Sol / Jesus bleibet meine Freude'],['Pachelbel','Canon en Re'],['Mozart','Eine kleine Nachtmusik / Variaciones “Ah vous dirai-je, Maman”'],['Beethoven','Claro de luna / Para Elisa'],['Schubert','Ave María / Nana'],['Chopin','Nocturno n.º 2 / Estudio “Tristeza”'],['Schumann','Träumerei'],['Brahms','Nana'],['Fauré','Siciliana / Après un rêve'],['Debussy','Claro de luna / La chica del cabello de lino'],['Satie','Gymnopédie n.º 1'],['Elgar','Salut d’Amour'],['Vivaldi','de “Las cuatro estaciones”'],['Canciones populares','Danny Boy y otras melodías tradicionales']],
+    f1:'<b>Envía tu solicitud</b>Indícanos la formación, el carácter y tu presupuesto.',
+    f2:'<b>Presupuesto y conversación</b>Te respondemos por correo con un presupuesto.',
+    f3:'<b>Composición y maqueta</b>Escuchas una maqueta y la afinamos según tus comentarios.',
+    f4:'<b>Entrega</b>Recibes el archivo de audio y un enlace de regalo de WooM.',
+    lName:'Tu nombre', lMail:'Correo electrónico', hMail:'Enviaremos el presupuesto a esta dirección.',
+    replyNote:'Respondemos en inglés o japonés.',
+    lType:'¿Qué te gustaría?', oty:['Una composición original','Una obra clásica interpretada','Otra cosa / sin decidir'],
+    ens:{
+      original:[['piano','Piano solo (desde $300)'],['guitar','Guitarra sola (desde $300)']],
+      classical:[['piano','Piano solo (desde $300)'],['guitar','Guitarra sola (desde $300)'],['quartet','Cuarteto de cuerda (desde $2.000)'],['orchestra','Orquesta (desde $10.000)']],
+      other:[['other','A consultar: descríbelo abajo']]
+    },
+    lPiece:'Qué obra clásica (opcional)', piecePh:'p. ej. Debussy, Claro de luna',
+    hPiece:'Déjalo en blanco si aún no lo sabes: podemos elegirla juntos.',
+    lEns:'Formación', lReq:'Instrumentos y carácter',
+    reqPh:'p. ej. Una pieza suave de piano para noches tranquilas, con un poco de violín debajo.',
+    lAttach:'Adjuntar el latido (bucle)',
+    hbNote:'Lo usamos para ajustar el tempo. Desmárcalo si prefieres no enviarlo.',
+    hbMeta:'Recibido desde la app: {bpm} ({kind})',
+    hbKind:{upload:'latido subido',record:'latido grabado',sample:'latido de ejemplo'},
+    sendingUp:'Enviando el latido…',
+    lHb:'Sobre el latido', oh:['Ya uso un latido en WooM','Voy a grabarlo','Aún no lo he decidido'],
+    lBudget:'Tu presupuesto (USD)',
+    hBudget:'Desde $300. Las formaciones grandes pueden requerir un presupuesto mayor.',
+    lDue:'Fecha de entrega deseada (opcional)', duePh:'p. ej. dos semanas antes de la fecha prevista',
+    eName:'Escribe tu nombre', eMail:'Revisa tu correo electrónico',
+    eReq:'Cuéntanos qué tienes en mente', eBudget:'Introduce $300 o más',
+    send:'Enviar solicitud', sending:'Enviando…',
+    privacy:'Usamos tus datos únicamente para responder a esta solicitud.',
+    sentH:'Solicitud enviada', sentP:'Gracias.<br>Te responderemos a tu correo en un plazo de 3 días laborables.',
+    mailOpened:'Si no se abrió tu aplicación de correo, escríbenos a <a href="{m}">{m}</a>.',
+    noRoute:'Estamos preparando la recepción de solicitudes. Inténtalo de nuevo en un momento.',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  fr:{
+    title:'Musique sur mesure — WooM', back:'← Retour à l’application', h1:'Musique sur mesure',
+    lead:'Une pièce écrite au tempo du cœur de votre bébé, <b>composée rien que pour vous</b>. Pas une musique toute faite, mais une musique née de ce petit battement.',
+    lblPrice:'Tarifs', lblFlow:'Comment ça marche', lblForm:'Formulaire de demande',
+    gAh:'Composition originale', gAtag:'populaire', gAr1:'Piano seul / Guitare seule',
+    gAd:'Une pièce nouvelle, écrite au tempo du battement. Dites-nous l’ambiance souhaitée.',
+    gBh:'Une œuvre classique, interprétée', gBr1:'Piano seul / Guitare seule', gBr2:'Quatuor à cordes', gBr3:'Orchestre',
+    gBd:'Votre œuvre classique préférée, interprétée et enregistrée au tempo du battement.',
+    pdLine:'Uniquement des œuvres tombées dans le domaine public.', pdOpen:'Voir des exemples d’œuvres',
+    gCh:'Autre chose', gCp:'Sur devis', gCd:'Voix, autres ensembles instrumentaux, un compositeur précis — dites-nous ce que vous imaginez.',
+    pdTitle:'Exemples d’œuvres',
+    pdLead:'Œuvres dont le compositeur est mort il y a plus de 70 ans : les droits ont expiré. Voici quelques exemples.',
+    pdFoot:'Demandez-nous pour toute œuvre absente de la liste : nous vérifierons si elle est utilisable.',
+    pdList:[['J.S. Bach','Air sur la corde de sol / Jésus que ma joie demeure'],['Pachelbel','Canon en ré'],['Mozart','Une petite musique de nuit / Variations “Ah vous dirai-je, Maman”'],['Beethoven','Clair de lune / Lettre à Élise'],['Schubert','Ave Maria / Berceuse'],['Chopin','Nocturne n° 2 / Étude “Tristesse”'],['Schumann','Rêverie'],['Brahms','Berceuse'],['Fauré','Sicilienne / Après un rêve'],['Debussy','Clair de lune / La fille aux cheveux de lin'],['Satie','Gymnopédie n° 1'],['Elgar','Salut d’Amour'],['Vivaldi','extraits des “Quatre Saisons”'],['Chansons traditionnelles','Danny Boy et autres airs']],
+    f1:'<b>Envoyez votre demande</b>Indiquez la formation, l’ambiance et votre budget.',
+    f2:'<b>Devis et échange</b>Nous vous répondons par e-mail avec un devis.',
+    f3:'<b>Composition et maquette</b>Vous écoutez une maquette, que nous affinons selon vos retours.',
+    f4:'<b>Livraison</b>Vous recevez le fichier audio et un lien cadeau WooM.',
+    lName:'Votre nom', lMail:'Adresse e-mail', hMail:'Nous envoyons le devis à cette adresse.',
+    replyNote:'Nous répondons en anglais ou en japonais.',
+    lType:'Que souhaitez-vous ?', oty:['Une composition originale','Une œuvre classique interprétée','Autre chose / indécis'],
+    ens:{
+      original:[['piano','Piano seul (dès 300 $)'],['guitar','Guitare seule (dès 300 $)']],
+      classical:[['piano','Piano seul (dès 300 $)'],['guitar','Guitare seule (dès 300 $)'],['quartet','Quatuor à cordes (dès 2 000 $)'],['orchestra','Orchestre (dès 10 000 $)']],
+      other:[['other','Sur devis — décrivez ci-dessous']]
+    },
+    lPiece:'Quelle œuvre classique (facultatif)', piecePh:'ex. Debussy, Clair de lune',
+    hPiece:'Laissez vide si vous hésitez : nous pouvons choisir ensemble.',
+    lEns:'Formation', lReq:'Instruments et ambiance',
+    reqPh:'ex. Une pièce douce au piano pour les nuits calmes, avec un peu de violon en dessous.',
+    lAttach:'Joindre le battement (boucle)',
+    hbNote:'Nous l’utilisons pour caler le tempo. Décochez si vous préférez ne pas l’envoyer.',
+    hbMeta:'Récupéré depuis l’application : {bpm} ({kind})',
+    hbKind:{upload:'battement importé',record:'battement enregistré',sample:'battement d’exemple'},
+    sendingUp:'Envoi du battement…',
+    lHb:'À propos du battement', oh:['J’utilise déjà un battement dans WooM','Je vais l’enregistrer','Pas encore décidé'],
+    lBudget:'Votre budget (USD)',
+    hBudget:'À partir de 300 $. Les grandes formations peuvent demander un devis plus élevé.',
+    lDue:'Date de livraison souhaitée (facultatif)', duePh:'ex. deux semaines avant le terme',
+    eName:'Indiquez votre nom', eMail:'Vérifiez votre adresse e-mail',
+    eReq:'Dites-nous ce que vous imaginez', eBudget:'Indiquez 300 $ ou plus',
+    send:'Envoyer la demande', sending:'Envoi…',
+    privacy:'Vos informations servent uniquement à répondre à cette demande.',
+    sentH:'Demande envoyée', sentP:'Merci.<br>Nous vous répondrons par e-mail sous 3 jours ouvrés.',
+    mailOpened:'Si votre logiciel de messagerie ne s’est pas ouvert, écrivez à <a href="{m}">{m}</a>.',
+    noRoute:'La réception des demandes est en cours de mise en place. Réessayez dans un instant.',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  de:{
+    title:'Musik nach Maß — WooM', back:'← Zurück zur App', h1:'Musik nach Maß',
+    lead:'Ein Stück im Tempo des Herzschlags Ihres Babys, <b>nur für Sie komponiert</b>. Keine Musik von der Stange, sondern Musik aus diesem kleinen Puls.',
+    lblPrice:'Preise', lblFlow:'So läuft es ab', lblForm:'Anfrageformular',
+    gAh:'Eigenkomposition', gAtag:'beliebt', gAr1:'Klavier solo / Gitarre solo',
+    gAd:'Ein neues Stück im Tempo des Herzschlags. Sagen Sie uns, welche Stimmung Sie möchten.',
+    gBh:'Ein klassisches Werk, eingespielt', gBr1:'Klavier solo / Gitarre solo', gBr2:'Streichquartett', gBr3:'Orchester',
+    gBd:'Ihr klassisches Lieblingsstück, im Tempo des Herzschlags gespielt und aufgenommen.',
+    pdLine:'Nur Werke, deren Urheberrecht abgelaufen ist.', pdOpen:'Beispielwerke ansehen',
+    gCh:'Etwas anderes', gCp:'Auf Anfrage', gCd:'Gesang, andere Besetzungen, ein bestimmter Komponist — schreiben Sie uns Ihre Vorstellung.',
+    pdTitle:'Beispielwerke',
+    pdLead:'Werke, deren Komponist vor mehr als 70 Jahren gestorben ist; das Urheberrecht ist abgelaufen. Hier einige Beispiele.',
+    pdFoot:'Fragen Sie uns nach Werken, die nicht aufgeführt sind — wir prüfen, ob sie verwendbar sind.',
+    pdList:[['J.S. Bach','Air auf der G-Saite / Jesus bleibet meine Freude'],['Pachelbel','Kanon in D'],['Mozart','Eine kleine Nachtmusik / “Ah vous dirai-je, Maman”-Variationen'],['Beethoven','Mondscheinsonate / Für Elise'],['Schubert','Ave Maria / Wiegenlied'],['Chopin','Nocturne Nr. 2 / Etüde “Tristesse”'],['Schumann','Träumerei'],['Brahms','Wiegenlied'],['Fauré','Sicilienne / Après un rêve'],['Debussy','Clair de Lune / Das Mädchen mit den Flachshaaren'],['Satie','Gymnopédie Nr. 1'],['Elgar','Salut d’Amour'],['Vivaldi','aus “Die vier Jahreszeiten”'],['Volkslieder','Danny Boy und andere Weisen']],
+    f1:'<b>Anfrage senden</b>Nennen Sie Besetzung, Stimmung und Budget.',
+    f2:'<b>Angebot und Gespräch</b>Wir antworten per E-Mail mit einem Angebot.',
+    f3:'<b>Komposition und Demo</b>Sie hören eine Demo, die wir nach Ihren Wünschen ausarbeiten.',
+    f4:'<b>Lieferung</b>Sie erhalten die Audiodatei und einen WooM-Geschenklink.',
+    lName:'Ihr Name', lMail:'E-Mail-Adresse', hMail:'An diese Adresse senden wir das Angebot.',
+    replyNote:'Wir antworten auf Englisch oder Japanisch.',
+    lType:'Was möchten Sie?', oty:['Eine Eigenkomposition','Ein klassisches Werk, eingespielt','Etwas anderes / noch offen'],
+    ens:{
+      original:[['piano','Klavier solo (ab 300 $)'],['guitar','Gitarre solo (ab 300 $)']],
+      classical:[['piano','Klavier solo (ab 300 $)'],['guitar','Gitarre solo (ab 300 $)'],['quartet','Streichquartett (ab 2.000 $)'],['orchestra','Orchester (ab 10.000 $)']],
+      other:[['other','Auf Anfrage — bitte unten beschreiben']]
+    },
+    lPiece:'Welches klassische Werk (optional)', piecePh:'z. B. Debussy, Clair de Lune',
+    hPiece:'Lassen Sie es frei, wenn Sie unsicher sind — wir wählen gemeinsam.',
+    lEns:'Besetzung', lReq:'Instrumente und Stimmung',
+    reqPh:'z. B. Ein sanftes Klavierstück für ruhige Nächte, mit etwas Violine darunter.',
+    lAttach:'Herzschlag (Loop) mitsenden',
+    hbNote:'Wir nutzen ihn, um das Tempo zu treffen. Abwählen, wenn Sie ihn lieber nicht senden.',
+    hbMeta:'Aus der App übernommen: {bpm} ({kind})',
+    hbKind:{upload:'hochgeladener Herzschlag',record:'aufgenommener Herzschlag',sample:'Beispiel-Herzschlag'},
+    sendingUp:'Herzschlag wird gesendet…',
+    lHb:'Zum Herzschlag', oh:['Nutze bereits einen Herzschlag in WooM','Werde einen aufnehmen','Noch nicht entschieden'],
+    lBudget:'Ihr Budget (USD)',
+    hBudget:'Ab 300 $. Größere Besetzungen können ein höheres Angebot erfordern.',
+    lDue:'Gewünschter Liefertermin (optional)', duePh:'z. B. zwei Wochen vor dem Termin',
+    eName:'Bitte geben Sie Ihren Namen an', eMail:'Bitte prüfen Sie Ihre E-Mail-Adresse',
+    eReq:'Bitte beschreiben Sie Ihre Vorstellung', eBudget:'Bitte 300 $ oder mehr angeben',
+    send:'Anfrage senden', sending:'Wird gesendet…',
+    privacy:'Wir verwenden Ihre Angaben ausschließlich zur Beantwortung dieser Anfrage.',
+    sentH:'Anfrage gesendet', sentP:'Vielen Dank.<br>Wir antworten innerhalb von 3 Werktagen per E-Mail.',
+    mailOpened:'Falls sich Ihr E-Mail-Programm nicht geöffnet hat, schreiben Sie bitte an <a href="{m}">{m}</a>.',
+    noRoute:'Die Annahme wird gerade eingerichtet. Bitte versuchen Sie es gleich noch einmal.',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  pt:{
+    title:'Música sob medida — WooM', back:'← Voltar ao aplicativo', h1:'Música sob medida',
+    lead:'Uma peça escrita no ritmo do coração do seu bebê, <b>composta só para você</b>. Não é uma trilha pronta: nasce dessa pequena pulsação.',
+    lblPrice:'Preços', lblFlow:'Como funciona', lblForm:'Formulário de pedido',
+    gAh:'Composição original', gAtag:'popular', gAr1:'Piano solo / Violão solo',
+    gAd:'Uma peça nova, escrita no tempo do batimento. Conte-nos o clima que deseja.',
+    gBh:'Uma obra clássica, interpretada', gBr1:'Piano solo / Violão solo', gBr2:'Quarteto de cordas', gBr3:'Orquestra',
+    gBd:'A obra clássica que você ama, tocada e gravada no tempo do batimento.',
+    pdLine:'Somente obras cujos direitos autorais expiraram.', pdOpen:'Ver exemplos de obras',
+    gCh:'Outra coisa', gCp:'Sob consulta', gCd:'Voz, outros conjuntos instrumentais, um compositor específico — escreva o que tem em mente.',
+    pdTitle:'Exemplos de obras',
+    pdLead:'Obras cujo compositor morreu há mais de 70 anos, com direitos já expirados. Veja alguns exemplos.',
+    pdFoot:'Pergunte sobre qualquer obra fora da lista — verificaremos se pode ser usada.',
+    pdList:[['J.S. Bach','Ária na Corda Sol / Jesus, Alegria dos Homens'],['Pachelbel','Cânone em Ré'],['Mozart','Eine kleine Nachtmusik / Variações “Ah vous dirai-je, Maman”'],['Beethoven','Sonata ao Luar / Für Elise'],['Schubert','Ave Maria / Canção de ninar'],['Chopin','Noturno n.º 2 / Estudo “Tristesse”'],['Schumann','Träumerei'],['Brahms','Canção de ninar'],['Fauré','Siciliana / Après un rêve'],['Debussy','Clair de Lune / A moça dos cabelos de linho'],['Satie','Gymnopédie n.º 1'],['Elgar','Salut d’Amour'],['Vivaldi','de “As Quatro Estações”'],['Canções tradicionais','Danny Boy e outras melodias']],
+    f1:'<b>Envie seu pedido</b>Informe a formação, o clima e seu orçamento.',
+    f2:'<b>Orçamento e conversa</b>Respondemos por e-mail com um orçamento.',
+    f3:'<b>Composição e demo</b>Você ouve uma demo e a ajustamos conforme seus comentários.',
+    f4:'<b>Entrega</b>Você recebe o arquivo de áudio e um link de presente WooM.',
+    lName:'Seu nome', lMail:'E-mail', hMail:'Enviaremos o orçamento para este e-mail.',
+    replyNote:'Respondemos em inglês ou japonês.',
+    lType:'O que você gostaria?', oty:['Uma composição original','Uma obra clássica interpretada','Outra coisa / indeciso'],
+    ens:{
+      original:[['piano','Piano solo (a partir de $300)'],['guitar','Violão solo (a partir de $300)']],
+      classical:[['piano','Piano solo (a partir de $300)'],['guitar','Violão solo (a partir de $300)'],['quartet','Quarteto de cordas (a partir de $2.000)'],['orchestra','Orquestra (a partir de $10.000)']],
+      other:[['other','Sob consulta — descreva abaixo']]
+    },
+    lPiece:'Qual obra clássica (opcional)', piecePh:'ex.: Debussy, Clair de Lune',
+    hPiece:'Deixe em branco se ainda não souber — podemos escolher juntos.',
+    lEns:'Formação', lReq:'Instrumentos e clima',
+    reqPh:'ex.: Uma peça suave de piano para noites tranquilas, com um pouco de violino ao fundo.',
+    lAttach:'Anexar o batimento (loop)',
+    hbNote:'Usamos para acertar o tempo. Desmarque se preferir não enviar.',
+    hbMeta:'Trazido do aplicativo: {bpm} ({kind})',
+    hbKind:{upload:'batimento enviado',record:'batimento gravado',sample:'batimento de exemplo'},
+    sendingUp:'Enviando o batimento…',
+    lHb:'Sobre o batimento', oh:['Já uso um batimento no WooM','Pretendo gravar','Ainda não decidi'],
+    lBudget:'Seu orçamento (USD)',
+    hBudget:'A partir de $300. Formações maiores podem exigir um orçamento maior.',
+    lDue:'Data de entrega desejada (opcional)', duePh:'ex.: duas semanas antes da data prevista',
+    eName:'Digite seu nome', eMail:'Verifique seu e-mail',
+    eReq:'Conte-nos o que tem em mente', eBudget:'Informe $300 ou mais',
+    send:'Enviar pedido', sending:'Enviando…',
+    privacy:'Usamos seus dados apenas para responder a este pedido.',
+    sentH:'Pedido enviado', sentP:'Obrigado.<br>Responderemos ao seu e-mail em até 3 dias úteis.',
+    mailOpened:'Se seu aplicativo de e-mail não abriu, escreva para <a href="{m}">{m}</a>.',
+    noRoute:'O canal de pedidos está sendo preparado. Tente novamente em instantes.',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  it:{
+    title:'Musica su misura — WooM', back:'← Torna all’app', h1:'Musica su misura',
+    lead:'Un brano scritto sul tempo del battito del vostro bambino, <b>composto solo per voi</b>. Non una musica preconfezionata, ma una musica nata da quel piccolo battito.',
+    lblPrice:'Prezzi', lblFlow:'Come funziona', lblForm:'Modulo di richiesta',
+    gAh:'Composizione originale', gAtag:'popolare', gAr1:'Pianoforte solo / Chitarra sola',
+    gAd:'Un brano nuovo, scritto sul tempo del battito. Diteci l’atmosfera che desiderate.',
+    gBh:'Un brano classico, eseguito', gBr1:'Pianoforte solo / Chitarra sola', gBr2:'Quartetto d’archi', gBr3:'Orchestra',
+    gBd:'Il vostro classico preferito, eseguito e registrato sul tempo del battito.',
+    pdLine:'Solo opere il cui diritto d’autore è scaduto.', pdOpen:'Vedi esempi di brani',
+    gCh:'Altro', gCp:'Su richiesta', gCd:'Voce, altri organici strumentali, un compositore preciso — scriveteci cosa avete in mente.',
+    pdTitle:'Esempi di brani',
+    pdLead:'Opere il cui compositore è morto da oltre 70 anni: il diritto d’autore è scaduto. Ecco alcuni esempi.',
+    pdFoot:'Chiedeteci di qualsiasi brano non elencato: verificheremo se è utilizzabile.',
+    pdList:[['J.S. Bach','Aria sulla quarta corda / Jesus bleibet meine Freude'],['Pachelbel','Canone in Re'],['Mozart','Eine kleine Nachtmusik / Variazioni “Ah vous dirai-je, Maman”'],['Beethoven','Sonata al chiaro di luna / Per Elisa'],['Schubert','Ave Maria / Ninna nanna'],['Chopin','Notturno n. 2 / Studio “Tristesse”'],['Schumann','Träumerei'],['Brahms','Ninna nanna'],['Fauré','Siciliana / Après un rêve'],['Debussy','Clair de Lune / La ragazza dai capelli di lino'],['Satie','Gymnopédie n. 1'],['Elgar','Salut d’Amour'],['Vivaldi','da “Le quattro stagioni”'],['Canti tradizionali','Danny Boy e altre melodie']],
+    f1:'<b>Inviate la richiesta</b>Indicate organico, atmosfera e budget.',
+    f2:'<b>Preventivo e confronto</b>Vi rispondiamo via e-mail con un preventivo.',
+    f3:'<b>Composizione e demo</b>Ascoltate una demo e la rifiniamo secondo i vostri commenti.',
+    f4:'<b>Consegna</b>Ricevete il file audio e un link regalo WooM.',
+    lName:'Il vostro nome', lMail:'Indirizzo e-mail', hMail:'Invieremo il preventivo a questo indirizzo.',
+    replyNote:'Rispondiamo in inglese o giapponese.',
+    lType:'Che cosa desiderate?', oty:['Una composizione originale','Un brano classico eseguito','Altro / non deciso'],
+    ens:{
+      original:[['piano','Pianoforte solo (da 300 $)'],['guitar','Chitarra sola (da 300 $)']],
+      classical:[['piano','Pianoforte solo (da 300 $)'],['guitar','Chitarra sola (da 300 $)'],['quartet','Quartetto d’archi (da 2.000 $)'],['orchestra','Orchestra (da 10.000 $)']],
+      other:[['other','Su richiesta — descrivetelo qui sotto']]
+    },
+    lPiece:'Quale brano classico (facoltativo)', piecePh:'es. Debussy, Clair de Lune',
+    hPiece:'Lasciate vuoto se non siete sicuri: possiamo sceglierlo insieme.',
+    lEns:'Organico', lReq:'Strumenti e atmosfera',
+    reqPh:'es. Un brano delicato per pianoforte per le notti tranquille, con un po’ di violino sotto.',
+    lAttach:'Allega il battito (loop)',
+    hbNote:'Lo usiamo per calibrare il tempo. Togliete la spunta se preferite non inviarlo.',
+    hbMeta:'Ripreso dall’app: {bpm} ({kind})',
+    hbKind:{upload:'battito caricato',record:'battito registrato',sample:'battito di esempio'},
+    sendingUp:'Invio del battito…',
+    lHb:'Sul battito', oh:['Uso già un battito in WooM','Ho intenzione di registrarlo','Non ho ancora deciso'],
+    lBudget:'Il vostro budget (USD)',
+    hBudget:'Da 300 $. Gli organici più ampi possono richiedere un preventivo superiore.',
+    lDue:'Data di consegna desiderata (facoltativa)', duePh:'es. due settimane prima del termine',
+    eName:'Inserite il vostro nome', eMail:'Controllate l’indirizzo e-mail',
+    eReq:'Diteci cosa avete in mente', eBudget:'Inserite 300 $ o più',
+    send:'Invia richiesta', sending:'Invio…',
+    privacy:'Usiamo i vostri dati solo per rispondere a questa richiesta.',
+    sentH:'Richiesta inviata', sentP:'Grazie.<br>Vi risponderemo via e-mail entro 3 giorni lavorativi.',
+    mailOpened:'Se il programma di posta non si è aperto, scrivete a <a href="{m}">{m}</a>.',
+    noRoute:'La ricezione delle richieste è in allestimento. Riprovate tra poco.',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  id:{
+    title:'Musik Custom — WooM', back:'← Kembali ke aplikasi', h1:'Musik Custom',
+    lead:'Sebuah karya yang ditulis mengikuti tempo detak jantung bayi Anda, <b>digubah khusus untuk Anda</b>. Bukan musik siap pakai, melainkan musik yang lahir dari detak kecil itu.',
+    lblPrice:'Harga', lblFlow:'Alurnya', lblForm:'Formulir permintaan',
+    gAh:'Komposisi orisinal', gAtag:'populer', gAr1:'Piano solo / Gitar solo',
+    gAd:'Karya baru yang ditulis pada tempo detak jantung. Ceritakan nuansa yang Anda inginkan.',
+    gBh:'Karya klasik, dimainkan', gBr1:'Piano solo / Gitar solo', gBr2:'Kuartet gesek', gBr3:'Orkestra',
+    gBd:'Karya klasik kesukaan Anda, dimainkan dan direkam pada tempo detak jantung.',
+    pdLine:'Hanya karya yang hak ciptanya telah berakhir.', pdOpen:'Lihat contoh karya',
+    gCh:'Lainnya', gCp:'Sesuai permintaan', gCd:'Vokal, ansambel instrumen lain, komponis tertentu — tuliskan yang Anda bayangkan.',
+    pdTitle:'Contoh karya',
+    pdLead:'Karya yang komponisnya wafat lebih dari 70 tahun lalu, sehingga hak ciptanya berakhir. Berikut beberapa contoh.',
+    pdFoot:'Tanyakan karya lain yang tidak terdaftar — kami akan periksa apakah bisa digunakan.',
+    pdList:[['J.S. Bach','Air on the G String / Jesu, Joy of Man’s Desiring'],['Pachelbel','Canon in D'],['Mozart','Eine kleine Nachtmusik / Variasi “Twinkle”'],['Beethoven','Sonata Moonlight / Für Elise'],['Schubert','Ave Maria / Wiegenlied'],['Chopin','Nocturne No. 2 / Étude “Tristesse”'],['Schumann','Träumerei'],['Brahms','Lagu nina bobo'],['Fauré','Sicilienne / Après un rêve'],['Debussy','Clair de Lune / La fille aux cheveux de lin'],['Satie','Gymnopédie No. 1'],['Elgar','Salut d’Amour'],['Vivaldi','dari “The Four Seasons”'],['Lagu rakyat','Danny Boy dan melodi tradisional lain']],
+    f1:'<b>Kirim permintaan</b>Sebutkan format, nuansa, dan anggaran Anda.',
+    f2:'<b>Penawaran dan diskusi</b>Kami membalas lewat email dengan penawaran.',
+    f3:'<b>Penggarapan dan demo</b>Anda mendengar demo, lalu kami sempurnakan sesuai masukan.',
+    f4:'<b>Penyerahan</b>Anda menerima file audio dan tautan hadiah WooM.',
+    lName:'Nama Anda', lMail:'Alamat email', hMail:'Penawaran kami kirim ke alamat ini.',
+    replyNote:'Kami membalas dalam bahasa Inggris atau Jepang.',
+    lType:'Apa yang Anda inginkan?', oty:['Komposisi orisinal','Karya klasik yang dimainkan','Lainnya / belum diputuskan'],
+    ens:{
+      original:[['piano','Piano solo (mulai $300)'],['guitar','Gitar solo (mulai $300)']],
+      classical:[['piano','Piano solo (mulai $300)'],['guitar','Gitar solo (mulai $300)'],['quartet','Kuartet gesek (mulai $2.000)'],['orchestra','Orkestra (mulai $10.000)']],
+      other:[['other','Sesuai permintaan — jelaskan di bawah']]
+    },
+    lPiece:'Karya klasik yang diinginkan (opsional)', piecePh:'mis. Debussy, Clair de Lune',
+    hPiece:'Kosongkan bila belum yakin — kita bisa memilih bersama.',
+    lEns:'Format', lReq:'Instrumen dan nuansa',
+    reqPh:'mis. Karya piano yang lembut untuk malam yang tenang, dengan sedikit biola di bawahnya.',
+    lAttach:'Sertakan detak jantung (loop)',
+    hbNote:'Kami gunakan untuk menyelaraskan tempo. Hapus centang bila tidak ingin mengirimnya.',
+    hbMeta:'Dibawa dari aplikasi: {bpm} ({kind})',
+    hbKind:{upload:'detak jantung yang diunggah',record:'detak jantung yang direkam',sample:'detak jantung contoh'},
+    sendingUp:'Mengirim detak jantung…',
+    lHb:'Tentang detak jantung', oh:['Sudah memakai detak jantung di WooM','Berencana merekam','Belum diputuskan'],
+    lBudget:'Anggaran Anda (USD)',
+    hBudget:'Mulai $300. Format yang lebih besar mungkin memerlukan penawaran lebih tinggi.',
+    lDue:'Tanggal penyerahan yang diharapkan (opsional)', duePh:'mis. dua minggu sebelum perkiraan lahir',
+    eName:'Mohon isi nama Anda', eMail:'Mohon periksa alamat email Anda',
+    eReq:'Mohon ceritakan yang Anda bayangkan', eBudget:'Mohon isi $300 atau lebih',
+    send:'Kirim permintaan', sending:'Mengirim…',
+    privacy:'Data Anda hanya kami gunakan untuk membalas permintaan ini.',
+    sentH:'Permintaan terkirim', sentP:'Terima kasih.<br>Kami akan membalas ke email Anda dalam 3 hari kerja.',
+    mailOpened:'Jika aplikasi email tidak terbuka, silakan kirim ke <a href="{m}">{m}</a>.',
+    noRoute:'Saluran permintaan sedang disiapkan. Silakan coba lagi sebentar lagi.',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  vi:{
+    title:'Nhạc đặt riêng — WooM', back:'← Quay lại ứng dụng', h1:'Nhạc đặt riêng',
+    lead:'Một bản nhạc viết theo nhịp tim của bé, <b>sáng tác riêng cho bạn</b>. Không phải nhạc có sẵn, mà là âm nhạc sinh ra từ nhịp đập nhỏ bé ấy.',
+    lblPrice:'Bảng giá', lblFlow:'Quy trình', lblForm:'Biểu mẫu yêu cầu',
+    gAh:'Sáng tác mới', gAtag:'phổ biến', gAr1:'Độc tấu piano / Độc tấu guitar',
+    gAd:'Một bản nhạc mới viết theo nhịp tim của bé. Hãy cho chúng tôi biết không khí bạn mong muốn.',
+    gBh:'Trình tấu tác phẩm cổ điển', gBr1:'Độc tấu piano / Độc tấu guitar', gBr2:'Tứ tấu đàn dây', gBr3:'Dàn nhạc giao hưởng',
+    gBd:'Tác phẩm cổ điển bạn yêu thích, được trình tấu và thu âm theo nhịp tim.',
+    pdLine:'Chỉ chọn từ các tác phẩm đã hết hạn bản quyền.', pdOpen:'Xem ví dụ tác phẩm',
+    gCh:'Khác', gCp:'Thỏa thuận riêng', gCd:'Có lời hát, dàn nhạc cụ khác, chỉ định nhà soạn nhạc… Hãy viết mong muốn của bạn.',
+    pdTitle:'Ví dụ tác phẩm',
+    pdLead:'Các tác phẩm có nhà soạn nhạc qua đời hơn 70 năm, bản quyền đã hết hạn. Dưới đây là vài ví dụ.',
+    pdFoot:'Hãy hỏi chúng tôi về bất kỳ tác phẩm nào không có trong danh sách — chúng tôi sẽ kiểm tra.',
+    pdList:[['J.S. Bach','Air on the G String / Jesu, Joy of Man’s Desiring'],['Pachelbel','Canon cung Rê'],['Mozart','Eine kleine Nachtmusik / Biến tấu “Twinkle”'],['Beethoven','Sonata Ánh trăng / Für Elise'],['Schubert','Ave Maria / Khúc hát ru'],['Chopin','Nocturne số 2 / Étude “Tristesse”'],['Schumann','Träumerei'],['Brahms','Khúc hát ru'],['Fauré','Sicilienne / Après un rêve'],['Debussy','Clair de Lune / La fille aux cheveux de lin'],['Satie','Gymnopédie số 1'],['Elgar','Salut d’Amour'],['Vivaldi','trích “Bốn mùa”'],['Dân ca','Danny Boy và các giai điệu truyền thống']],
+    f1:'<b>Gửi yêu cầu</b>Cho biết biên chế, không khí và ngân sách của bạn.',
+    f2:'<b>Báo giá và trao đổi</b>Chúng tôi trả lời qua email kèm báo giá.',
+    f3:'<b>Sáng tác và nghe thử</b>Bạn nghe bản demo, chúng tôi hoàn thiện theo góp ý.',
+    f4:'<b>Bàn giao</b>Bạn nhận tệp âm thanh và liên kết quà tặng WooM.',
+    lName:'Tên của bạn', lMail:'Địa chỉ email', hMail:'Chúng tôi gửi báo giá tới địa chỉ này.',
+    replyNote:'Chúng tôi trả lời bằng tiếng Anh hoặc tiếng Nhật.',
+    lType:'Bạn muốn điều gì?', oty:['Sáng tác mới','Trình tấu tác phẩm cổ điển','Khác / chưa quyết định'],
+    ens:{
+      original:[['piano','Độc tấu piano (từ $300)'],['guitar','Độc tấu guitar (từ $300)']],
+      classical:[['piano','Độc tấu piano (từ $300)'],['guitar','Độc tấu guitar (từ $300)'],['quartet','Tứ tấu đàn dây (từ $2.000)'],['orchestra','Dàn nhạc giao hưởng (từ $10.000)']],
+      other:[['other','Thỏa thuận riêng — mô tả bên dưới']]
+    },
+    lPiece:'Tác phẩm cổ điển mong muốn (tùy chọn)', piecePh:'vd: Debussy, Clair de Lune',
+    hPiece:'Để trống nếu bạn chưa chắc — chúng ta có thể cùng chọn.',
+    lEns:'Biên chế', lReq:'Nhạc cụ và không khí',
+    reqPh:'vd: Một bản piano dịu dàng cho những đêm yên tĩnh, thêm chút violin bên dưới.',
+    lAttach:'Đính kèm nhịp tim (đoạn lặp)',
+    hbNote:'Dùng để khớp nhịp độ. Bỏ chọn nếu bạn không muốn gửi.',
+    hbMeta:'Lấy từ ứng dụng: {bpm} ({kind})',
+    hbKind:{upload:'nhịp tim đã tải lên',record:'nhịp tim đã ghi âm',sample:'nhịp tim mẫu'},
+    sendingUp:'Đang gửi nhịp tim…',
+    lHb:'Về nhịp tim', oh:['Đã dùng nhịp tim trong WooM','Dự định sẽ ghi âm','Chưa quyết định'],
+    lBudget:'Ngân sách của bạn (USD)',
+    hBudget:'Từ $300. Biên chế lớn hơn có thể cần báo giá cao hơn.',
+    lDue:'Ngày mong muốn nhận (tùy chọn)', duePh:'vd: hai tuần trước ngày dự sinh',
+    eName:'Vui lòng nhập tên của bạn', eMail:'Vui lòng kiểm tra địa chỉ email',
+    eReq:'Vui lòng cho biết mong muốn của bạn', eBudget:'Vui lòng nhập từ $300 trở lên',
+    send:'Gửi yêu cầu', sending:'Đang gửi…',
+    privacy:'Chúng tôi chỉ dùng thông tin của bạn để trả lời yêu cầu này.',
+    sentH:'Đã gửi yêu cầu', sentP:'Cảm ơn bạn.<br>Chúng tôi sẽ trả lời email của bạn trong vòng 3 ngày làm việc.',
+    mailOpened:'Nếu ứng dụng email không mở, vui lòng gửi tới <a href="{m}">{m}</a>.',
+    noRoute:'Kênh tiếp nhận đang được chuẩn bị. Vui lòng thử lại sau giây lát.',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  th:{
+    title:'เพลงสั่งทำพิเศษ — WooM', back:'← กลับไปที่แอป', h1:'เพลงสั่งทำพิเศษ',
+    lead:'บทเพลงที่แต่งขึ้นตามจังหวะเสียงหัวใจของลูกน้อย <b>เพื่อคุณโดยเฉพาะ</b> ไม่ใช่เพลงสำเร็จรูป แต่เป็นดนตรีที่เกิดจากจังหวะเต้นเล็กๆ นั้น',
+    lblPrice:'ราคา', lblFlow:'ขั้นตอน', lblForm:'แบบฟอร์มสั่งทำ',
+    gAh:'แต่งเพลงใหม่ (ออริจินัล)', gAtag:'ยอดนิยม', gAr1:'เปียโนเดี่ยว / กีตาร์เดี่ยว',
+    gAd:'บทเพลงใหม่ที่แต่งตามจังหวะเสียงหัวใจ บอกเราได้ว่าต้องการอารมณ์แบบไหน',
+    gBh:'บรรเลงเพลงคลาสสิก', gBr1:'เปียโนเดี่ยว / กีตาร์เดี่ยว', gBr2:'วงเครื่องสายสี่ชิ้น', gBr3:'วงออร์เคสตรา',
+    gBd:'เพลงคลาสสิกที่คุณชื่นชอบ บรรเลงและบันทึกเสียงตามจังหวะเสียงหัวใจ',
+    pdLine:'เลือกจากบทเพลงที่หมดลิขสิทธิ์แล้วเท่านั้น', pdOpen:'ดูตัวอย่างบทเพลงที่ใช้ได้',
+    gCh:'อื่นๆ', gCp:'สอบถามราคา', gCd:'เพลงมีเนื้อร้อง วงดนตรีเครื่องอื่น หรือระบุชื่อคีตกวี เขียนความต้องการของคุณมาได้เลย',
+    pdTitle:'ตัวอย่างบทเพลงที่ใช้ได้',
+    pdLead:'บทเพลงที่คีตกวีเสียชีวิตมากกว่า 70 ปีแล้ว จึงหมดลิขสิทธิ์ ต่อไปนี้เป็นเพียงตัวอย่าง',
+    pdFoot:'หากมีเพลงที่ไม่อยู่ในรายการ สอบถามได้เลย เราจะตรวจสอบให้ว่าใช้ได้หรือไม่',
+    pdList:[['J.S. Bach','Air on the G String / Jesu, Joy of Man’s Desiring'],['Pachelbel','Canon in D'],['Mozart','Eine kleine Nachtmusik / Twinkle Variations'],['Beethoven','Moonlight Sonata / Für Elise'],['Schubert','Ave Maria / เพลงกล่อมเด็ก'],['Chopin','Nocturne No. 2 / Étude “Tristesse”'],['Schumann','Träumerei'],['Brahms','เพลงกล่อมเด็ก'],['Fauré','Sicilienne / Après un rêve'],['Debussy','Clair de Lune / La fille aux cheveux de lin'],['Satie','Gymnopédie No. 1'],['Elgar','Salut d’Amour'],['Vivaldi','จาก “The Four Seasons”'],['เพลงพื้นบ้าน','Danny Boy และทำนองดั้งเดิมอื่นๆ']],
+    f1:'<b>ส่งความต้องการ</b>กรอกรูปแบบวง อารมณ์เพลง และงบประมาณในแบบฟอร์มด้านล่าง',
+    f2:'<b>ใบเสนอราคาและการพูดคุย</b>เราจะตอบกลับทางอีเมลพร้อมใบเสนอราคา',
+    f3:'<b>ผลิตและฟังตัวอย่าง</b>คุณฟังเดโม แล้วเราปรับให้ตามความเห็นของคุณ',
+    f4:'<b>ส่งมอบ</b>คุณจะได้รับไฟล์เสียงและลิงก์ของขวัญ WooM',
+    lName:'ชื่อของคุณ', lMail:'อีเมล', hMail:'เราจะส่งใบเสนอราคาไปยังอีเมลนี้',
+    replyNote:'เราตอบกลับเป็นภาษาอังกฤษหรือภาษาญี่ปุ่น',
+    lType:'คุณต้องการแบบใด', oty:['แต่งเพลงใหม่ (ออริจินัล)','บรรเลงเพลงคลาสสิก','อื่นๆ / ยังไม่ตัดสินใจ'],
+    ens:{
+      original:[['piano','เปียโนเดี่ยว (เริ่มต้น $300)'],['guitar','กีตาร์เดี่ยว (เริ่มต้น $300)']],
+      classical:[['piano','เปียโนเดี่ยว (เริ่มต้น $300)'],['guitar','กีตาร์เดี่ยว (เริ่มต้น $300)'],['quartet','วงเครื่องสายสี่ชิ้น (เริ่มต้น $2,000)'],['orchestra','วงออร์เคสตรา (เริ่มต้น $10,000)']],
+      other:[['other','สอบถามราคา — อธิบายด้านล่าง']]
+    },
+    lPiece:'เพลงคลาสสิกที่ต้องการ (ไม่บังคับ)', piecePh:'เช่น Debussy, Clair de Lune',
+    hPiece:'หากยังไม่แน่ใจ เว้นว่างไว้ได้ เราเลือกด้วยกันได้',
+    lEns:'รูปแบบวงที่ต้องการ', lReq:'เครื่องดนตรีและอารมณ์เพลง',
+    reqPh:'เช่น เพลงเปียโนนุ่มนวลสำหรับค่ำคืนเงียบสงบ อยากให้มีไวโอลินคลอเล็กน้อย',
+    lAttach:'แนบเสียงหัวใจ (ท่อนลูป) ไปด้วย',
+    hbNote:'ใช้สำหรับปรับจังหวะเพลงให้ตรงกัน หากไม่ต้องการแนบ กรุณาเอาเครื่องหมายออก',
+    hbMeta:'นำมาจากแอป: {bpm} ({kind})',
+    hbKind:{upload:'เสียงหัวใจที่อัปโหลด',record:'เสียงหัวใจที่บันทึก',sample:'เสียงหัวใจตัวอย่าง'},
+    sendingUp:'กำลังส่งเสียงหัวใจ…',
+    lHb:'เกี่ยวกับเสียงหัวใจ', oh:['ใช้เสียงหัวใจใน WooM อยู่แล้ว','ตั้งใจจะบันทึกในภายหลัง','ยังไม่ได้ตัดสินใจ'],
+    lBudget:'งบประมาณของคุณ (USD)',
+    hBudget:'เริ่มต้นที่ $300 วงขนาดใหญ่อาจต้องใช้ใบเสนอราคาที่สูงกว่านี้',
+    lDue:'วันที่ต้องการรับงาน (ไม่บังคับ)', duePh:'เช่น ก่อนกำหนดคลอด 2 สัปดาห์',
+    eName:'กรุณากรอกชื่อของคุณ', eMail:'กรุณาตรวจสอบอีเมลของคุณ',
+    eReq:'กรุณาเขียนความต้องการของคุณ', eBudget:'กรุณากรอก $300 ขึ้นไป',
+    send:'ส่งคำขอนี้', sending:'กำลังส่ง…',
+    privacy:'เราใช้ข้อมูลของคุณเพื่อตอบกลับคำขอนี้เท่านั้น',
+    sentH:'ส่งแล้ว', sentP:'ขอบคุณสำหรับคำขอ<br>เราจะตอบกลับทางอีเมลของคุณภายใน 3 วันทำการ',
+    mailOpened:'หากแอปอีเมลไม่เปิดขึ้น กรุณาส่งไปที่ <a href="{m}">{m}</a>',
+    noRoute:'ขณะนี้กำลังเตรียมช่องทางรับคำขอ กรุณาลองใหม่อีกครั้งในภายหลัง',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  hi:{
+    title:'कस्टम संगीत — WooM', back:'← ऐप पर वापस जाएँ', h1:'कस्टम संगीत',
+    lead:'आपके शिशु की धड़कन की गति पर लिखी गई रचना — <b>सिर्फ़ आपके लिए</b>। कोई तैयार धुन नहीं, बल्कि उसी नन्ही धड़कन से जन्मा संगीत।',
+    lblPrice:'शुल्क', lblFlow:'प्रक्रिया', lblForm:'अनुरोध फ़ॉर्म',
+    gAh:'मौलिक रचना', gAtag:'लोकप्रिय', gAr1:'पियानो सोलो / गिटार सोलो',
+    gAd:'धड़कन की गति पर लिखी गई नई रचना। जो भाव आप चाहते हैं, हमें बताइए।',
+    gBh:'शास्त्रीय रचना का वादन', gBr1:'पियानो सोलो / गिटार सोलो', gBr2:'स्ट्रिंग क्वार्टेट', gBr3:'ऑर्केस्ट्रा',
+    gBd:'आपकी पसंदीदा शास्त्रीय रचना, धड़कन की गति पर बजाकर रिकॉर्ड की जाएगी।',
+    pdLine:'केवल वे रचनाएँ जिनका कॉपीराइट समाप्त हो चुका है।', pdOpen:'उपलब्ध रचनाओं के उदाहरण देखें',
+    gCh:'अन्य', gCp:'अनुरोध पर', gCd:'गायन, अन्य वाद्यों का समूह, किसी संगीतकार का चयन — जो आपके मन में है, लिख भेजिए।',
+    pdTitle:'उपलब्ध रचनाओं के उदाहरण',
+    pdLead:'जिन संगीतकारों के निधन को 70 वर्ष से अधिक हो चुके हैं, उनकी रचनाओं का कॉपीराइट समाप्त है। नीचे कुछ उदाहरण हैं।',
+    pdFoot:'सूची में न होने वाली रचनाओं के बारे में भी पूछें — हम जाँच कर बताएँगे।',
+    pdList:[['J.S. Bach','Air on the G String / Jesu, Joy of Man’s Desiring'],['Pachelbel','Canon in D'],['Mozart','Eine kleine Nachtmusik / Twinkle Variations'],['Beethoven','Moonlight Sonata / Für Elise'],['Schubert','Ave Maria / लोरी'],['Chopin','Nocturne No. 2 / Étude “Tristesse”'],['Schumann','Träumerei'],['Brahms','लोरी'],['Fauré','Sicilienne / Après un rêve'],['Debussy','Clair de Lune / La fille aux cheveux de lin'],['Satie','Gymnopédie No. 1'],['Elgar','Salut d’Amour'],['Vivaldi','“The Four Seasons” से'],['लोकगीत','Danny Boy और अन्य पारंपरिक धुनें']],
+    f1:'<b>अनुरोध भेजें</b>नीचे फ़ॉर्म में वाद्य-समूह, भाव और बजट लिखें।',
+    f2:'<b>अनुमान और बातचीत</b>आपकी बातों के आधार पर हम ईमेल से उत्तर देंगे।',
+    f3:'<b>रचना और डेमो</b>आप डेमो सुनते हैं, और हम आपकी राय के अनुसार उसे पूरा करते हैं।',
+    f4:'<b>सुपुर्दगी</b>आपको ऑडियो फ़ाइल और WooM का गिफ़्ट लिंक मिलता है।',
+    lName:'आपका नाम', lMail:'ईमेल पता', hMail:'हम इसी पते पर अनुमान भेजेंगे।',
+    replyNote:'हम अंग्रेज़ी या जापानी में उत्तर देते हैं।',
+    lType:'आप क्या चाहते हैं?', oty:['मौलिक रचना','शास्त्रीय रचना का वादन','अन्य / तय नहीं'],
+    ens:{
+      original:[['piano','पियानो सोलो ($300 से)'],['guitar','गिटार सोलो ($300 से)']],
+      classical:[['piano','पियानो सोलो ($300 से)'],['guitar','गिटार सोलो ($300 से)'],['quartet','स्ट्रिंग क्वार्टेट ($2,000 से)'],['orchestra','ऑर्केस्ट्रा ($10,000 से)']],
+      other:[['other','अनुरोध पर — नीचे विवरण लिखें']]
+    },
+    lPiece:'कौन-सी शास्त्रीय रचना (वैकल्पिक)', piecePh:'जैसे: Debussy, Clair de Lune',
+    hPiece:'अनिश्चित हों तो खाली छोड़ दें — हम साथ मिलकर चुन सकते हैं।',
+    lEns:'वाद्य-समूह', lReq:'वाद्य और भाव',
+    reqPh:'जैसे: शांत रातों के लिए कोमल पियानो, नीचे हल्का वायलिन।',
+    lAttach:'धड़कन (लूप) संलग्न करें',
+    hbNote:'इसका उपयोग गति मिलाने के लिए होता है। न भेजना चाहें तो निशान हटा दें।',
+    hbMeta:'ऐप से लिया गया: {bpm} ({kind})',
+    hbKind:{upload:'अपलोड की गई धड़कन',record:'रिकॉर्ड की गई धड़कन',sample:'नमूना धड़कन'},
+    sendingUp:'धड़कन भेजी जा रही है…',
+    lHb:'धड़कन के बारे में', oh:['WooM में पहले से धड़कन उपयोग कर रहे हैं','रिकॉर्ड करने की योजना है','अभी तय नहीं'],
+    lBudget:'आपका बजट (USD)',
+    hBudget:'$300 से। बड़े वाद्य-समूहों के लिए अधिक अनुमान लग सकता है।',
+    lDue:'वांछित सुपुर्दगी तिथि (वैकल्पिक)', duePh:'जैसे: नियत तिथि से दो सप्ताह पहले',
+    eName:'कृपया अपना नाम लिखें', eMail:'कृपया ईमेल पता जाँचें',
+    eReq:'कृपया अपनी अपेक्षा लिखें', eBudget:'कृपया $300 या अधिक लिखें',
+    send:'अनुरोध भेजें', sending:'भेजा जा रहा है…',
+    privacy:'आपकी जानकारी का उपयोग केवल इस अनुरोध का उत्तर देने के लिए होता है।',
+    sentH:'अनुरोध भेजा गया', sentP:'धन्यवाद।<br>हम 3 कार्यदिवसों के भीतर आपके ईमेल पर उत्तर देंगे।',
+    mailOpened:'यदि आपका ईमेल ऐप नहीं खुला, तो कृपया <a href="{m}">{m}</a> पर लिखें।',
+    noRoute:'अनुरोध प्रणाली तैयार की जा रही है। कृपया थोड़ी देर बाद पुनः प्रयास करें।',
+    foot:'© 2026 WooM · All rights reserved.'
+  },
+  ru:{
+    title:'Музыка на заказ — WooM', back:'← Вернуться в приложение', h1:'Музыка на заказ',
+    lead:'Произведение, написанное в темпе сердцебиения вашего малыша — <b>только для вас</b>. Не готовая мелодия, а музыка, рождённая из этого маленького пульса.',
+    lblPrice:'Стоимость', lblFlow:'Как это происходит', lblForm:'Форма заявки',
+    gAh:'Оригинальное сочинение', gAtag:'популярно', gAr1:'Фортепиано соло / Гитара соло',
+    gAd:'Новое произведение в темпе сердцебиения. Расскажите, какое настроение вы хотите.',
+    gBh:'Исполнение классического произведения', gBr1:'Фортепиано соло / Гитара соло', gBr2:'Струнный квартет', gBr3:'Оркестр',
+    gBd:'Ваше любимое классическое произведение, сыгранное и записанное в темпе сердцебиения.',
+    pdLine:'Только произведения, срок авторских прав на которые истёк.', pdOpen:'Посмотреть примеры произведений',
+    gCh:'Другое', gCp:'По запросу', gCd:'Вокал, другие составы инструментов, конкретный композитор — напишите, что вы задумали.',
+    pdTitle:'Примеры произведений',
+    pdLead:'Произведения, автор которых умер более 70 лет назад, — авторские права истекли. Ниже несколько примеров.',
+    pdFoot:'Спросите нас о любом произведении не из списка — мы проверим, можно ли его использовать.',
+    pdList:[['И.С. Бах','Ария на струне соль / Jesu, Joy of Man’s Desiring'],['Пахельбель','Канон ре мажор'],['Моцарт','Маленькая ночная серенада / Вариации «Ah vous dirai-je, Maman»'],['Бетховен','«Лунная» соната / К Элизе'],['Шуберт','Ave Maria / Колыбельная'],['Шопен','Ноктюрн № 2 / Этюд «Расставание»'],['Шуман','Грёзы'],['Брамс','Колыбельная'],['Форе','Сицилиана / Après un rêve'],['Дебюсси','Лунный свет / Девушка с волосами цвета льна'],['Сати','Гимнопедия № 1'],['Элгар','Salut d’Amour'],['Вивальди','из «Времён года»'],['Народные песни','Danny Boy и другие традиционные мелодии']],
+    f1:'<b>Отправьте заявку</b>Укажите состав, настроение и бюджет.',
+    f2:'<b>Смета и обсуждение</b>Мы ответим по электронной почте со сметой.',
+    f3:'<b>Работа и демо</b>Вы слушаете демо, а мы дорабатываем его по вашим пожеланиям.',
+    f4:'<b>Передача</b>Вы получаете аудиофайл и подарочную ссылку WooM.',
+    lName:'Ваше имя', lMail:'Электронная почта', hMail:'Смету мы отправим на этот адрес.',
+    replyNote:'Мы отвечаем на английском или японском языке.',
+    lType:'Что бы вы хотели?', oty:['Оригинальное сочинение','Исполнение классического произведения','Другое / пока не решили'],
+    ens:{
+      original:[['piano','Фортепиано соло (от $300)'],['guitar','Гитара соло (от $300)']],
+      classical:[['piano','Фортепиано соло (от $300)'],['guitar','Гитара соло (от $300)'],['quartet','Струнный квартет (от $2 000)'],['orchestra','Оркестр (от $10 000)']],
+      other:[['other','По запросу — опишите ниже']]
+    },
+    lPiece:'Какое классическое произведение (необязательно)', piecePh:'напр. Дебюсси, «Лунный свет»',
+    hPiece:'Оставьте пустым, если ещё не решили, — выберем вместе.',
+    lEns:'Состав', lReq:'Инструменты и настроение',
+    reqPh:'напр. Нежная фортепианная пьеса для тихих вечеров, с лёгкой скрипкой в глубине.',
+    lAttach:'Приложить сердцебиение (луп)',
+    hbNote:'Используем, чтобы попасть в темп. Снимите галочку, если не хотите отправлять.',
+    hbMeta:'Перенесено из приложения: {bpm} ({kind})',
+    hbKind:{upload:'загруженное сердцебиение',record:'записанное сердцебиение',sample:'образец сердцебиения'},
+    sendingUp:'Отправляем сердцебиение…',
+    lHb:'О сердцебиении', oh:['Уже использую сердцебиение в WooM','Планирую записать','Ещё не решил(а)'],
+    lBudget:'Ваш бюджет (USD)',
+    hBudget:'От $300. Для больших составов может потребоваться более высокая смета.',
+    lDue:'Желаемый срок (необязательно)', duePh:'напр. за две недели до предполагаемой даты родов',
+    eName:'Пожалуйста, укажите имя', eMail:'Проверьте адрес электронной почты',
+    eReq:'Расскажите, что вы задумали', eBudget:'Укажите $300 или больше',
+    send:'Отправить заявку', sending:'Отправка…',
+    privacy:'Мы используем ваши данные только для ответа на эту заявку.',
+    sentH:'Заявка отправлена', sentP:'Спасибо.<br>Мы ответим на вашу почту в течение 3 рабочих дней.',
+    mailOpened:'Если почтовая программа не открылась, напишите на <a href="{m}">{m}</a>.',
+    noRoute:'Приём заявок сейчас настраивается. Пожалуйста, попробуйте ещё раз чуть позже.',
+    foot:'© 2026 WooM · All rights reserved.'
   }
 };
-
 var cl='ja';
 function $(id){return document.getElementById(id);}
 function setL(l){
@@ -482,17 +1082,23 @@ function setL(l){
   $('oDue').placeholder=s.duePh;
   $('oPiece').placeholder=s.piecePh;
   $('btnSend').textContent=s.send;
+  // Correspondence stays in English/Japanese even when the page is read in
+  // another language, so say so where the address is entered.
+  $('hReply').textContent=s.replyNote||'';
+  $('hReply').style.display=s.replyNote?'':'none';
   renderCarry();
-  var btns=document.querySelectorAll('.langbar button');
-  for(var i=0;i<btns.length;i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-l')===l);
+  document.body.classList.toggle('script-cyrillic', l==='ru');
+  $('langSel').value=l;
 }
 
-// Language: ?lang= from the app, else the browser. Only ja/en exist here, so
-// every other app language lands on English.
+// Language: ?lang= handed over by the app, else the browser. Same 15 as the
+// app, matched longest-first so zh-TW wins over zh.
 (function(){
+  var SUP=['zh-TW','ja','en','zh','ko','es','fr','de','pt','it','id','vi','th','hi','ru'];
   var q=new URLSearchParams(location.search).get('lang')||'';
   var nav=(q||navigator.language||'en').toLowerCase();
-  setL(nav.indexOf('ja')===0?'ja':'en');
+  var hit=SUP.filter(function(l){ return nav.indexOf(l.toLowerCase())===0; })[0];
+  setL(hit||'en');
   syncType();
   loadHandoff();
 })();
@@ -558,9 +1164,10 @@ function renderCarry(){
   var s=STR[cl];
   var bpm = HB.bpm>0 ? (Math.round(HB.bpm)+' BPM') : '';
   var kind = s.hbKind[HB.kind] || '';
-  $('hbMeta').textContent = s.hbMeta
-      .replace('{bpm}', bpm)
-      .replace('{kind}', (bpm&&kind) ? '（'+kind+'）' : kind);
+  // Each language carries its own punctuation in hbMeta; tidy up when a value
+  // is missing (a synth heartbeat has no BPM) so no stray brackets are left.
+  $('hbMeta').textContent = s.hbMeta.replace('{bpm}',bpm).replace('{kind}',kind)
+      .replace(/（\s*）|\(\s*\)/g,'').replace(/[、,]\s*$/,'').replace(/[:：]\s*$/,'').trim();
   box.hidden=false;
   $('oHb').value='have';                       // they clearly have one — say so
 }
