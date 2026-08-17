@@ -19,7 +19,7 @@
 // pushed update often isn't seen. On load we fetch the live file fresh (cache
 // bypassed) and compare its APP_VERSION to ours; if newer, reload once with a
 // cache-busting query. A sessionStorage flag prevents any reload loop.
-window.APP_VERSION = '2026-08-17.2';
+window.APP_VERSION = '2026-08-17.3';
 // Cache tag for the big AUDIO assets (music + sample heartbeats). Kept SEPARATE
 // from APP_VERSION so shipping code changes doesn't force phones to re-download
 // ~8MB per song every update (that made music "not play" until it finished
@@ -522,7 +522,7 @@ input[type=range]{flex:1;accent-color:#D4537E;}
       <button class="mbtn" onclick="pickMusic(this,'other')"><span class="micon"><i class="ti ti-dots"></i></span><span class="mn" data-k="none">その他</span></button>
     </div>
     <div class="track-panel" id="trackPanel"></div>
-    <a class="custom-order" id="customOrderBtn" href="order.html" target="_blank" rel="noopener">
+    <a class="custom-order" id="customOrderBtn" href="order.html" target="_blank" rel="noopener" onclick="saveOrderHandoff()">
       <span class="co-ico"><i class="ti ti-music"></i></span>
       <span class="co-txt"><b id="customOrderTitle">楽曲のオーダーメイド</b><span id="customOrderSub">心音に合わせた書き下ろし · $300〜</span></span>
       <i class="ti ti-chevron-right co-arrow"></i>
@@ -5186,6 +5186,34 @@ function logGiftToLedger(){
         app_version:window.APP_VERSION, gift_id:gift_id})
     }).catch(function(){});
   }catch(e){}
+}
+
+/* ── Hand the heartbeat over to the custom-order page ───────────────────────
+   The order page opens in its own tab and knows nothing about this one, so the
+   loop is parked in IndexedDB (same origin, shared between tabs) when the
+   visitor taps the order link. Nothing leaves the device here: the order page
+   uploads it only if the visitor ticks "attach my heartbeat" and submits. */
+function _handoffDB(){
+  return new Promise(function(res,rej){
+    var r=indexedDB.open('woom_handoff',1);
+    r.onupgradeneeded=function(){ r.result.createObjectStore('ctx'); };
+    r.onsuccess=function(){ res(r.result); };
+    r.onerror=function(){ rej(r.error); };
+  });
+}
+async function saveOrderHandoff(){
+  try{
+    if(!loopBuffer) return;                       // no heartbeat loaded yet
+    const db=await _handoffDB();
+    const blob=new Blob([toWav(loopBuffer)],{type:'audio/wav'});
+    await new Promise(function(res,rej){
+      const tx=db.transaction('ctx','readwrite');
+      tx.objectStore('ctx').put({
+        bpm:detectedBPM||0, kind:_hbKind||'', ts:Date.now(), blob:blob
+      },'order');
+      tx.oncomplete=res; tx.onerror=function(){ rej(tx.error); };
+    });
+  }catch(e){}                                     // handoff is a bonus, never block the link
 }
 
 async function uploadToCloudinary(blob, filename){

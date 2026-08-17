@@ -99,6 +99,13 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:#E89BB4;backgr
 textarea{resize:vertical;min-height:110px;line-height:1.7;}
 select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%23C99BB0' stroke-width='1.6' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 13px center;background-size:12px;padding-right:34px;}
 .hint{font-size:11.5px;color:#B08A9A;line-height:1.6;}
+/* heartbeat carried over from the app */
+.carry[hidden]{display:none;}
+.carry{background:#FFF8FA;border:1px solid #F1DCE4;border-radius:12px;padding:13px 15px;}
+.carry-check{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;font-weight:600;color:#C03D6B;cursor:pointer;}
+.carry-check input{width:auto;flex:0 0 auto;margin-top:2px;accent-color:#D4537E;}
+.carry-meta{margin-top:7px;font-size:12.5px;color:#8B7480;font-variant-numeric:tabular-nums;}
+.carry-note{margin-top:5px;font-size:11.5px;color:#B08A9A;line-height:1.6;}
 .budget-row{display:flex;align-items:center;gap:9px;}
 .budget-row .cur{font-size:15px;font-weight:600;color:#C99BB0;flex:0 0 auto;}
 .field.err input,.field.err select,.field.err textarea{border-color:#E0567F;background:#FFF7F9;}
@@ -232,6 +239,15 @@ footer{margin-top:2.6rem;text-align:center;font-size:11px;color:#C2A7B3;line-hei
         <span class="err-msg" id="eReq">ご希望をお書きください</span>
       </div>
 
+      <div class="carry" id="hbCarry" hidden>
+        <label class="carry-check">
+          <input type="checkbox" id="oAttach" checked>
+          <span id="lAttach">心音（ループ）を添付して送る</span>
+        </label>
+        <p class="carry-meta" id="hbMeta"></p>
+        <p class="carry-note" id="hbNote">作曲のテンポ合わせに使います。添付しない場合はチェックを外してください。</p>
+      </div>
+
       <div class="field">
         <label for="oHb" id="lHb">心音について</label>
         <select id="oHb" name="heartbeat">
@@ -344,6 +360,11 @@ var STR={
     hPiece:'お決まりでなければ空欄で大丈夫です。ご相談しながら選べます。',
     lEns:'ご希望の編成', lReq:'楽器・曲調のご希望',
     reqPh:'例：やさしいピアノで、静かな夜に聴ける曲。ヴァイオリンを少しだけ重ねたいです。',
+    lAttach:'心音（ループ）を添付して送る',
+    hbNote:'作曲のテンポ合わせに使います。添付しない場合はチェックを外してください。',
+    hbMeta:'アプリから引き継ぎました：{bpm}{kind}',
+    hbKind:{upload:'アップロードした心音',record:'録音した心音',sample:'サンプルの心音'},
+    sendingUp:'心音を送信中…',
     lHb:'心音について', lBudget:'ご希望金額（USD）',
     hBudget:'最低 $300 から承ります。編成によっては上のお見積りが必要になる場合があります。',
     lDue:'ご希望の納期（任意）', duePh:'例：出産予定日の2週間前まで',
@@ -407,6 +428,11 @@ var STR={
     hPiece:'Leave it blank if you are unsure — we can choose one together.',
     lEns:'Ensemble', lReq:'Instruments and mood',
     reqPh:'e.g. A gentle piano piece for quiet nights, with a little violin underneath.',
+    lAttach:'Attach my heartbeat loop',
+    hbNote:'We use it to match the tempo. Untick if you’d rather not send it.',
+    hbMeta:'Carried over from the app: {bpm}{kind}',
+    hbKind:{upload:'uploaded heartbeat',record:'recorded heartbeat',sample:'sample heartbeat'},
+    sendingUp:'Sending your heartbeat…',
     lHb:'About the heartbeat', lBudget:'Your budget (USD)',
     hBudget:'From $300. Larger ensembles may need a higher quote.',
     lDue:'Preferred delivery date (optional)', duePh:'e.g. two weeks before the due date',
@@ -435,7 +461,7 @@ function setL(l){
   $('h1').textContent=s.h1;
   $('lead').innerHTML=s.lead;
   ['lblPrice','lblFlow','lblForm','gAd','gAr1','gBh','gBd','gBr1','gBr2','gBr3','pdLine','pdOpen',
-   'gCh','gCp','gCd','pdTitle','pdLead','pdFoot',
+   'gCh','gCp','gCd','pdTitle','pdLead','pdFoot','lAttach','hbNote',
    'lName','hMail','lType','lPiece','hPiece','lEns','lReq','lHb','hBudget','lDue',
    'eName','eMail','eReq','eBudget','privacy','sentH','foot']
     .forEach(function(k){ var el=$(k); if(el&&s[k]!==undefined) el.textContent=s[k]; });
@@ -456,6 +482,7 @@ function setL(l){
   $('oDue').placeholder=s.duePh;
   $('oPiece').placeholder=s.piecePh;
   $('btnSend').textContent=s.send;
+  renderCarry();
   var btns=document.querySelectorAll('.langbar button');
   for(var i=0;i<btns.length;i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-l')===l);
 }
@@ -467,6 +494,7 @@ function setL(l){
   var nav=(q||navigator.language||'en').toLowerCase();
   setL(nav.indexOf('ja')===0?'ja':'en');
   syncType();
+  loadHandoff();
 })();
 
 /* Quartet and orchestra are offered for classical performances only, so the
@@ -489,6 +517,66 @@ function buildEns(){
 function syncType(){
   $('fPiece').style.display = ($('oType').value==='classical') ? 'flex' : 'none';
   buildEns();
+}
+
+/* ── The heartbeat carried over from the app ────────────────────────────────
+   app.html parks the loop in IndexedDB when the order link is tapped. We read
+   it here, show what was received, and upload it only on submit — and only if
+   the visitor left the box ticked. Someone who just opens this page directly
+   sees none of this. */
+var HB=null;                                   // {bpm, kind, ts, blob} or null
+
+function _handoffDB(){
+  return new Promise(function(res,rej){
+    var r=indexedDB.open('woom_handoff',1);
+    r.onupgradeneeded=function(){ r.result.createObjectStore('ctx'); };
+    r.onsuccess=function(){ res(r.result); };
+    r.onerror=function(){ rej(r.error); };
+  });
+}
+function _readHandoff(){
+  return new Promise(function(res){
+    _handoffDB().then(function(db){
+      var g=db.transaction('ctx','readonly').objectStore('ctx').get('order');
+      g.onsuccess=function(){ res(g.result||null); };
+      g.onerror=function(){ res(null); };
+    }).catch(function(){ res(null); });
+  });
+}
+/* This tab can finish loading before the other tab's write lands, so retry
+   briefly rather than deciding "no heartbeat" on the first miss. */
+async function loadHandoff(){
+  for(var i=0;i<12;i++){
+    var rec=await _readHandoff();
+    if(rec && rec.blob && (Date.now()-rec.ts)<6*3600*1000){ HB=rec; renderCarry(); return; }
+    await new Promise(function(r){ setTimeout(r,250); });
+  }
+}
+function renderCarry(){
+  var box=$('hbCarry'); if(!box) return;
+  if(!HB){ box.hidden=true; return; }
+  var s=STR[cl];
+  var bpm = HB.bpm>0 ? (Math.round(HB.bpm)+' BPM') : '';
+  var kind = s.hbKind[HB.kind] || '';
+  $('hbMeta').textContent = s.hbMeta
+      .replace('{bpm}', bpm)
+      .replace('{kind}', (bpm&&kind) ? '（'+kind+'）' : kind);
+  box.hidden=false;
+  $('oHb').value='have';                       // they clearly have one — say so
+}
+
+/* Same unsigned upload path the gift uses. Audio goes to the video endpoint:
+   Cloudinary treats audio as video, and /raw caps at 10MB. */
+var CLD_CLOUD='dsspyytqj', CLD_PRESET='baby_harmony_gift';
+async function uploadHeartbeat(){
+  var fd=new FormData();
+  fd.append('file', HB.blob, 'WMHB_order_'+Math.round(HB.bpm||0)+'bpm.wav');
+  fd.append('upload_preset', CLD_PRESET);
+  fd.append('tags','woom_order');
+  var res=await fetch('https://api.cloudinary.com/v1_1/'+CLD_CLOUD+'/video/upload',{method:'POST',body:fd});
+  var data=await res.json();
+  if(!res.ok || !data.secure_url) throw new Error('upload failed');
+  return data.secure_url;
 }
 
 /* Example-pieces window */
@@ -526,6 +614,10 @@ function collect(){
     heartbeat_label:hbSel.options[hbSel.selectedIndex].textContent,
     budget_usd:parseFloat($('oBudget').value)||0,
     due:$('oDue').value.trim(),
+    heart_bpm:(HB && HB.bpm>0) ? Math.round(HB.bpm) : '',
+    heart_kind:HB ? (HB.kind||'') : '',
+    heart_audio_url:'',                        // filled in at submit, after upload
+
     page_lang:cl,
     locale:(navigator.language||''),
     timezone:(function(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'';}catch(e){return '';}})()
@@ -539,7 +631,8 @@ function mailtoFor(d){
     'Type: '+d.type_label+(d.piece?(' — '+d.piece):''),
     'Ensemble: '+d.ensemble_label,
     'Budget: $'+d.budget_usd,
-    'Heartbeat: '+d.heartbeat_label,
+    'Heartbeat: '+d.heartbeat_label+(d.heart_bpm?('  '+d.heart_bpm+'bpm'):''),
+    'Heartbeat audio: '+(d.heart_audio_url||'-'),
     'Due: '+(d.due||'-'),
     '',
     'Request:',
@@ -558,11 +651,20 @@ function showSent(usedMail){
   box.scrollIntoView({behavior:'smooth',block:'center'});
 }
 
-$('orderForm').addEventListener('submit',function(ev){
+$('orderForm').addEventListener('submit',async function(ev){
   ev.preventDefault();
   if(!validate()) return;
   var d=collect(), btn=$('btnSend');
   btn.disabled=true; btn.textContent=STR[cl].sending;
+
+  // Upload the heartbeat first so its link travels with the order. A failure
+  // here must never cost us the order itself — note it and carry on.
+  if(HB && $('oAttach').checked){
+    btn.textContent=STR[cl].sendingUp;
+    try{ d.heart_audio_url=await uploadHeartbeat(); }
+    catch(e){ d.heart_audio_url='(attach failed)'; }
+    btn.textContent=STR[cl].sending;
+  }
 
   if(!ORDER_ENDPOINT){
     if(ORDER_MAIL){ location.href=mailtoFor(d); showSent(true); }
