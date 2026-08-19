@@ -1,176 +1,20 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WooM — 赤ちゃんとママの、世界に一つだけのハーモニー</title>
-<meta name="description" content="胎内音（心音）とBGMをミックスして、世界に一つだけの音のギフトを作れるWebアプリ。">
-<meta property="og:title" content="WooM">
-<meta property="og:description" content="胎内音 × 音楽 — あなただけのサウンドギフト">
-<meta property="og:type" content="website">
-<meta property="og:image" content="woom_icon3.png">
-<!-- Home-screen / tab icon + name (WooM). iOS caches these at add-time, so an
-     already-added shortcut must be removed and re-added to pick up changes. -->
-<link rel="icon" type="image/png" href="woom_icon3.png">
-<link rel="apple-touch-icon" href="woom_icon3.png">
-<meta name="apple-mobile-web-app-title" content="WooM">
-<meta name="application-name" content="WooM">
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap');
-*{margin:0;padding:0;box-sizing:border-box;}
-html{scroll-behavior:smooth;}
-body{font-family:'Baloo 2','DM Sans',sans-serif;color:#5A4650;background:linear-gradient(165deg,#fff5f8 0%,#FBEAF0 100%);min-height:100vh;-webkit-font-smoothing:antialiased;}
-.wrap{max-width:560px;margin:0 auto;padding:2.5rem 1.25rem 3rem;}
-.langbar{display:flex;justify-content:flex-end;gap:6px;margin-bottom:1.25rem;}
-.langbar button{background:#fff;border:1.5px solid #F1DCE4;border-radius:20px;padding:4px 13px;font-size:12px;color:#9C7E8B;cursor:pointer;font-family:inherit;font-weight:500;}
-.langbar button.on{background:#D4537E;border-color:#D4537E;color:#fff;}
-/* hero */
-.hero{text-align:center;}
-.logo{width:118px;height:118px;color:#D4537E;margin:0 auto;animation:pop 1s ease;}
-.logo svg,.logo img{display:block;width:100%;height:100%;}
-.wm{height:52px;margin:10px auto 0;}
-.wm svg{display:block;height:100%;margin:0 auto;}
-.wm text{font-family:'Baloo 2',sans-serif;font-weight:500;font-size:100px;fill:#D4537E;}
-.tag{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;font-size:1.55rem;color:#C97AA0;margin-top:.9rem;line-height:1.35;}
-.tag-ja{font-size:1rem;color:#7A5E68;margin-top:.4rem;font-weight:500;}
-.lead{margin-top:1.6rem;font-size:1rem;line-height:1.9;color:#6E5660;font-weight:400;}
-.lead b{color:#C03D6B;font-weight:600;}
-/* cta */
-.cta-row{margin-top:2rem;text-align:center;}
-.cta{display:inline-flex;align-items:center;gap:9px;background:#D4537E;color:#fff;text-decoration:none;border-radius:40px;padding:16px 40px;font-size:1.1rem;font-weight:600;box-shadow:0 8px 22px rgba(212,83,126,.32);transition:transform .15s ease,box-shadow .15s ease;}
-.cta:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(212,83,126,.4);}
-.cta-note{margin-top:.7rem;font-size:12px;color:#B08A9A;}
-/* steps */
-.steps{margin-top:2.6rem;display:flex;flex-direction:column;gap:12px;}
-.step{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.7);border:1px solid #F1DCE4;border-radius:16px;padding:15px 18px;}
-.step .ico{font-size:26px;line-height:1;flex-shrink:0;width:34px;text-align:center;}
-.step .txt{font-size:.92rem;line-height:1.5;color:#6E5660;}
-.step .txt b{color:#C03D6B;font-weight:600;display:block;font-size:.98rem;margin-bottom:1px;}
-/* meta */
-.meta{margin-top:2.2rem;text-align:center;font-size:12px;color:#B08A9A;line-height:1.7;}
-.meta .pill{display:inline-block;background:#fff;border:1px solid #F1DCE4;border-radius:14px;padding:3px 11px;margin:3px;color:#9C7E8B;}
-/* custom-order entry */
-.order-block{margin-top:2.4rem;padding-top:1.9rem;border-top:1px solid #F1DCE4;text-align:center;}
-.order-cta{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #E89BB4;color:#C03D6B;text-decoration:none;border-radius:34px;padding:12px 26px;font-size:.97rem;font-weight:600;transition:background .15s ease,border-color .15s ease;}
-.order-cta:hover{background:#FBEAF0;border-color:#D4537E;}
-.order-note{margin-top:.6rem;font-size:12px;color:#B08A9A;line-height:1.6;}
-footer{margin-top:2.6rem;text-align:center;font-size:11px;color:#C2A7B3;line-height:1.7;}
-@keyframes pop{0%{transform:scale(.75);opacity:0}60%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
-</style>
-</head>
-<body>
-<div class="wrap">
-
-  <div class="langbar">
-    <button data-l="ja" class="on" onclick="setL('ja')">日本語</button>
-    <button data-l="en" onclick="setL('en')">English</button>
-  </div>
-
-  <div class="hero">
-    <div class="logo" aria-hidden="true">
-      <img src="woom_logo_mark3.png?v=4" alt="">
-    </div>
-    <div class="wm" role="img" aria-label="WooM">
-      <svg viewBox="0 -2 272 58" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><text x="80" y="52">oom</text><text x="192" y="52" transform="rotate(180 135.5 27.5)">m</text></svg>
-    </div>
-    <div class="tag" id="tag">A Harmony Only for Baby &amp; Mama</div>
-    <div class="tag-ja" id="tagJa">赤ちゃんとママの、世界に一つだけのハーモニー</div>
-  </div>
-
-  <p class="lead" id="lead">
-    赤ちゃんが眠る<b>お腹の中の音</b>と、<b>好きな音楽</b>をミックス。<br>
-    テンポを心音に自動で合わせて、<b>世界に一つだけの音のギフト</b>を作れるWebアプリです。
-  </p>
-
-  <div class="cta-row">
-    <a class="cta" href="app.html" id="cta">▶ アプリを開く</a>
-    <div class="cta-note" id="ctaNote">インストール不要・スマホ / PCで使えます</div>
-  </div>
-
-  <div class="steps">
-    <div class="step"><span class="ico">🎤</span><span class="txt" id="s1"><b>胎内音を採取</b>録音・アップロード、またはサンプルから選ぶ</span></div>
-    <div class="step"><span class="ico">🎼</span><span class="txt" id="s2"><b>BGMとミックス</b>心音のテンポに自動で合う音楽を重ねる</span></div>
-    <div class="step"><span class="ico">🎁</span><span class="txt" id="s3"><b>リンクでプレゼント</b>名前とメッセージを添えて、リンクで贈る</span></div>
-  </div>
-
-  <div class="meta" id="meta">
-    <span class="pill">🌐 15言語対応</span>
-    <span class="pill">📱 スマホ・PC対応</span>
-    <span class="pill">⬇️ インストール不要</span>
-  </div>
-
-  <!-- Secondary path, kept visually quieter than "open the app" so it never
-       competes with the main call to action. -->
-  <div class="order-block">
-    <a class="order-cta" href="order.html" id="orderCta">🎼 楽曲のオーダーメイドはこちら</a>
-    <div class="order-note" id="orderNote">心音に合わせた書き下ろし／クラシックの演奏 — $300〜</div>
-  </div>
-
-  <footer id="foot">
-    © 2026 WooM · All rights reserved.
-  </footer>
-
-</div>
-
+<title>WooM</title>
+<link rel="canonical" href="https://woom-music.com/">
+<meta http-equiv="refresh" content="0;url=https://woom-music.com/">
 <script>
-var STR={
-  ja:{
-    title:'WooM — 赤ちゃんとママの、世界に一つだけのハーモニー',
-    tag:'A Harmony Only for Baby & Mama',
-    tagJa:'赤ちゃんとママの、世界に一つだけのハーモニー',
-    lead:'赤ちゃんが眠る<b>お腹の中の音</b>と、<b>好きな音楽</b>をミックス。<br>テンポを心音に自動で合わせて、<b>世界に一つだけの音のギフト</b>を作れるWebアプリです。',
-    cta:'▶ アプリを開く',
-    ctaNote:'インストール不要・スマホ / PCで使えます',
-    s1:'<b>胎内音を採取</b>録音・アップロード、またはサンプルから選ぶ',
-    s2:'<b>BGMとミックス</b>心音のテンポに自動で合う音楽を重ねる',
-    s3:'<b>リンクでプレゼント</b>名前とメッセージを添えて、リンクで贈る',
-    meta:'<span class="pill">🌐 15言語対応</span><span class="pill">📱 スマホ・PC対応</span><span class="pill">⬇️ インストール不要</span>',
-    orderCta:'🎼 楽曲のオーダーメイドはこちら',
-    orderNote:'心音に合わせた書き下ろし／クラシックの演奏 — $300〜',
-    foot:'© 2026 WooM · All rights reserved.'
-  },
-  en:{
-    title:'WooM — A Harmony Only for Baby & Mama',
-    tag:'A Harmony Only for Baby & Mama',
-    tagJa:'The one-of-a-kind harmony of baby & mama',
-    lead:'Blend the <b>sounds from inside the belly</b> where your baby rests with <b>music you love</b>.<br>The tempo auto-syncs to the heartbeat, so you can create a <b>one-of-a-kind sound gift</b> — right in your browser.',
-    cta:'▶ Open the app',
-    ctaNote:'No install needed · works on phone & desktop',
-    s1:'<b>Capture the womb sound</b>Record, upload, or pick a sample',
-    s2:'<b>Blend with music</b>Add a track that auto-matches the heartbeat tempo',
-    s3:'<b>Gift it as a link</b>Add a name & message, and share the link',
-    meta:'<span class="pill">🌐 15 languages</span><span class="pill">📱 Phone & desktop</span><span class="pill">⬇️ No install</span>',
-    orderCta:'🎼 Commission a piece of music',
-    orderNote:'Written for your heartbeat, or a classical piece performed — from $300',
-    foot:'© 2026 WooM · All rights reserved.'
-  }
-};
-function setL(l){
-  var s=STR[l]||STR.ja;
-  document.documentElement.lang=l;
-  document.title=s.title;
-  document.getElementById('tag').textContent=s.tag;
-  document.getElementById('tagJa').textContent=s.tagJa;
-  document.getElementById('lead').innerHTML=s.lead;
-  document.getElementById('cta').textContent=s.cta;
-  document.getElementById('ctaNote').textContent=s.ctaNote;
-  document.getElementById('s1').innerHTML=s.s1;
-  document.getElementById('s2').innerHTML=s.s2;
-  document.getElementById('s3').innerHTML=s.s3;
-  document.getElementById('meta').innerHTML=s.meta;
-  document.getElementById('orderCta').textContent=s.orderCta;
-  // carry the chosen language over, the same way the app does
-  document.getElementById('orderCta').href='order.html?lang='+l;
-  document.getElementById('orderNote').textContent=s.orderNote;
-  document.getElementById('foot').innerHTML=s.foot;
-  var btns=document.querySelectorAll('.langbar button');
-  for(var i=0;i<btns.length;i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-l')===l);
-}
-// auto-detect (ja default, en for non-Japanese)
 (function(){
-  var nav=(navigator.language||'ja').toLowerCase();
-  setL(nav.startsWith('ja')?'ja':'en');
+  var q = location.search + location.hash;
+  location.replace("https://woom-music.com/" + q);
 })();
 </script>
-</body>
-</html>
+</head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;text-align:center;padding:3rem 1.5rem;background:#fff5f8;color:#D4537E;">
+<p>WooM は新しいアドレスに移転しました。</p>
+<p style="color:#8a6b76;font-size:.9rem;">WooM has moved to a new address.</p>
+<p><a id="l" href="https://woom-music.com/" style="color:#D4537E;">開かない場合はこちらをタップ / Tap here</a></p>
+<script>
+document.getElementById('l').href = "https://woom-music.com/" + location.search + location.hash;
+</script>
+</body></html>

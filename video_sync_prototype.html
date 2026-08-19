@@ -1,183 +1,20 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WooM — Music Video 同期 試作</title>
-<style>
-  :root{ --pink:#C03D6B; }
-  *{box-sizing:border-box;}
-  body{margin:0;font-family:'Baloo 2','Hiragino Sans','DM Sans',sans-serif;background:#fff5f9;color:#5a3a48;padding:18px;}
-  h1{font-size:18px;color:var(--pink);margin:.2rem 0 1rem;text-align:center;}
-  .stage{position:relative;width:100%;max-width:560px;margin:0 auto;border-radius:16px;overflow:hidden;
-         box-shadow:0 8px 30px rgba(192,61,107,.18);background:#fbeef4;aspect-ratio:16/9;}
-  .stage canvas{width:100%;height:100%;display:block;}
-  .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
-           text-align:center;pointer-events:none;text-shadow:0 1px 10px rgba(120,40,70,.4);color:#fff;padding:0 8%;}
-  .overlay .baby{font-size:27px;font-weight:700;letter-spacing:.04em;}
-  .overlay .msg{font-size:14px;opacity:.95;margin-top:8px;line-height:1.6;}
-  .overlay .from{font-size:12px;opacity:.85;margin-top:12px;}
-  .panel{max-width:560px;margin:14px auto 0;background:#fff;border:1px solid #f0d3e0;border-radius:14px;padding:14px 16px;}
-  .row{display:flex;align-items:center;gap:10px;margin:.55rem 0;}
-  .row label{font-size:13px;min-width:92px;color:#a23a5e;}
-  .row input[type=range]{flex:1;}
-  .row input[type=text]{flex:1;padding:6px 9px;border-radius:8px;border:1px solid #e8a0b8;font-size:13px;color:#5a3a48;font-family:inherit;}
-  .val{font-size:13px;font-weight:600;color:var(--pink);min-width:72px;text-align:right;}
-  select{flex:1;padding:6px 8px;border-radius:8px;border:1px solid #e8a0b8;color:#a23a5e;background:#fff;font-size:13px;}
-  button{padding:10px 18px;border-radius:9px;border:1px solid #e8a0b8;background:#FBEAF0;color:var(--pink);
-         font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;}
-  button.play{background:var(--pink);color:#fff;border-color:var(--pink);}
-  .note{max-width:560px;margin:14px auto 0;font-size:12px;line-height:1.7;color:#7a5a68;background:#fff9fc;
-        border:1px dashed #e8b8cc;border-radius:12px;padding:12px 14px;}
-  .note b{color:var(--pink);}
-  code{background:#fbe6ef;padding:1px 5px;border-radius:4px;font-size:11px;}
-  #status{font-size:12px;color:#a23a5e;text-align:center;margin-top:8px;min-height:16px;}
-  .hint{font-size:11px;color:#9a6a7c;flex:1;}
-</style>
-</head>
-<body>
-  <h1>🎬 Music Video 同期 試作（ゆっくり優しい映像）</h1>
-
-  <div class="stage">
-    <canvas id="cv" width="960" height="540"></canvas>
-    <div class="overlay">
-      <div class="baby" id="ovBaby">はると へ</div>
-      <div class="msg" id="ovMsg">うまれてきてくれて ありがとう</div>
-      <div class="from" id="ovFrom">from パパ・ママ</div>
-    </div>
-  </div>
-  <div id="status">▶ 再生を押すと音楽が始まります</div>
-
-  <div class="panel">
-    <div class="row"><label>赤ちゃんの名前</label><input type="text" id="inBaby" value="はると"></div>
-    <div class="row"><label>メッセージ</label><input type="text" id="inMsg" value="うまれてきてくれて ありがとう"></div>
-    <div class="row"><label>from</label><input type="text" id="inFrom" value="パパ・ママ"></div>
-    <div class="row">
-      <label>心音のBPM</label>
-      <input type="range" id="hbpm" min="110" max="180" value="150" step="1">
-      <span class="val" id="hbpmVal">150 bpm</span>
-    </div>
-    <div class="row">
-      <label>音楽</label>
-      <select id="track">
-        <option value="WMSL_Twinkle_Org_bpm152.mp3|152">Twinkle（152bpm）</option>
-        <option value="WMSL_Ambient Piano_BPM138.mp3|138">Ambient Piano（138bpm）</option>
-        <option value="WMSL_Moms Echo_bpm155.mp3|155">Moms Echo（155bpm）</option>
-      </select>
-    </div>
-    <div class="row">
-      <label>再生倍率(rate)</label>
-      <span class="val" id="rateVal" style="text-align:left;">—</span>
-      <span class="hint">＝映像と音楽に同じ値を適用</span>
-    </div>
-    <div class="row" style="justify-content:center;gap:14px;margin-top:.8rem;">
-      <button class="play" id="playBtn">▶ 再生</button>
-      <button id="stopBtn">■ 停止</button>
-    </div>
-  </div>
-
-  <div class="note">
-    <b>この試作が示していること</b><br>
-    ・ゆっくり優しい映像＋メッセージ＋音楽を、同じ <code>rate</code> で一緒に再生します。<br>
-    ・心音BPMを動かすと <code>rate</code> が変わり、<b>映像も音楽も一緒に</b>速く/遅くなります。<br>
-    ・映像が穏やかなので、速度が多少変わっても自然に見えます。<br><br>
-    <b>本番への差し替え</b>：この試作の映像は動作確認のため端末上で描画しています。本番では
-    <code>&lt;video src="曲ごとのMusic.mp4" muted&gt;</code> を置き、<code>video.playbackRate = rate</code>
-    にするだけ（同じ同期ロジック）。配布はSafari対応のため <b>MP4(H.264)</b> 推奨。
-  </div>
-
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WooM</title>
+<link rel="canonical" href="https://woom-music.com/video_sync_prototype.html">
+<meta http-equiv="refresh" content="0;url=https://woom-music.com/video_sync_prototype.html">
 <script>
-const $=id=>document.getElementById(id);
-let AC=null, musicBuf=null, musicSrc=null, mGain=null, playing=false, curTrackFile=null;
-
-// ── rate formula (same shape as the app's calcPlaybackRate) ────────────────
-function calcRate(heartBPM, musicBPM){
-  let best=1, bestDiff=Infinity;
-  for(let mult=1;mult<=4;mult++){
-    const rate=(heartBPM*mult)/musicBPM;
-    if(rate<0.4||rate>2.5) continue;
-    let diff=Math.abs(rate-1); if(rate<1) diff*=1.15;
-    if(diff<bestDiff){bestDiff=diff;best=rate;}
-  }
-  return best;
-}
-function curMusicBPM(){ return parseFloat($('track').value.split('|')[1]); }
-function curRate(){ return calcRate(+$('hbpm').value, curMusicBPM()); }
-function refreshRate(){
-  const r=curRate();
-  $('rateVal').textContent=r.toFixed(3)+' ×';
-  if(musicSrc) musicSrc.playbackRate.value=r;
-  visRate=r; // drives the animation speed
-}
-
-// ── gentle ambient animation, drawn live (works on every device) ───────────
-const cv=$('cv'), g=cv.getContext('2d'), W=cv.width, H=cv.height;
-let visRate=1, visClock=0, lastTs=0;
-const blobs=[...Array(5)].map((_,i)=>({
-  x:Math.random()*W,y:Math.random()*H,r:(150+Math.random()*120),
-  hue:[[255,209,224],[255,183,205],[247,213,223],[255,224,236],[250,225,238]][i],
-  sp:0.10+Math.random()*0.08,ph:Math.random()*6.28,
-  dx:(Math.random()-.5)*5,dy:(Math.random()-.5)*5
-}));
-function drawFrame(t){
-  g.fillStyle='#fbeef4'; g.fillRect(0,0,W,H);
-  const breathe=0.5+0.5*Math.sin(t*2*Math.PI/5);
-  for(const b of blobs){
-    const cx=(b.x+Math.sin(t*b.sp+b.ph)*60+b.dx*t)%(W+300)-150+150;
-    const cy=(b.y+Math.cos(t*b.sp*0.8+b.ph)*44+b.dy*t);
-    const yy=((cy%(H+300))+(H+300))%(H+300)-150+150;
-    const rr=b.r*(0.85+0.25*Math.sin(t*b.sp*1.3+b.ph))*(0.9+0.2*breathe);
-    const rad=g.createRadialGradient(cx,yy,0,cx,yy,rr); const [r,gr,bl]=b.hue;
-    rad.addColorStop(0,`rgba(${r},${gr},${bl},0.55)`); rad.addColorStop(1,`rgba(${r},${gr},${bl},0)`);
-    g.fillStyle=rad; g.beginPath(); g.arc(cx,yy,rr,0,6.29); g.fill();
-  }
-  const pr=150+30*breathe;
-  const cg=g.createRadialGradient(W/2,H/2,0,W/2,H/2,pr);
-  cg.addColorStop(0,`rgba(255,255,255,${0.20+0.12*breathe})`); cg.addColorStop(1,'rgba(255,255,255,0)');
-  g.fillStyle=cg; g.beginPath(); g.arc(W/2,H/2,pr,0,6.29); g.fill();
-}
-function tick(ts){
-  if(!lastTs) lastTs=ts;
-  const dt=(ts-lastTs)/1000; lastTs=ts;
-  visClock += dt*visRate;           // <- same rate the music uses
-  drawFrame(visClock);
-  requestAnimationFrame(tick);
-}
-requestAnimationFrame(tick);
-
-// ── audio ──────────────────────────────────────────────────────────────────
-async function loadMusic(){
-  const file=$('track').value.split('|')[0];
-  if(file===curTrackFile && musicBuf) return;
-  $('status').textContent='音楽を読み込み中…';
-  const ab=await (await fetch('./'+encodeURIComponent(file))).arrayBuffer();
-  musicBuf=await AC.decodeAudioData(ab); curTrackFile=file;
-}
-async function play(){
-  if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)();
-  await AC.resume();
-  await loadMusic();
-  stopAudio();
-  const r=curRate();
-  musicSrc=AC.createBufferSource(); musicSrc.buffer=musicBuf; musicSrc.loop=true;
-  musicSrc.playbackRate.value=r;
-  mGain=AC.createGain(); mGain.gain.value=0.9;
-  musicSrc.connect(mGain); mGain.connect(AC.destination);
-  musicSrc.start();
-  playing=true; visRate=r;
-  $('status').textContent='再生中 — 心音BPMを動かすと映像も音楽も一緒に速度が変わります';
-}
-function stopAudio(){ if(musicSrc){ try{musicSrc.stop();}catch(e){} musicSrc=null; } }
-
-// ── wire up ────────────────────────────────────────────────────────────────
-$('hbpm').addEventListener('input',()=>{ $('hbpmVal').textContent=$('hbpm').value+' bpm'; refreshRate(); });
-$('track').addEventListener('change',async()=>{ if(playing) await play(); refreshRate(); });
-$('playBtn').addEventListener('click',play);
-$('stopBtn').addEventListener('click',()=>{ stopAudio(); playing=false; $('status').textContent='停止しました（映像は表示のまま）'; });
-$('inBaby').addEventListener('input',e=>$('ovBaby').textContent=(e.target.value||'')+' へ');
-$('inMsg').addEventListener('input',e=>$('ovMsg').textContent=e.target.value);
-$('inFrom').addEventListener('input',e=>$('ovFrom').textContent='from '+e.target.value);
-refreshRate();
+(function(){
+  var q = location.search + location.hash;
+  location.replace("https://woom-music.com/video_sync_prototype.html" + q);
+})();
 </script>
-</body>
-</html>
+</head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;text-align:center;padding:3rem 1.5rem;background:#fff5f8;color:#D4537E;">
+<p>WooM は新しいアドレスに移転しました。</p>
+<p style="color:#8a6b76;font-size:.9rem;">WooM has moved to a new address.</p>
+<p><a id="l" href="https://woom-music.com/video_sync_prototype.html" style="color:#D4537E;">開かない場合はこちらをタップ / Tap here</a></p>
+<script>
+document.getElementById('l').href = "https://woom-music.com/video_sync_prototype.html" + location.search + location.hash;
+</script>
+</body></html>
